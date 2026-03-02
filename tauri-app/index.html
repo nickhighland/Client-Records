@@ -1328,6 +1328,61 @@
             }
         }
 
+        /* Auto-lock session selector */
+        .autolock-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255,255,255,0.9);
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .autolock-label {
+            opacity: 0.85;
+        }
+
+        .autolock-select {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 6px;
+            padding: 5px 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            transition: background 0.2s ease;
+        }
+
+        .autolock-select:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .autolock-select option {
+            background: #2c3e50;
+            color: white;
+        }
+
+        .autolock-countdown {
+            background: rgba(231, 76, 60, 0.25);
+            border: 1px solid rgba(231, 76, 60, 0.65);
+            color: #ff8a80;
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            min-width: 130px;
+            text-align: center;
+            animation: autolockPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes autolockPulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.55; }
+        }
 
     </style>
 </head>
@@ -1710,10 +1765,25 @@
 
     <div class="container" id="appContainer" style="display: none;">
         <div class="header">
-            <h1>Client Data Organizer <span style="font-size: 0.8rem; font-weight: normal; vertical-align: middle;">v1.0.9</span></h1>
+            <h1>Client Data Organizer <span style="font-size: 0.8rem; font-weight: normal; vertical-align: middle;">v1.1.0</span></h1>
             <div id="autoSaveIndicator" class="autosave-indicator" style="opacity: 0;">
                 <span id="saveStatus"></span>
             </div>
+            <!-- Auto-lock session control -->
+            <div class="autolock-wrapper" id="autolockWrapper">
+                <span class="autolock-label">Auto-lock Session</span>
+                <select id="autolockSelect" class="autolock-select" title="Select auto-lock timeout">
+                    <option value="600000">10 min</option>
+                    <option value="900000">15 min</option>
+                    <option value="1800000">30 min</option>
+                    <option value="2700000">45 min</option>
+                    <option value="3600000">60 min</option>
+                    <option value="4500000">1 hr 15 min</option>
+                    <option value="5400000">1 hr 30 min</option>
+                </select>
+                <div id="autolockCountdown" class="autolock-countdown" style="display:none;"></div>
+            </div>
+
             <div class="header-menu" id="headerMenu">
                 <button id="headerMenuBtn" class="btn header-menu-btn" title="Open menu">Menu ▾</button>
                 <div id="headerMenuDropdown" class="header-menu-dropdown hidden">
@@ -3103,12 +3173,12 @@
                 if (!trimmedValue) return currentSectionText || '';
                 const existing = currentSectionText || '';
                 const normalizedExisting = existing.toLowerCase();
-                const candidate = `${label}: ${trimmedValue}`;
-                if (normalizedExisting.includes(candidate.toLowerCase())) {
+                // Check for duplicates by value only (no label prefix in output)
+                if (normalizedExisting.includes(trimmedValue.toLowerCase())) {
                     return existing;
                 }
                 const prefix = existing.trim().length > 0 ? '\n' : '';
-                return `${existing}${prefix}• ${candidate}`;
+                return `${existing}${prefix}• ${trimmedValue}`;
             };
 
             const getInstructionsContext = (client, appointment) => {
@@ -5297,6 +5367,7 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
     - "Symptom Pattern / Severity Context" and "Functional Impact" MUST be integrated into **Subjective (S)**.
     - "Progress / Response to Treatment" and "Medical Necessity Rationale" MUST be integrated into **Assessment (A)**.
     - Preserve these inputs faithfully and do not omit them when present.
+    - **CRITICAL:** Do NOT include the field label names (e.g., "Symptom Pattern / Severity Context:", "Functional Impact:", "Progress / Response to Treatment:", "Medical Necessity Rationale:") anywhere in the generated output. Weave the content naturally into the prose of the appropriate section without any label prefix or heading.
 
 **NEW: Suggestions**
 - In addition to the main SOAP content, you will provide clinical language suggestions for all four sections when appropriate stronger clinical terminology is available.
@@ -7709,7 +7780,50 @@ This error cannot be fixed within this application's code; it requires a configu
 
         // --- Login and Auto-Lock Logic ---
         let inactivityTimer;
-        const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutes
+        let countdownInterval = null;
+        const COUNTDOWN_SECONDS = 60; // seconds of warning before locking
+
+        function getInactivityLimit() {
+            const sel = document.getElementById('autolockSelect');
+            return sel ? parseInt(sel.value, 10) : 600000;
+        }
+
+        function stopCountdown() {
+            if (countdownInterval !== null) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            const countdown = document.getElementById('autolockCountdown');
+            const select    = document.getElementById('autolockSelect');
+            if (countdown) countdown.style.display = 'none';
+            if (select)    select.style.display    = '';
+        }
+
+        function startCountdown() {
+            const countdown = document.getElementById('autolockCountdown');
+            const select    = document.getElementById('autolockSelect');
+            if (select)    select.style.display    = 'none';
+            if (countdown) countdown.style.display = '';
+
+            let remaining = COUNTDOWN_SECONDS;
+
+            function formatTime(secs) {
+                const m = Math.floor(secs / 60);
+                const s = secs % 60;
+                return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `0:${String(s).padStart(2, '0')}`;
+            }
+
+            if (countdown) countdown.textContent = `Locking in ${formatTime(remaining)}…`;
+
+            countdownInterval = setInterval(() => {
+                remaining -= 1;
+                if (countdown) countdown.textContent = `Locking in ${formatTime(remaining)}…`;
+                if (remaining <= 0) {
+                    stopCountdown();
+                    lockApp();
+                }
+            }, 1000);
+        }
 
         function showVerificationPanel(username = '') {
             const verifyPanel = document.getElementById('verifyEmailPanel');
@@ -7770,11 +7884,14 @@ This error cannot be fixed within this application's code; it requires a configu
         }
 
         function resetInactivityTimer() {
+            stopCountdown();
             clearTimeout(inactivityTimer);
-            inactivityTimer = setTimeout(lockApp, INACTIVITY_LIMIT);
+            inactivityTimer = setTimeout(startCountdown, getInactivityLimit());
         }
 
         function lockApp() {
+            stopCountdown();
+            clearTimeout(inactivityTimer);
             document.getElementById('loginOverlay').style.display = 'flex';
             document.getElementById('appContainer').style.display = 'none';
             document.getElementById('loginUsernameInput').value = '';

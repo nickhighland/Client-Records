@@ -113,6 +113,22 @@
             color: var(--text-color-inverted);
         }
 
+        /* Darken header area further in dark mode for better contrast with window traffic-light controls */
+        [data-theme="dark"] .header {
+            background: linear-gradient(135deg, #0b1220 0%, #151924 100%);
+            box-shadow: 0 2px 18px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(255,255,255,0.02);
+        }
+
+        /* Make the header draggable (so native window controls like macOS traffic lights remain clickable) */
+        .header {
+            -webkit-app-region: drag;
+        }
+
+        /* Ensure interactive controls are not draggable so clicks work */
+        .header button, .header a, .header input, .header select {
+            -webkit-app-region: no-drag;
+        }
+
         @media (prefers-color-scheme: dark) {
             .header {
                 background: var(--panel-header-bg);
@@ -1765,7 +1781,7 @@
 
     <div class="container" id="appContainer" style="display: none;">
         <div class="header">
-            <h1>Client Data Organizer <span style="font-size: 0.8rem; font-weight: normal; vertical-align: middle;">v1.0.11</span></h1>
+            <h1>Client Data Organizer <span style="font-size: 0.8rem; font-weight: normal; vertical-align: middle;">v1.0.12</span></h1>
             <div id="autoSaveIndicator" class="autosave-indicator" style="opacity: 0;">
                 <span id="saveStatus"></span>
             </div>
@@ -4265,22 +4281,23 @@ Requirements:
                 const client = findClient(selectedClientId);
                 if (!client) return;
                 
-                const title = prompt("Enter goal title:");
-                if (!title || !title.trim()) return;
-                
-                const newGoal = {
-                    id: crypto.randomUUID(),
-                    title: title.trim(),
-                    timelineMonths: 12,
-                    status: 'active',
-                    objectives: [],
-                    dateCreated: new Date().toISOString()
-                };
-                
-                if (!client.goals) client.goals = [];
-                client.goals.push(newGoal);
-                markDirty();
-                renderGoals();
+                showRenameModal('Enter goal title:', '').then(title => {
+                    if (!title || !title.trim()) return;
+                    
+                    const newGoal = {
+                        id: crypto.randomUUID(),
+                        title: title.trim(),
+                        timelineMonths: 12,
+                        status: 'active',
+                        objectives: [],
+                        dateCreated: new Date().toISOString()
+                    };
+                    
+                    if (!client.goals) client.goals = [];
+                    client.goals.push(newGoal);
+                    markDirty();
+                    renderGoals();
+                });
             };
 
             const addObjective = (goalId) => {
@@ -4290,22 +4307,23 @@ Requirements:
                 const goal = client.goals.find(g => g.id === goalId);
                 if (!goal) return;
                 
-                const text = prompt("Enter objective:");
-                if (!text || !text.trim()) return;
-                
-                const newObjective = {
-                    id: crypto.randomUUID(),
-                    text: text.trim(),
-                    timelineMonths: 3,
-                    format: 'action',
-                    completed: false,
-                    dateCreated: new Date().toISOString()
-                };
-                
-                if (!goal.objectives) goal.objectives = [];
-                goal.objectives.push(newObjective);
-                markDirty();
-                renderGoals();
+                showRenameModal('Enter objective:', '').then(text => {
+                    if (!text || !text.trim()) return;
+                    
+                    const newObjective = {
+                        id: crypto.randomUUID(),
+                        text: text.trim(),
+                        timelineMonths: 3,
+                        format: 'action',
+                        completed: false,
+                        dateCreated: new Date().toISOString()
+                    };
+                    
+                    if (!goal.objectives) goal.objectives = [];
+                    goal.objectives.push(newObjective);
+                    markDirty();
+                    renderGoals();
+                });
             };
 
             const toggleObjective = (goalId, objectiveId) => {
@@ -4388,12 +4406,13 @@ Requirements:
                 const goal = client.goals.find(g => g.id === goalId);
                 if (!goal) return;
                 
-                const newTitle = prompt("Edit goal title:", goal.title);
-                if (newTitle && newTitle.trim() && newTitle.trim() !== goal.title) {
-                    goal.title = newTitle.trim();
-                    markDirty();
-                    renderGoals();
-                }
+                showRenameModal('Edit goal title:', goal.title).then(newTitle => {
+                    if (newTitle && newTitle.trim() && newTitle.trim() !== goal.title) {
+                        goal.title = newTitle.trim();
+                        markDirty();
+                        renderGoals();
+                    }
+                });
             };
 
             const editGoalTimeline = (goalId) => {
@@ -4402,12 +4421,13 @@ Requirements:
                 const goal = client.goals.find(g => g.id === goalId);
                 if (!goal) return;
 
-                const response = prompt('Goal timeline (months):', String(goal.timelineMonths || 12));
-                if (response === null) return;
-                const months = Math.max(1, Math.min(36, parseInt(response, 10) || 12));
-                goal.timelineMonths = months;
-                markDirty();
-                renderGoals();
+                showRenameModal('Goal timeline (months):', String(goal.timelineMonths || 12)).then(response => {
+                    if (response === null) return;
+                    const months = Math.max(1, Math.min(36, parseInt(response, 10) || 12));
+                    goal.timelineMonths = months;
+                    markDirty();
+                    renderGoals();
+                });
             };
 
             const editObjective = (goalId, objectiveId) => {
@@ -4418,12 +4438,13 @@ Requirements:
                 const objective = goal.objectives.find(o => o.id === objectiveId);
                 if (!objective) return;
 
-                const response = prompt('Edit objective:', objective.text);
-                if (response && response.trim()) {
-                    objective.text = response.trim();
-                    markDirty();
-                    renderGoals();
-                }
+                showRenameModal('Edit objective:', objective.text).then(response => {
+                    if (response && response.trim()) {
+                        objective.text = response.trim();
+                        markDirty();
+                        renderGoals();
+                    }
+                });
             };
 
             const editObjectiveTimeline = (goalId, objectiveId) => {
@@ -4434,11 +4455,12 @@ Requirements:
                 const objective = goal.objectives.find(o => o.id === objectiveId);
                 if (!objective) return;
 
-                const response = prompt('Objective timeline (months):', String(objective.timelineMonths || 3));
-                if (response === null) return;
-                objective.timelineMonths = Math.max(1, Math.min(36, parseInt(response, 10) || 3));
-                markDirty();
-                renderGoals();
+                showRenameModal('Objective timeline (months):', String(objective.timelineMonths || 3)).then(response => {
+                    if (response === null) return;
+                    objective.timelineMonths = Math.max(1, Math.min(36, parseInt(response, 10) || 3));
+                    markDirty();
+                    renderGoals();
+                });
             };
 
             const createClient = (name) => {

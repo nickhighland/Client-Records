@@ -56,6 +56,9 @@ for f in \
   "$SCRIPT_DIR/ClientRecords/index.html" \
   "$SCRIPT_DIR/ClientRecords/test.html"; do
   if [ -f "$f" ]; then
+    # New header markup uses <span class="version-badge">vX.Y.Z</span>
+    sed -E -i '' "s|(<span[^>]*class=\"version-badge\"[^>]*>)v[0-9][^<]*(</span>)|\\1v${VERSION}\\2|g" "$f"
+    # Legacy header markup fallback
     sed -i '' "s|Client Data Organizer <span[^>]*>v[0-9][^<]*</span>|Client Data Organizer <span style=\"font-size: 0.8rem; font-weight: normal; vertical-align: middle;\">v${VERSION}</span>|g" "$f"
     echo "  Updated $f"
   fi

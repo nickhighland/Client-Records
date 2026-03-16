@@ -105,6 +105,7 @@
             display: flex;
             gap: 15px;
             align-items: center;
+            position: relative;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             flex-shrink: 0;
         }
@@ -112,10 +113,6 @@
         .header h1 {
             font-size: 1.5rem;
             margin-right: auto;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
         }
 
         .version-badge {
@@ -124,11 +121,17 @@
             vertical-align: middle;
         }
 
-        .column-visibility-controls {
-            display: inline-flex;
-            align-items: center;
+        .header-column-controls {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            display: grid;
+            grid-template-columns: repeat(4, max-content);
             gap: 8px;
-            margin-left: 6px;
+            align-items: center;
+            justify-content: center;
+            z-index: 15;
         }
 
         .column-visibility-pill {
@@ -932,7 +935,7 @@
         }
         .autosave-indicator {
             position: fixed;
-            right: 14px;
+               left: 14px;
             bottom: 12px;
             z-index: 2100;
             color: #f8fafc;
@@ -1103,13 +1106,13 @@
             <h1>
                 Client Data Organizer
                 <span class="version-badge">v1.0.19</span>
-                <span class="column-visibility-controls" aria-label="Column visibility controls">
-                    <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
-                    <button id="columnToggleAppointments" class="column-visibility-pill is-shown" type="button" title="Hide Appointments">Appointments</button>
-                    <button id="columnToggleNotes" class="column-visibility-pill is-shown" type="button" title="Hide Notes">Notes</button>
-                    <button id="columnToggleSoap" class="column-visibility-pill is-shown" type="button" title="Hide SOAP">SOAP</button>
-                </span>
             </h1>
+            <div class="header-column-controls" aria-label="Column visibility controls">
+                <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
+                <button id="columnToggleAppointments" class="column-visibility-pill is-shown" type="button" title="Hide Appointments">Appointments</button>
+                <button id="columnToggleNotes" class="column-visibility-pill is-shown" type="button" title="Hide Notes">Notes</button>
+                <button id="columnToggleSoap" class="column-visibility-pill is-shown" type="button" title="Hide SOAP">SOAP</button>
+            </div>
             <div id="autoSaveIndicator" class="autosave-indicator" style="opacity: 0;">
                 <span id="saveStatus"></span>
             </div>

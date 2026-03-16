@@ -1001,10 +1001,13 @@
         }
 
         .panel.column-collapsed {
+            flex: 0 0 0 !important;
             flex-basis: 0 !important;
             min-width: 0 !important;
+            max-width: 0 !important;
             width: 0 !important;
             border-right: none;
+            overflow: hidden;
         }
 
         .resizer-toggle-group {
@@ -1823,7 +1826,7 @@
 
     <div class="container" id="appContainer" style="display: none;">
         <div class="header">
-            <h1>Client Data Organizer <span style="font-size: 0.8rem; font-weight: normal; vertical-align: middle;">v1.0.16</span></h1>
+            <h1>Client Data Organizer <span style="font-size: 0.8rem; font-weight: normal; vertical-align: middle;">v1.0.17</span></h1>
             <div id="autoSaveIndicator" class="autosave-indicator" style="opacity: 0;">
                 <span id="saveStatus"></span>
             </div>
@@ -7815,8 +7818,14 @@ This error cannot be fixed within this application's code; it requires a configu
                         const dx = e.clientX - x;
                         const newPrevSize = prevSize + dx;
                         const newNextSize = nextSize - dx;
+                        const prevMinWidth = prev.classList.contains('column-collapsed')
+                            ? 0
+                            : (parseFloat(getComputedStyle(prev).minWidth) || 150);
+                        const nextMinWidth = next.classList.contains('column-collapsed')
+                            ? 0
+                            : (parseFloat(getComputedStyle(next).minWidth) || 150);
                         
-                        if(newPrevSize > 150 && newNextSize > 150) {
+                        if (newPrevSize >= prevMinWidth && newNextSize >= nextMinWidth) {
                             prev.style.flexBasis = `${(newPrevSize / containerSize) * 100}%`;
                             next.style.flexBasis = `${(newNextSize / containerSize) * 100}%`;
                         }
@@ -7875,10 +7884,14 @@ This error cannot be fixed within this application's code; it requires a configu
                         panel.dataset.expandedBasis = basis;
                     }
                     panel.classList.add('column-collapsed');
+                    panel.style.flexGrow = '0';
+                    panel.style.flexShrink = '0';
                     panel.style.flexBasis = '0px';
                     panel.style.minWidth = '0';
                 } else {
                     panel.classList.remove('column-collapsed');
+                    panel.style.flexGrow = '';
+                    panel.style.flexShrink = '';
                     panel.style.minWidth = '';
                     panel.style.flexBasis = panel.dataset.expandedBasis || COLUMN_DEFAULT_BASIS[panelId] || '25%';
                 }

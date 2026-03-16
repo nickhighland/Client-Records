@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^\\./publish\\.sh 1\\.0\\.15$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

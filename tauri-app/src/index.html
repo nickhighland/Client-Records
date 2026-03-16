@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#667eea">
     <title>Mental Health Client Data Organizer</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
@@ -906,6 +907,8 @@
             width: 6px;
             flex-shrink: 0;
             z-index: 10;
+            position: relative;
+            overflow: visible;
         }
         .resizer-y {
             background: var(--resizer-bg);
@@ -913,6 +916,45 @@
             height: 6px;
             flex-shrink: 0;
             z-index: 10;
+        }
+
+        .panel.column-collapsed {
+            flex-basis: 0 !important;
+            min-width: 0 !important;
+            width: 0 !important;
+            border-right: none;
+        }
+
+        .resizer-toggle-group {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 20;
+        }
+
+        .resizer-toggle-btn {
+            width: 16px;
+            height: 16px;
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
+            background: var(--bg-container);
+            color: var(--text-color-primary);
+            font-size: 10px;
+            line-height: 1;
+            padding: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+        }
+
+        .resizer-toggle-btn:hover {
+            filter: brightness(0.95);
         }
         
         .hidden {
@@ -1031,7 +1073,7 @@
 
     <div class="container" id="appContainer" style="display: none;">
         <div class="header">
-            <h1>Client Data Organizer <span style="font-size: 0.8rem; font-weight: normal; vertical-align: middle;">v1.0.14</span></h1>
+            <h1>Client Data Organizer <span style="font-size: 0.8rem; font-weight: normal; vertical-align: middle;">v1.0.15</span></h1>
             <div id="autoSaveIndicator" class="autosave-indicator" style="opacity: 0;">
                 <span id="saveStatus"></span>
             </div>
@@ -1068,7 +1110,12 @@
                 </div>
             </div>
 
-            <div class="resizer" id="resizer1"></div>
+            <div class="resizer" id="resizer1">
+                <div class="resizer-toggle-group">
+                    <button class="resizer-toggle-btn" data-side="prev" title="Collapse/Expand Clients" aria-label="Toggle clients column">◀</button>
+                    <button class="resizer-toggle-btn" data-side="next" title="Collapse/Expand Appointments" aria-label="Toggle appointments column">▶</button>
+                </div>
+            </div>
 
             <!-- Appointments Panel -->
             <div class="panel appointments-panel" id="panelAppointments">
@@ -1126,7 +1173,12 @@
                 </div>
             </div>
 
-            <div class="resizer" id="resizer2"></div>
+            <div class="resizer" id="resizer2">
+                <div class="resizer-toggle-group">
+                    <button class="resizer-toggle-btn" data-side="prev" title="Collapse/Expand Appointments" aria-label="Toggle appointments column">◀</button>
+                    <button class="resizer-toggle-btn" data-side="next" title="Collapse/Expand Session" aria-label="Toggle session column">▶</button>
+                </div>
+            </div>
 
             <!-- Session & Notes Panel -->
             <div class="panel session-panel" id="panelSession">
@@ -1189,7 +1241,12 @@
                  </div>
             </div>
 
-            <div class="resizer" id="resizer3"></div>
+            <div class="resizer" id="resizer3">
+                <div class="resizer-toggle-group">
+                    <button class="resizer-toggle-btn" data-side="prev" title="Collapse/Expand Session" aria-label="Toggle session column">◀</button>
+                    <button class="resizer-toggle-btn" data-side="next" title="Collapse/Expand SOAP" aria-label="Toggle SOAP column">▶</button>
+                </div>
+            </div>
 
             <!-- SOAP Notes Panel -->
             <div class="panel soap-panel" id="panelSoap">
@@ -1770,6 +1827,7 @@
     <script type="module">
         import { initDatabase, saveState, loadState, isDatabaseInitialized } from './database.js';
         import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+        import { getCurrentWindow } from '@tauri-apps/api/window';
 
         document.addEventListener('DOMContentLoaded', () => {
             // DOM Elements
@@ -2356,6 +2414,22 @@
             const getInterventionContext = (appointment) => {
                 if (!appointment?.selectedInterventions?.length) return '';
                 return `\n- **Interventions Selected from Intervention Bank:**\n${appointment.selectedInterventions.map(item => `  - ${item}`).join('\n')}`;
+            };
+
+            const normalizeForInterventionMatch = (value) => String(value || '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            const extractInterventionsFromObjective = (objectiveText) => {
+                const normalizedObjective = ` ${normalizeForInterventionMatch(objectiveText)} `;
+                if (!normalizedObjective.trim()) return [];
+                return (data.interventionBank || []).filter(item => {
+                    const normalizedItem = normalizeForInterventionMatch(item);
+                    if (!normalizedItem) return false;
+                    return normalizedObjective.includes(` ${normalizedItem} `);
+                });
             };
 
             const getInstructionsContext = (client, appointment) => {
@@ -3426,12 +3500,26 @@ Requirements:
                 });
 
                 deletedAppointmentsListEl.innerHTML = '';
-                 clearDeletedAppointmentsBtn.classList.toggle('hidden', deletedItems.appointments.length === 0);
-                deletedItems.appointments.forEach(appt => {
-                    const clientName = findClient(appt.clientId)?.name?.substring(0, 5) + '...' || 'N/A';
+                if (!selectedClientId) {
+                    clearDeletedAppointmentsBtn.classList.add('hidden');
+                    return;
+                }
+
+                const deletedAppointmentsForClient = deletedItems.appointments.filter(appt => appt.clientId === selectedClientId);
+                const deletedNotesForClient = deletedItems.notes.filter(note => note.clientId === selectedClientId);
+                clearDeletedAppointmentsBtn.classList.toggle('hidden', (deletedAppointmentsForClient.length + deletedNotesForClient.length) === 0);
+
+                deletedAppointmentsForClient.forEach(appt => {
                     const div = document.createElement('div');
                     div.className = 'deleted-item';
-                    div.innerHTML = `<span>${new Date(appt.date).toLocaleDateString()} (${clientName})</span><button class="restore-btn" data-id="${appt.id}">Restore</button>`;
+                    div.innerHTML = `<span>Appt: ${new Date(appt.date).toLocaleDateString()}</span><button class="restore-btn" data-type="appointment" data-id="${appt.id}">Restore</button>`;
+                    deletedAppointmentsListEl.appendChild(div);
+                });
+
+                deletedNotesForClient.forEach(note => {
+                    const div = document.createElement('div');
+                    div.className = 'deleted-item';
+                    div.innerHTML = `<span>Note: ${note.name || 'Untitled Note'}</span><button class="restore-btn" data-type="note" data-id="${note.id}">Restore</button>`;
                     deletedAppointmentsListEl.appendChild(div);
                 });
             };
@@ -4126,6 +4214,26 @@ Requirements:
             deletedAppointmentsListEl.addEventListener('click', e => {
                  if (e.target.classList.contains('restore-btn')) {
                     const id = e.target.dataset.id;
+                    const type = e.target.dataset.type || 'appointment';
+
+                    if (type === 'note') {
+                        const noteIndex = deletedItems.notes.findIndex(n => n.id === id);
+                        if (noteIndex === -1) return;
+
+                        const [note] = deletedItems.notes.splice(noteIndex, 1);
+                        const client = findClient(note.clientId);
+                        if (client) {
+                            if (!client.notes) client.notes = [];
+                            client.notes.push(note);
+                            markDirty();
+                            fullRender();
+                        } else {
+                            deletedItems.notes.push(note);
+                            alert('Cannot restore. Client not found.');
+                        }
+                        return;
+                    }
+
                     const apptIndex = deletedItems.appointments.findIndex(a => a.id === id);
                     if (apptIndex === -1) return;
 
@@ -4151,8 +4259,10 @@ Requirements:
                 }
             });
             clearDeletedAppointmentsBtn.addEventListener('click', () => {
-                 if(confirm('Permanently delete all recently deleted appointments?')) {
-                    deletedItems.appointments = [];
+                 if (!selectedClientId) return;
+                 if(confirm('Permanently delete all recently deleted appointments and notes for this client?')) {
+                    deletedItems.appointments = deletedItems.appointments.filter(appt => appt.clientId !== selectedClientId);
+                    deletedItems.notes = deletedItems.notes.filter(note => note.clientId !== selectedClientId);
                     markDirty();
                     fullRender();
                 }
@@ -4320,6 +4430,18 @@ Requirements:
                     } else {
                         const key = textarea.id.slice(-1).toLowerCase();
                         appointment.soap[key] = textarea.value;
+                        if (key === 'o') {
+                            const matchedInterventions = extractInterventionsFromObjective(textarea.value);
+                            appointment.selectedInterventions = matchedInterventions;
+                            appointment.soap.interventions = matchedInterventions.length > 0
+                                ? matchedInterventions.map(item => `• ${item}`).join('\n')
+                                : 'No interventions identified directly in Objective section.';
+
+                            const interventionsTextarea = document.getElementById('interventions');
+                            if (interventionsTextarea) {
+                                interventionsTextarea.value = appointment.soap.interventions;
+                            }
+                        }
                     }
                     delete appointment.auditCheck;
                     markDirty();
@@ -4601,9 +4723,7 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
             const processAndStoreSoapData = (soapData, appointment) => {
                  if (!appointment.soap) appointment.soap = {};
                   delete appointment.auditCheck;
-
-                 // Process and store AI-generated interventions
-                 appointment.soap.interventions = soapData.i ? formatBulletPoints(soapData.i) : 'No interventions identified.';
+                 const generatedObjectiveText = soapData.o ? formatBulletPoints(soapData.o) : '';
 
                  ['s', 'o', 'a', 'p'].forEach(key => {
                      const suggestionKey = `${key}_suggestion`;
@@ -4642,6 +4762,12 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                      // Always store the full list of suggestions for user approval
                      appointment.soap[suggestionKey] = suggestions;
                  });
+
+                 const matchedInterventions = extractInterventionsFromObjective(generatedObjectiveText);
+                 appointment.selectedInterventions = matchedInterventions;
+                 appointment.soap.interventions = matchedInterventions.length > 0
+                     ? matchedInterventions.map(item => `• ${item}`).join('\n')
+                     : 'No interventions identified directly in Objective section.';
              };
 
 
@@ -6254,14 +6380,34 @@ This error cannot be fixed within this application's code; it requires a configu
                 applyTheme(newTheme);
             };
 
+            const updateTaskbarTheme = async (effectiveTheme) => {
+                const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+                if (themeColorMeta) {
+                    const color = effectiveTheme === 'dark' ? '#1a2533' : '#667eea';
+                    themeColorMeta.setAttribute('content', color);
+                }
+
+                document.documentElement.style.colorScheme = effectiveTheme;
+
+                try {
+                    await getCurrentWindow().setTheme(effectiveTheme === 'dark' ? 'dark' : 'light');
+                } catch (error) {
+                    // Ignore when running in a browser context without Tauri window APIs.
+                }
+            };
+
             const applyTheme = (theme) => {
+                let effectiveTheme;
                 if (theme === 'automatic') {
                     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    document.body.dataset.theme = prefersDark ? 'dark' : 'light';
+                    effectiveTheme = prefersDark ? 'dark' : 'light';
+                    document.body.dataset.theme = effectiveTheme;
                 } else {
+                    effectiveTheme = theme;
                     document.body.dataset.theme = theme;
                 }
                 localStorage.setItem('theme', theme);
+                updateTaskbarTheme(effectiveTheme);
                 updateThemeButton();
             };
 
@@ -6371,6 +6517,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 let containerSize = 0;
 
                 resizer.addEventListener('mousedown', function (e) {
+                    if (e.target.closest('.resizer-toggle-btn')) return;
                     e.preventDefault();
                     if (direction === 'x') {
                         x = e.clientX;
@@ -6421,6 +6568,108 @@ This error cannot be fixed within this application's code; it requires a configu
                     saveColumnSizes();
                 }
             }
+
+            const COLUMN_DEFAULT_BASIS = {
+                panelClients: '20%',
+                panelAppointments: '20%',
+                panelSession: '30%',
+                panelSoap: '30%'
+            };
+
+            const RESIZER_PANEL_MAP = {
+                resizer1: { prev: 'panelClients', next: 'panelAppointments' },
+                resizer2: { prev: 'panelAppointments', next: 'panelSession' },
+                resizer3: { prev: 'panelSession', next: 'panelSoap' }
+            };
+
+            const getPanelCurrentBasis = (panelId) => {
+                const panel = document.getElementById(panelId);
+                if (!panel) return COLUMN_DEFAULT_BASIS[panelId] || '25%';
+                if (panel.style.flexBasis) return panel.style.flexBasis;
+                const mainGrid = document.getElementById('mainGrid');
+                const gridWidth = mainGrid?.getBoundingClientRect().width || 1;
+                const panelWidth = panel.getBoundingClientRect().width;
+                const asPercent = Math.max(0, (panelWidth / gridWidth) * 100);
+                return `${asPercent.toFixed(2)}%`;
+            };
+
+            const setColumnCollapsed = (panelId, shouldCollapse) => {
+                const panel = document.getElementById(panelId);
+                if (!panel) return;
+
+                if (shouldCollapse) {
+                    const basis = getPanelCurrentBasis(panelId);
+                    if (basis && basis !== '0px' && basis !== '0%') {
+                        panel.dataset.expandedBasis = basis;
+                    }
+                    panel.classList.add('column-collapsed');
+                    panel.style.flexBasis = '0px';
+                    panel.style.minWidth = '0';
+                } else {
+                    panel.classList.remove('column-collapsed');
+                    panel.style.minWidth = '';
+                    panel.style.flexBasis = panel.dataset.expandedBasis || COLUMN_DEFAULT_BASIS[panelId] || '25%';
+                }
+            };
+
+            const refreshResizerToggleIcons = () => {
+                Object.entries(RESIZER_PANEL_MAP).forEach(([resizerId, map]) => {
+                    const resizer = document.getElementById(resizerId);
+                    if (!resizer) return;
+                    const prevPanel = document.getElementById(map.prev);
+                    const nextPanel = document.getElementById(map.next);
+                    const prevBtn = resizer.querySelector('.resizer-toggle-btn[data-side="prev"]');
+                    const nextBtn = resizer.querySelector('.resizer-toggle-btn[data-side="next"]');
+                    if (prevBtn && prevPanel) {
+                        prevBtn.textContent = prevPanel.classList.contains('column-collapsed') ? '▶' : '◀';
+                    }
+                    if (nextBtn && nextPanel) {
+                        nextBtn.textContent = nextPanel.classList.contains('column-collapsed') ? '◀' : '▶';
+                    }
+                });
+            };
+
+            const saveCollapsedColumns = () => {
+                const collapsed = {};
+                Object.values(RESIZER_PANEL_MAP).forEach(({ prev, next }) => {
+                    [prev, next].forEach(panelId => {
+                        const panel = document.getElementById(panelId);
+                        if (!panel) return;
+                        collapsed[panelId] = panel.classList.contains('column-collapsed');
+                    });
+                });
+                localStorage.setItem('collapsedColumns', JSON.stringify(collapsed));
+            };
+
+            const initializeColumnCollapsers = () => {
+                const collapsed = JSON.parse(localStorage.getItem('collapsedColumns') || '{}');
+                Object.keys(COLUMN_DEFAULT_BASIS).forEach(panelId => {
+                    if (collapsed[panelId]) {
+                        setColumnCollapsed(panelId, true);
+                    }
+                });
+
+                Object.entries(RESIZER_PANEL_MAP).forEach(([resizerId, map]) => {
+                    const resizer = document.getElementById(resizerId);
+                    if (!resizer) return;
+                    resizer.querySelectorAll('.resizer-toggle-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const side = btn.dataset.side;
+                            const panelId = map[side];
+                            const panel = document.getElementById(panelId);
+                            if (!panel) return;
+                            const shouldCollapse = !panel.classList.contains('column-collapsed');
+                            setColumnCollapsed(panelId, shouldCollapse);
+                            refreshResizerToggleIcons();
+                            saveCollapsedColumns();
+                            saveColumnSizes();
+                        });
+                    });
+                });
+
+                refreshResizerToggleIcons();
+            };
             
             // --- Initial Load & Render ---
             const loadServerSettings = () => {
@@ -6484,6 +6733,7 @@ This error cannot be fixed within this application's code; it requires a configu
             
             loadServerSettings();
             loadColumnSizes();
+            initializeColumnCollapsers();
             loadCollapsedStates();
             loadTheme();
             

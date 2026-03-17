@@ -7415,6 +7415,38 @@ This error cannot be fixed within this application's code; it requires a configu
                 updateSaveStatus('Data saved!', true, 2000);
             });
 
+            // Global autosave: any change to key inputs should trigger an autosave
+            const autosaveSelectors = [
+                '.soap-textarea',
+                '#interventions',
+                '#persistentNotes',
+                '#persistentInstructionsInput',
+                '#sessionInstructionsInput',
+                '#sessionInfo',
+                '#goalProblemInput',
+                '#noteNameInput',
+                '#appointmentDateInput',
+                '.goal-title',
+                '.objective-text',
+                '.picker-intervention',
+                '.setting-input',
+                '#addClientNameInput'
+            ];
+
+            const shouldTriggerAutoSave = (el) => {
+                if (!el || !el.matches) return false;
+                return autosaveSelectors.some(sel => {
+                    try { return el.matches(sel); } catch (e) { return false; }
+                });
+            };
+
+            document.addEventListener('input', (e) => {
+                if (shouldTriggerAutoSave(e.target)) markDirty();
+            });
+            document.addEventListener('change', (e) => {
+                if (shouldTriggerAutoSave(e.target)) markDirty();
+            });
+
             const closeHeaderMenu = () => {
                 if (headerMenuDropdown) headerMenuDropdown.classList.add('hidden');
             };

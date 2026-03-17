@@ -2461,14 +2461,42 @@
                 .replace(/\s+/g, ' ')
                 .trim();
 
+            // Fuzzy/semantic-ish matching for interventions.
             const extractInterventionsFromObjective = (objectiveText) => {
-                const normalizedObjective = ` ${normalizeForInterventionMatch(objectiveText)} `;
-                if (!normalizedObjective.trim()) return [];
-                return (data.interventionBank || []).filter(item => {
-                    const normalizedItem = normalizeForInterventionMatch(item);
-                    if (!normalizedItem) return false;
-                    return normalizedObjective.includes(` ${normalizedItem} `);
-                });
+                const obj = normalizeForInterventionMatch(objectiveText || '');
+                if (!obj) return [];
+
+                const tokenize = (str) => (str || '').split(' ').filter(Boolean);
+
+                const objTokens = tokenize(obj);
+
+                const scoreForItem = (item) => {
+                    const normItem = normalizeForInterventionMatch(item);
+                    if (!normItem) return 0;
+                    const itemTokens = tokenize(normItem);
+                    if (itemTokens.length === 0) return 0;
+
+                    const setObj = new Set(objTokens);
+                    const setItem = new Set(itemTokens);
+                    let common = 0;
+                    itemTokens.forEach(t => { if (setObj.has(t)) common++; });
+
+                    const unionSize = new Set([...objTokens, ...itemTokens]).size || 1;
+                    const jaccard = common / unionSize; // token overlap
+                    const containment = common / itemTokens.length; // fraction of item present in objective
+
+                    // Prefer containment (all item tokens present) but allow partial matches via jaccard.
+                    const score = Math.max(jaccard, containment);
+                    return score;
+                };
+
+                const candidates = (data.interventionBank || []).map(item => ({ item, score: scoreForItem(item) }))
+                    .filter(x => x.score > 0)
+                    .sort((a, b) => b.score - a.score);
+
+                // Threshold: return reasonable matches (loose threshold to allow fuzzy mapping)
+                const THRESH = 0.25;
+                return candidates.filter(c => c.score >= THRESH).map(c => ({ item: c.item, score: c.score }));
             };
 
             const getInstructionsContext = (client, appointment) => {
@@ -3509,9 +3537,10 @@ Requirements:
                         <button class="suggestion-decline">Keep Original</button>
                         <button class="suggestion-accept-replace">Use Suggestion</button>
                     `;
-                } else { // It's a new suggestion (string)
+                } else { // It's a new suggestion (string or object with 'suggested')
                     suggestionTitle = 'Suggestion for Addition:';
-                    suggestionContent = `<strong>${suggestionTitle}</strong> ${suggestion}`;
+                    const suggestionText = (typeof suggestion === 'object' && suggestion.suggested) ? suggestion.suggested : suggestion;
+                    suggestionContent = `<strong>${suggestionTitle}</strong> ${suggestionText}`;
                     actionsHtml = `
                         <button class="suggestion-accept">Accept</button>
                         <button class="suggestion-decline">Decline</button>
@@ -4475,8 +4504,8 @@ Requirements:
                         if (key === 'o') {
                             const matchedInterventions = extractInterventionsFromObjective(textarea.value);
                             if (matchedInterventions.length > 0) {
-                                appointment.selectedInterventions = matchedInterventions;
-                                appointment.soap.interventions = matchedInterventions.map(item => `• ${item}`).join('\n');
+                                appointment.selectedInterventions = matchedInterventions.map(m => m.item);
+                                appointment.soap.interventions = matchedInterventions.map(m => `• ${m.item}`).join('\n');
                                 const interventionsTextarea = document.getElementById('interventions');
                                 if (interventionsTextarea) interventionsTextarea.value = appointment.soap.interventions;
                             }
@@ -4657,15 +4686,15 @@ Requirements:
                             // User clicked "Use Suggestion"
                             textToAdd = suggestionData.suggested;
                         } else {
-                            // User clicked "Accept" for a new suggestion (string)
-                            textToAdd = suggestionData;
+                            // User clicked "Accept" for a new suggestion (string or object)
+                            textToAdd = (typeof suggestionData === 'string') ? suggestionData : (suggestionData.suggested || '');
                         }
                     } else { // Declined
                         if (isReplacement) {
                             // User clicked "Keep Original"
                             textToAdd = suggestionData.original;
                         }
-                        // If it's a new suggestion (string) and user clicks decline, textToAdd remains empty, which is correct.
+                        // If it's a new suggestion (string/object) and user clicks decline, textToAdd remains empty, which is correct.
                     }
                 }
 
@@ -4686,10 +4715,16 @@ Requirements:
                     // If this was an Objective suggestion that was accepted, extract matching
                     // interventions from the Objective text and populate the interventions field.
                     if (key === 'o' && isAccepted && !skipAppend) {
-                        const matchedInterventions = extractInterventionsFromObjective(textarea.value);
-                        appointment.selectedInterventions = matchedInterventions;
+                        let matchedInterventions = [];
+                        // Prefer suggestion-level metadata if available
+                        if (suggestionData && typeof suggestionData === 'object' && suggestionData.matchedIntervention) {
+                            matchedInterventions = [{ item: suggestionData.matchedIntervention, score: suggestionData.matchConfidence || 1 }];
+                        } else {
+                            matchedInterventions = extractInterventionsFromObjective(textarea.value);
+                        }
+                        appointment.selectedInterventions = matchedInterventions.map(m => m.item);
                         appointment.soap.interventions = matchedInterventions.length > 0
-                            ? matchedInterventions.map(item => `• ${item}`).join('\n')
+                            ? matchedInterventions.map(m => `• ${m.item}`).join('\n')
                             : appointment.soap.interventions || 'No interventions identified directly in Objective section.';
                         const interventionsTextarea = document.getElementById('interventions');
                         if (interventionsTextarea) interventionsTextarea.value = appointment.soap.interventions;
@@ -4815,13 +4850,37 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                      }
                      
                      // Always store the full list of suggestions for user approval
-                     appointment.soap[suggestionKey] = suggestions;
+                     // For Objective suggestions, attach matchedIntervention metadata per suggestion
+                     if (key === 'o' && Array.isArray(suggestions) && suggestions.length > 0) {
+                         const normalized = suggestions.map(s => {
+                             let suggestionText = '';
+                             let out = s;
+                             if (typeof s === 'object' && s.suggested) {
+                                 suggestionText = s.suggested.replace(/^•\s*/, '').trim();
+                                 out = Object.assign({}, s);
+                             } else if (typeof s === 'string') {
+                                 suggestionText = s.replace(/^•\s*/, '').trim();
+                                 out = { suggested: s };
+                             }
+                             const matches = extractInterventionsFromObjective(suggestionText);
+                             if (matches && matches.length > 0) {
+                                 out.matchedIntervention = matches[0].item;
+                                 out.matchConfidence = matches[0].score;
+                             } else {
+                                 out.matchedIntervention = null;
+                                 out.matchConfidence = 0;
+                             }
+                             return out;
+                         });
+                         appointment.soap[suggestionKey] = normalized;
+                     } else {
+                         appointment.soap[suggestionKey] = suggestions;
+                     }
                  });
-
                  const matchedInterventions = extractInterventionsFromObjective(generatedObjectiveText);
-                 appointment.selectedInterventions = matchedInterventions;
+                 appointment.selectedInterventions = matchedInterventions.map(m => m.item);
                  appointment.soap.interventions = matchedInterventions.length > 0
-                     ? matchedInterventions.map(item => `• ${item}`).join('\n')
+                     ? matchedInterventions.map(m => `• ${m.item}`).join('\n')
                      : 'No interventions identified directly in Objective section.';
              };
 

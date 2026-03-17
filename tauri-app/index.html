@@ -5289,18 +5289,10 @@ Requirements:
                     } else {
                         const key = textarea.id.slice(-1).toLowerCase();
                         appointment.soap[key] = textarea.value;
-                        if (key === 'o') {
-                            const matchedInterventions = extractInterventionsFromObjective(textarea.value);
-                            appointment.selectedInterventions = matchedInterventions;
-                            appointment.soap.interventions = matchedInterventions.length > 0
-                                ? matchedInterventions.map(item => `• ${item}`).join('\n')
-                                : 'No interventions identified directly in Objective section.';
-
-                            const interventionsTextarea = document.getElementById('interventions');
-                            if (interventionsTextarea) {
-                                interventionsTextarea.value = appointment.soap.interventions;
-                            }
-                        }
+                        // NOTE: Do not auto-update interventions for manual Objective edits.
+                        // Interventions are updated when AI-generated objectives are produced
+                        // or when a suggestion is explicitly accepted (handled in handleSuggestion).
+                    }
                     }
                     delete appointment.auditCheck;
                     markDirty();
@@ -5502,6 +5494,17 @@ Requirements:
                     // Manually update the data model since we're not dispatching the 'input' event before re-rendering
                     const key = textarea.id.slice(-1).toLowerCase();
                     appointment.soap[key] = textarea.value;
+                    // If this was an Objective suggestion that was accepted, extract matching
+                    // interventions from the Objective text and populate the interventions field.
+                    if (key === 'o' && isAccepted && !skipAppend) {
+                        const matchedInterventions = extractInterventionsFromObjective(textarea.value);
+                        appointment.selectedInterventions = matchedInterventions;
+                        appointment.soap.interventions = matchedInterventions.length > 0
+                            ? matchedInterventions.map(item => `• ${item}`).join('\n')
+                            : appointment.soap.interventions || 'No interventions identified directly in Objective section.';
+                        const interventionsTextarea = document.getElementById('interventions');
+                        if (interventionsTextarea) interventionsTextarea.value = appointment.soap.interventions;
+                    }
                 }
 
                 // Remove the suggestion that was just handled.

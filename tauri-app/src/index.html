@@ -1577,6 +1577,7 @@
                 <p>What we discuss here is confidential, with legal limits. I may need to break confidentiality if there is a risk of serious harm to you or others, suspected abuse of a child, elderly, or vulnerable adult, or if records are legally required. Sessions are billed at the agreed fee, and insurance is billed when applicable. You are responsible for any copays, deductibles, or denied claims. Appointments cancelled with less than 24 hours' notice, or missed entirely, are charged the full session fee. I wait up to ten minutes for scheduled sessions before a session is considered missed. Email is used for scheduling and administrative communication only, not emergencies. If you are in crisis, please contact 988 or call 911. Do you have any questions before we continue?</p>
             </div>
             <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button id="copyConsentNotationBtn" class="btn">Copy Notation of Conversation</button>
                 <button id="closeConsentBtnBottom" class="btn" style="background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);">Close</button>
             </div>
         </div>
@@ -1943,6 +1944,7 @@
             const interventionBankBtn = document.getElementById('interventionBankBtn');
             const informedConsentModal = document.getElementById('informedConsentModal');
             const closeConsentBtn = document.getElementById('closeConsentBtn');
+            const copyConsentNotationBtn = document.getElementById('copyConsentNotationBtn');
             const closeConsentBtnBottom = document.getElementById('closeConsentBtnBottom');
             const soapAuditGuideModal = document.getElementById('soapAuditGuideModal');
             const closeSoapAuditGuideBtn = document.getElementById('closeSoapAuditGuideBtn');
@@ -2053,6 +2055,7 @@
             let generatedGoalsDraft = [];
             let goalGeneratorModalities = [];
             let goalGeneratorModalityOther = '';
+            const INFORMED_CONSENT_CONVERSATION_NOTATION = 'Reviewed limits of confidentiality, including that information shared in session is confidential with exceptions for risk of serious harm to self or others, suspected abuse or neglect of a child, elderly person, or vulnerable adult, and legal requirements such as court orders or subpoenas. Reviewed fees and billing, including that sessions are billed at the agreed-upon rate, insurance is billed when applicable, and the client is responsible for copays, deductibles, and any denied claims. Reviewed cancellation and attendance policy, including that appointments cancelled with less than 24 hours\u2019 notice or missed sessions are charged the full session fee, and that the therapist waits up to 10 minutes before a session is considered a no-show. Reviewed communication guidelines, including that email is used for scheduling and administrative purposes only and is not appropriate for emergencies. Reviewed crisis procedures, including instruction to contact 988 or call 911 in case of emergency.';
             const PRONOUN_PRESETS = {
                 'he/him/his': { subject: 'he', object: 'him', possessive: 'his' },
                 'she/hers': { subject: 'she', object: 'her', possessive: 'hers' },
@@ -4112,6 +4115,46 @@ Requirements:
                 });
             }
 
+            async function copyTextToClipboard(text) {
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                }
+
+                const temporaryTextarea = document.createElement('textarea');
+                temporaryTextarea.value = text;
+                temporaryTextarea.setAttribute('readonly', '');
+                temporaryTextarea.style.position = 'fixed';
+                temporaryTextarea.style.opacity = '0';
+                temporaryTextarea.style.pointerEvents = 'none';
+                document.body.appendChild(temporaryTextarea);
+                temporaryTextarea.focus();
+                temporaryTextarea.select();
+
+                const didCopy = document.execCommand('copy');
+                document.body.removeChild(temporaryTextarea);
+
+                if (!didCopy) {
+                    throw new Error('Clipboard copy failed.');
+                }
+            }
+
+            function showCopySuccess(button, successText = 'Copied!') {
+                if (!button) return;
+
+                const originalText = button.dataset.originalText || button.textContent;
+                button.dataset.originalText = originalText;
+                button.textContent = successText;
+
+                if (button.copyResetTimeoutId) {
+                    clearTimeout(button.copyResetTimeoutId);
+                }
+
+                button.copyResetTimeoutId = setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            }
+
             // --- Drag and Drop Client Reordering (mouse events) ---
             let dragState = null; // { clientId, startY, element, ghost: null, threshold: false }
 
@@ -4736,10 +4779,8 @@ Requirements:
                      const targetId = e.target.dataset.target;
                      const textarea = document.getElementById(targetId);
                      if (!textarea) return;
-                     navigator.clipboard.writeText(textarea.value).then(() => {
-                         const originalText = e.target.textContent;
-                         e.target.textContent = 'Copied!';
-                         setTimeout(() => { e.target.textContent = originalText; }, 2000);
+                     copyTextToClipboard(textarea.value).then(() => {
+                         showCopySuccess(e.target);
                      }).catch(err => {
                          console.error('Failed to copy text: ', err);
                          alert('Could not copy text to clipboard.');
@@ -6417,6 +6458,14 @@ This error cannot be fixed within this application's code; it requires a configu
             });
             informedConsentBtn.addEventListener('click', () => informedConsentModal.classList.remove('hidden'));
             closeConsentBtn.addEventListener('click', () => informedConsentModal.classList.add('hidden'));
+            copyConsentNotationBtn.addEventListener('click', () => {
+                copyTextToClipboard(INFORMED_CONSENT_CONVERSATION_NOTATION).then(() => {
+                    showCopySuccess(copyConsentNotationBtn, 'Notation Copied!');
+                }).catch(err => {
+                    console.error('Failed to copy informed consent notation: ', err);
+                    alert('Could not copy notation to clipboard.');
+                });
+            });
             closeConsentBtnBottom.addEventListener('click', () => informedConsentModal.classList.add('hidden'));
             informedConsentModal.addEventListener('click', (e) => {
                 if(e.target.id === 'informedConsentModal') {

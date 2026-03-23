@@ -1,6 +1,6 @@
 {
   "productName": "Client Records",
-  "version": "1.0.29",
+  "version": "1.0.30",
   "identifier": "com.clientrecords.tauriapp",
   "build": {
     "beforeDevCommand": "npm run dev",

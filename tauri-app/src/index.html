@@ -975,6 +975,44 @@
             width: 100%; margin-top: 5px;
         }
 
+        .section-collapser {
+            width: 100%;
+        }
+
+        .section-collapser-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            background: none;
+            border: none;
+            color: var(--text-color-secondary);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            padding: 0;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .section-collapser-btn:hover {
+            opacity: 0.88;
+        }
+
+        .section-collapser-icon {
+            font-size: 0.75rem;
+            transition: transform 0.2s ease;
+        }
+
+        .section-collapser.section-collapsed .section-collapser-icon {
+            transform: rotate(-90deg);
+        }
+
+        .section-collapser.section-collapsed .section-collapsible-content {
+            display: none;
+        }
+
         .resizer {
             background: var(--resizer-bg);
             cursor: col-resize;
@@ -1120,7 +1158,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.29</span>
+                <span class="version-badge">v1.0.30</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -1153,14 +1191,24 @@
                 <div class="panel-content" id="clientList">
                     <div class="no-selection">Click + to add a client</div>
                 </div>
-                <div class="panel-footer">
-                     <h3 style="color: var(--text-color-secondary); font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">Recently Deleted</h3>
-                     <div id="deletedClientsList" class="deleted-list"></div>
-                     <button id="clearDeletedClientsBtn" class="clear-deleted-btn hidden">Clear All</button>
+                <div id="deletedClientsSection" class="panel-footer section-collapser">
+                     <button id="deletedClientsToggleBtn" class="section-collapser-btn" type="button" data-section-key="deletedClients" data-section-content="deletedClientsSectionContent" aria-expanded="true">
+                         <span>Recently Deleted</span>
+                         <span class="section-collapser-icon">▼</span>
+                     </button>
+                     <div id="deletedClientsSectionContent" class="section-collapsible-content">
+                         <div id="deletedClientsList" class="deleted-list"></div>
+                         <button id="clearDeletedClientsBtn" class="clear-deleted-btn hidden">Clear All</button>
+                     </div>
                 </div>
-                 <div class="panel-footer">
-                     <h3 style="color: var(--text-color-secondary); font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">Archived</h3>
-                     <div id="archivedClientsList" class="deleted-list"></div>
+                 <div id="archivedClientsSection" class="panel-footer section-collapser">
+                     <button id="archivedClientsToggleBtn" class="section-collapser-btn" type="button" data-section-key="archivedClients" data-section-content="archivedClientsSectionContent" aria-expanded="true">
+                         <span>Archived</span>
+                         <span class="section-collapser-icon">▼</span>
+                     </button>
+                     <div id="archivedClientsSectionContent" class="section-collapsible-content">
+                         <div id="archivedClientsList" class="deleted-list"></div>
+                     </div>
                 </div>
             </div>
 
@@ -1200,10 +1248,15 @@
                              </div>
                          </div>
                     </div>
-                     <div class="panel-footer">
-                         <h3 style="color: var(--text-color-secondary); font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">Recently Deleted</h3>
-                         <div id="deletedAppointmentsList" class="deleted-list"></div>
-                         <button id="clearDeletedAppointmentsBtn" class="clear-deleted-btn hidden">Clear All</button>
+                     <div id="deletedAppointmentsSection" class="panel-footer section-collapser">
+                         <button id="deletedAppointmentsToggleBtn" class="section-collapser-btn" type="button" data-section-key="deletedAppointments" data-section-content="deletedAppointmentsSectionContent" aria-expanded="true">
+                             <span>Recently Deleted</span>
+                             <span class="section-collapser-icon">▼</span>
+                         </button>
+                         <div id="deletedAppointmentsSectionContent" class="section-collapsible-content">
+                             <div id="deletedAppointmentsList" class="deleted-list"></div>
+                             <button id="clearDeletedAppointmentsBtn" class="clear-deleted-btn hidden">Clear All</button>
+                         </div>
                     </div>
                 </div>
                 
@@ -1216,8 +1269,16 @@
                             <button id="addGoalBtnInTab" class="add-btn" disabled>+</button>
                         </div>
                     </div>
-                    <div id="goalsListInTab" style="flex-grow: 1; overflow-y: auto; padding: 10px;">
-                        <div class="no-selection">Select a client to manage goals</div>
+                    <div id="goalsListSection" class="section-collapser" style="display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 10px;">
+                        <button id="goalsListToggleBtn" class="section-collapser-btn" type="button" data-section-key="goalsList" data-section-content="goalsListSectionContent" aria-expanded="true">
+                            <span>Client Goals</span>
+                            <span class="section-collapser-icon">▼</span>
+                        </button>
+                        <div id="goalsListSectionContent" class="section-collapsible-content" style="display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;">
+                            <div id="goalsListInTab" style="flex-grow: 1; overflow-y: auto; padding: 0;">
+                                <div class="no-selection">Select a client to manage goals</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2026,6 +2087,10 @@
             const goalsTabBtn = document.getElementById('goalsTabBtn');
             const appointmentsTabContent = document.getElementById('appointmentsTabContent');
             const goalsTabContent = document.getElementById('goalsTabContent');
+            const deletedClientsToggleBtn = document.getElementById('deletedClientsToggleBtn');
+            const archivedClientsToggleBtn = document.getElementById('archivedClientsToggleBtn');
+            const deletedAppointmentsToggleBtn = document.getElementById('deletedAppointmentsToggleBtn');
+            const goalsListToggleBtn = document.getElementById('goalsListToggleBtn');
 
             // App State
             let data = { clients: [], archivedClients: [] };
@@ -6765,6 +6830,19 @@ This error cannot be fixed within this application's code; it requires a configu
 
             // --- Collapsible Sections ---
             const handleCollapsibleClick = (e) => {
+                const sectionToggleBtn = e.target.closest('.section-collapser-btn');
+                if (sectionToggleBtn) {
+                    const sectionContainer = sectionToggleBtn.closest('.section-collapser');
+                    const sectionKey = sectionToggleBtn.dataset.sectionKey;
+                    if (!sectionContainer || !sectionKey) return;
+
+                    const shouldCollapse = !sectionContainer.classList.contains('section-collapsed');
+                    sectionContainer.classList.toggle('section-collapsed', shouldCollapse);
+                    sectionToggleBtn.setAttribute('aria-expanded', String(!shouldCollapse));
+                    localStorage.setItem(`${sectionKey}Collapsed`, String(shouldCollapse));
+                    return;
+                }
+
                 const header = e.target.closest('.collapsible-header');
                 if (!header) return;
 
@@ -6823,6 +6901,22 @@ This error cannot be fixed within this application's code; it requires a configu
                         notesWrapper.style.order = ''; // Clear order to let CSS handle it
                     }
                 }
+
+                [
+                    deletedClientsToggleBtn,
+                    archivedClientsToggleBtn,
+                    deletedAppointmentsToggleBtn,
+                    goalsListToggleBtn
+                ].forEach(button => {
+                    if (!button) return;
+                    const sectionKey = button.dataset.sectionKey;
+                    if (!sectionKey) return;
+                    const shouldCollapse = localStorage.getItem(`${sectionKey}Collapsed`) === 'true';
+                    const sectionContainer = button.closest('.section-collapser');
+                    if (!sectionContainer) return;
+                    sectionContainer.classList.toggle('section-collapsed', shouldCollapse);
+                    button.setAttribute('aria-expanded', String(!shouldCollapse));
+                });
             };
 
             // --- Resizable Panels ---

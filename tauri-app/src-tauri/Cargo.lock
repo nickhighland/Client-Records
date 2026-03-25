@@ -514,6 +514,7 @@ dependencies = [
 name = "client-records"
 version = "1.0.31"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "jsonwebtoken",
  "lettre",

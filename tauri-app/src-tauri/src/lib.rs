@@ -4,9 +4,19 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+use std::fs;
+use std::collections::HashSet;
+use std::ffi::OsString;
+use std::path::PathBuf;
+use std::process::Command;
+use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::Manager;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(MlxWhisperState::default())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_http::init())
@@ -20,7 +30,14 @@ pub fn run() {
             generate_google_token,
             send_password_reset_email,
             send_email_verification_email,
-            send_smtp_test_email
+            send_smtp_test_email,
+            start_mlx_whisper,
+            stop_mlx_whisper,
+            get_mlx_whisper_status,
+            transcribe_with_mlx_whisper,
+            download_mlx_whisper_model,
+            verify_mlx_whisper_model_download,
+            delete_mlx_whisper_model
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -33,8 +50,621 @@ use lettre::{Message, SmtpTransport, Transport};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::transport::smtp::client::{Tls, TlsParameters};
 use std::time::Duration as StdDuration;
+use base64::{engine::general_purpose, Engine as _};
 
 const SMTP_SEND_TIMEOUT_SECS: u64 = 20;
+
+#[derive(Default)]
+struct MlxWhisperState {
+    running: Mutex<bool>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MlxWhisperStatus {
+    running: bool,
+    message: String,
+}
+
+fn candidate_python_commands() -> Vec<&'static str> {
+    if cfg!(target_os = "windows") {
+        vec!["python", "py"]
+    } else {
+        vec![
+            "/opt/homebrew/bin/python3",
+            "/usr/local/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
+            "python3",
+            "python",
+            "/usr/bin/python3",
+        ]
+    }
+}
+
+fn resolve_python_command_for_mlx() -> Result<String, String> {
+    let mut attempted = Vec::new();
+    let mut seen = HashSet::new();
+
+    for candidate in candidate_python_commands() {
+        if !seen.insert(candidate) {
+            continue;
+        }
+
+        if candidate.starts_with('/') && !std::path::Path::new(candidate).exists() {
+            continue;
+        }
+
+        let output = match Command::new(candidate)
+            .arg("-c")
+            .arg("import mlx_whisper")
+            .output()
+        {
+            Ok(output) => output,
+            Err(error) => {
+                attempted.push(format!("{candidate} (not runnable: {error})"));
+                continue;
+            }
+        };
+
+        if output.status.success() {
+            return Ok(candidate.to_string());
+        }
+
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        attempted.push(if stderr.is_empty() {
+            format!("{candidate} (mlx_whisper import failed)")
+        } else {
+            format!("{candidate} ({stderr})")
+        });
+    }
+
+    let attempts = if attempted.is_empty() {
+        "no Python executables were found".to_string()
+    } else {
+        attempted.join("; ")
+    };
+
+    Err(format!(
+        "MLX Whisper is not available in app-reachable Python interpreters. Tried: {attempts}. Install with: /Library/Frameworks/Python.framework/Versions/3.13/bin/python3 -m pip install --user mlx-whisper"
+    ))
+}
+
+fn verify_mlx_whisper_available() -> Result<String, String> {
+    resolve_python_command_for_mlx()
+}
+
+fn write_audio_temp_file(audio_base64: &str, extension: Option<String>) -> Result<PathBuf, String> {
+    let audio_bytes = general_purpose::STANDARD
+        .decode(audio_base64)
+        .map_err(|error| format!("Invalid audio payload: {error}"))?;
+
+    if audio_bytes.is_empty() {
+        return Err("Audio payload is empty".to_string());
+    }
+
+    let mut file_extension = extension
+        .unwrap_or_else(|| "webm".to_string())
+        .trim()
+        .trim_start_matches('.')
+        .to_lowercase();
+    if file_extension.is_empty() {
+        file_extension = "webm".to_string();
+    }
+    if file_extension.len() > 8 || !file_extension.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return Err("Unsupported audio extension".to_string());
+    }
+
+    // WebM files should start with the EBML header bytes 1A 45 DF A3.
+    // If this signature is missing, the recorder likely emitted a partial/invalid chunk.
+    if file_extension == "webm"
+        && (audio_bytes.len() < 4 || audio_bytes[0..4] != [0x1A, 0x45, 0xDF, 0xA3])
+    {
+        return Err(
+            "Malformed WebM audio payload (missing EBML header). Re-record and prefer MP4 recorder output in this runtime."
+                .to_string(),
+        );
+    }
+
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| format!("Clock error: {error}"))?
+        .as_millis();
+    let file_name = format!("client-records-audio-{now_ms}.{file_extension}");
+    let path = std::env::temp_dir().join(file_name);
+
+    fs::write(&path, audio_bytes)
+        .map_err(|error| format!("Failed to write temporary audio file: {error}"))?;
+    Ok(path)
+}
+
+fn resolve_bundled_ffmpeg_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        candidates.push(resource_dir.join("ffmpeg"));
+        candidates.push(resource_dir.join("resources").join("ffmpeg"));
+    }
+
+    // Support `tauri dev` where resources may not be copied into the runtime dir yet.
+    let manifest_resources = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("resources")
+        .join("ffmpeg");
+    candidates.push(manifest_resources);
+
+    candidates.into_iter().find(|path| path.exists())
+}
+
+fn prepend_directory_to_path(dir: &std::path::Path) -> OsString {
+    let existing = std::env::var_os("PATH").unwrap_or_default();
+    let mut combined = OsString::new();
+    combined.push(dir.as_os_str());
+    combined.push(OsString::from(if cfg!(target_os = "windows") { ";" } else { ":" }));
+    combined.push(existing);
+    combined
+}
+
+fn transcode_audio_for_whisper(input_path: &std::path::Path, ffmpeg_path: &std::path::Path) -> Result<PathBuf, String> {
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| format!("Clock error: {error}"))?
+        .as_millis();
+    let output_path = std::env::temp_dir().join(format!("client-records-whisper-input-{now_ms}.wav"));
+
+    let mut command = Command::new(ffmpeg_path);
+    command
+        .arg("-hide_banner")
+        .arg("-loglevel")
+        .arg("error")
+        .arg("-y")
+        .arg("-i")
+        .arg(input_path)
+        .arg("-vn")
+        .arg("-ac")
+        .arg("1")
+        .arg("-ar")
+        .arg("16000")
+        .arg("-sample_fmt")
+        .arg("s16")
+        // Normalize speech band and lift quiet input prior to inference.
+        .arg("-af")
+        .arg("highpass=f=70,lowpass=f=7600,volume=12dB")
+        .arg(&output_path);
+
+    if let Some(ffmpeg_dir) = ffmpeg_path.parent() {
+        command.env("PATH", prepend_directory_to_path(ffmpeg_dir));
+    }
+
+    let output = command
+        .output()
+        .map_err(|error| format!("Failed to run ffmpeg preprocess: {error}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(if stderr.is_empty() {
+            "ffmpeg preprocess failed with unknown error".to_string()
+        } else {
+            format!("ffmpeg preprocess failed: {stderr}")
+        });
+    }
+
+    Ok(output_path)
+}
+
+#[tauri::command]
+async fn start_mlx_whisper(state: tauri::State<'_, MlxWhisperState>) -> Result<MlxWhisperStatus, String> {
+    let python_cmd = verify_mlx_whisper_available()?;
+    let mut running = state
+        .running
+        .lock()
+        .map_err(|_| "Failed to acquire MLX Whisper state lock".to_string())?;
+    *running = true;
+    Ok(MlxWhisperStatus {
+        running: true,
+        message: format!("MLX Whisper is ready ({python_cmd})"),
+    })
+}
+
+#[tauri::command]
+async fn stop_mlx_whisper(state: tauri::State<'_, MlxWhisperState>) -> Result<MlxWhisperStatus, String> {
+    let mut running = state
+        .running
+        .lock()
+        .map_err(|_| "Failed to acquire MLX Whisper state lock".to_string())?;
+    *running = false;
+    Ok(MlxWhisperStatus {
+        running: false,
+        message: "MLX Whisper stopped".to_string(),
+    })
+}
+
+#[tauri::command]
+async fn get_mlx_whisper_status(state: tauri::State<'_, MlxWhisperState>) -> Result<MlxWhisperStatus, String> {
+    let running = *state
+        .running
+        .lock()
+        .map_err(|_| "Failed to acquire MLX Whisper state lock".to_string())?;
+    Ok(MlxWhisperStatus {
+        running,
+        message: if running {
+            "MLX Whisper is running".to_string()
+        } else {
+            "MLX Whisper is stopped".to_string()
+        },
+    })
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MlxTranscriptionArgs {
+    audio_base64: String,
+    extension: Option<String>,
+    model: Option<String>,
+    language: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MlxTranscriptionResult {
+    text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MlxModelDownloadStatus {
+    downloaded: bool,
+    model: String,
+    cache_path: Option<String>,
+    message: String,
+}
+
+#[tauri::command]
+async fn transcribe_with_mlx_whisper(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, MlxWhisperState>,
+    args: MlxTranscriptionArgs,
+) -> Result<String, String> {
+    let running = *state
+        .running
+        .lock()
+        .map_err(|_| "Failed to acquire MLX Whisper state lock".to_string())?;
+    if !running {
+        return Err("MLX Whisper is not running. Start it in the app first.".to_string());
+    }
+
+    let python_cmd = verify_mlx_whisper_available()?;
+    let ffmpeg_path = resolve_bundled_ffmpeg_path(&app_handle)
+        .ok_or_else(|| "Bundled ffmpeg was not found. Expected at app resources (src-tauri/resources/ffmpeg).".to_string())?;
+
+    let audio_path = write_audio_temp_file(&args.audio_base64, args.extension)?;
+    let transcode_result = transcode_audio_for_whisper(&audio_path, &ffmpeg_path);
+    let (transcription_audio_path, transcoded_audio_path, transcode_error_message) = match transcode_result {
+        Ok(path) => (path.clone(), Some(path), None),
+        Err(error) => (audio_path.clone(), None, Some(error)),
+    };
+    let model = args
+        .model
+        .unwrap_or_else(|| "mlx-community/whisper-small".to_string());
+    let language = args.language.unwrap_or_default();
+
+    let script = r#"
+import json
+import os
+import sys
+import mlx_whisper
+
+audio_path = sys.argv[1]
+model_name = sys.argv[2]
+language = sys.argv[3] if len(sys.argv) > 3 else ""
+ffmpeg_path = sys.argv[4] if len(sys.argv) > 4 else ""
+language = language if language else None
+
+if ffmpeg_path:
+    ffmpeg_dir = os.path.dirname(ffmpeg_path)
+    os.environ["PATH"] = f"{ffmpeg_dir}:{os.environ.get('PATH', '')}" if ffmpeg_dir else os.environ.get("PATH", "")
+    os.environ["FFMPEG_BINARY"] = ffmpeg_path
+    os.environ["IMAGEIO_FFMPEG_EXE"] = ffmpeg_path
+
+result = None
+errors = []
+
+for kwargs in (
+    {"path_or_hf_repo": model_name, "language": language},
+    {"model": model_name, "language": language},
+    {"path_or_hf_repo": model_name},
+    {"model": model_name},
+):
+    try:
+        result = mlx_whisper.transcribe(audio_path, **kwargs)
+        break
+    except Exception as exc:
+        errors.append(str(exc))
+
+if result is None:
+    raise RuntimeError(" | ".join(errors) if errors else "MLX Whisper transcription failed")
+
+text = ""
+if isinstance(result, dict):
+    text = result.get("text") or ""
+    if not text:
+        segments = result.get("segments")
+        if isinstance(segments, list):
+            part_text = []
+            for segment in segments:
+                if isinstance(segment, dict):
+                    value = segment.get("text")
+                    if isinstance(value, str) and value.strip():
+                        part_text.append(value.strip())
+            if part_text:
+                text = " ".join(part_text)
+    if not text:
+        chunks = result.get("chunks")
+        if isinstance(chunks, list):
+            part_text = []
+            for chunk in chunks:
+                if isinstance(chunk, dict):
+                    value = chunk.get("text")
+                    if isinstance(value, str) and value.strip():
+                        part_text.append(value.strip())
+            if part_text:
+                text = " ".join(part_text)
+elif isinstance(result, str):
+    text = result
+else:
+    text = str(result)
+
+print(json.dumps({"text": text.strip()}))
+"#;
+
+    let mut command = Command::new(python_cmd);
+    command
+        .arg("-c")
+        .arg(script)
+        .arg(&transcription_audio_path)
+        .arg(&model)
+        .arg(&language)
+        .arg(ffmpeg_path.as_os_str());
+
+    if let Some(ffmpeg_dir) = ffmpeg_path.parent() {
+        command.env("PATH", prepend_directory_to_path(ffmpeg_dir));
+    }
+    command.env("FFMPEG_BINARY", &ffmpeg_path);
+    command.env("IMAGEIO_FFMPEG_EXE", &ffmpeg_path);
+
+    let output = command
+        .output()
+        .map_err(|error| format!("Failed to run MLX Whisper transcription: {error}"));
+
+    let _ = fs::remove_file(&audio_path);
+    if let Some(path) = transcoded_audio_path.as_ref() {
+        let _ = fs::remove_file(path);
+    }
+
+    let output = output?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let mut message = format!(
+            "MLX Whisper transcription failed: {}",
+            if stderr.is_empty() {
+                "Unknown error".to_string()
+            } else {
+                stderr
+            }
+        );
+        if let Some(transcode_error) = transcode_error_message.as_ref() {
+            message.push_str(&format!(" | preprocess note: {transcode_error}"));
+        }
+        return Err(message);
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|error| format!("Invalid MLX Whisper output encoding: {error}"))?;
+    let parsed: MlxTranscriptionResult = serde_json::from_str(stdout.trim())
+        .map_err(|error| format!("Failed to parse MLX Whisper output: {error}"))?;
+
+    let transcript = parsed.text.trim().to_string();
+    if transcript.is_empty() {
+        let mut message = "MLX Whisper returned an empty transcript".to_string();
+        if let Some(transcode_error) = transcode_error_message.as_ref() {
+            message.push_str(&format!(" | preprocess note: {transcode_error}"));
+        }
+        return Err(message);
+    }
+
+    Ok(transcript)
+}
+
+#[tauri::command]
+async fn download_mlx_whisper_model(model: String) -> Result<MlxModelDownloadStatus, String> {
+    let python_cmd = verify_mlx_whisper_available()?;
+
+    let normalized_model = model.trim().to_string();
+    if normalized_model.is_empty() {
+        return Err("Model name is required".to_string());
+    }
+
+    let script = r#"
+import json
+import sys
+
+model = sys.argv[1].strip()
+if not model:
+    raise RuntimeError("Model name is required")
+
+from huggingface_hub import snapshot_download
+
+cache_path = snapshot_download(repo_id=model)
+print(json.dumps({
+    "downloaded": True,
+    "model": model,
+    "cachePath": cache_path,
+    "message": f"Model {model} downloaded"
+}))
+"#;
+
+    let output = Command::new(python_cmd)
+        .arg("-c")
+        .arg(script)
+        .arg(&normalized_model)
+        .output()
+        .map_err(|error| format!("Failed to run model download: {error}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let hint = if stderr.contains("401") || stderr.contains("Repository Not Found") {
+            " Hint: choose a valid public MLX repo (for example mlx-community/whisper-small-mlx)."
+        } else {
+            ""
+        };
+        return Err(format!(
+            "Failed to download model {normalized_model}: {}{}",
+            if stderr.is_empty() {
+                "Unknown error".to_string()
+            } else {
+                stderr
+            },
+            hint
+        ));
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|error| format!("Invalid download output encoding: {error}"))?;
+    let parsed: MlxModelDownloadStatus = serde_json::from_str(stdout.trim())
+        .map_err(|error| format!("Failed to parse download output: {error}"))?;
+
+    Ok(parsed)
+}
+
+#[tauri::command]
+async fn verify_mlx_whisper_model_download(model: String) -> Result<MlxModelDownloadStatus, String> {
+    let python_cmd = verify_mlx_whisper_available()?;
+
+    let normalized_model = model.trim().to_string();
+    if normalized_model.is_empty() {
+        return Err("Model name is required".to_string());
+    }
+
+    let script = r#"
+import json
+import sys
+
+model = sys.argv[1].strip()
+if not model:
+    raise RuntimeError("Model name is required")
+
+from huggingface_hub import snapshot_download
+
+try:
+    cache_path = snapshot_download(repo_id=model, local_files_only=True)
+    print(json.dumps({
+        "downloaded": True,
+        "model": model,
+        "cachePath": cache_path,
+        "message": f"Model {model} is already downloaded"
+    }))
+except Exception:
+    print(json.dumps({
+        "downloaded": False,
+        "model": model,
+        "cachePath": None,
+        "message": f"Model {model} is not downloaded"
+    }))
+"#;
+
+    let output = Command::new(python_cmd)
+        .arg("-c")
+        .arg(script)
+        .arg(&normalized_model)
+        .output()
+        .map_err(|error| format!("Failed to verify model download: {error}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(format!(
+            "Failed to verify model {normalized_model}: {}",
+            if stderr.is_empty() {
+                "Unknown error".to_string()
+            } else {
+                stderr
+            }
+        ));
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|error| format!("Invalid verification output encoding: {error}"))?;
+    let parsed: MlxModelDownloadStatus = serde_json::from_str(stdout.trim())
+        .map_err(|error| format!("Failed to parse verification output: {error}"))?;
+
+    Ok(parsed)
+}
+
+#[tauri::command]
+async fn delete_mlx_whisper_model(model: String) -> Result<MlxModelDownloadStatus, String> {
+    let python_cmd = verify_mlx_whisper_available()?;
+
+    let normalized_model = model.trim().to_string();
+    if normalized_model.is_empty() {
+        return Err("Model name is required".to_string());
+    }
+
+    let script = r#"
+import json
+import shutil
+import sys
+
+model = sys.argv[1].strip()
+if not model:
+    raise RuntimeError("Model name is required")
+
+from huggingface_hub import snapshot_download
+
+try:
+    cache_path = snapshot_download(repo_id=model, local_files_only=True)
+except Exception:
+    print(json.dumps({
+        "downloaded": False,
+        "model": model,
+        "cachePath": None,
+        "message": f"Model {model} is not downloaded"
+    }))
+    raise SystemExit(0)
+
+shutil.rmtree(cache_path, ignore_errors=True)
+
+print(json.dumps({
+    "downloaded": False,
+    "model": model,
+    "cachePath": cache_path,
+    "message": f"Model {model} removed from local cache"
+}))
+"#;
+
+    let output = Command::new(python_cmd)
+        .arg("-c")
+        .arg(script)
+        .arg(&normalized_model)
+        .output()
+        .map_err(|error| format!("Failed to delete model cache: {error}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(format!(
+            "Failed to delete model {normalized_model}: {}",
+            if stderr.is_empty() {
+                "Unknown error".to_string()
+            } else {
+                stderr
+            }
+        ));
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|error| format!("Invalid delete output encoding: {error}"))?;
+    let parsed: MlxModelDownloadStatus = serde_json::from_str(stdout.trim())
+        .map_err(|error| format!("Failed to parse delete output: {error}"))?;
+
+    Ok(parsed)
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {

@@ -3,17 +3,13 @@
 ## Critical File Targeting Rules
 
 - For shipped UI behavior and updater-visible fixes, treat `tauri-app/index.html` as the runtime source of truth.
-- `tauri-app/src/index.html` is a development mirror and must stay in sync, but edits only there are not sufficient for release behavior.
-- When a request affects end-user behavior, update both files in the same change unless the user explicitly asks otherwise:
-  - `tauri-app/index.html`
-  - `tauri-app/src/index.html`
+- `tauri-app/src/index.html` is deprecated and should not be used for new UI edits.
 
 ## Required Edit Workflow For UI Changes
 
 1. Locate and patch `tauri-app/index.html` first.
-2. Apply equivalent patch to `tauri-app/src/index.html`.
-3. Verify both files contain the intended change (search for unique changed strings in both files).
-4. Run diagnostics on both files after edits.
+2. Verify the intended change exists in `tauri-app/index.html`.
+3. Run diagnostics on `tauri-app/index.html` after edits.
 
 ## Pre-Release Checklist (Updater)
 
@@ -34,5 +30,5 @@ Before saying a fix is available via updater, ensure all of the following are tr
 Use this pattern after UI edits:
 
 - `git status --short`
-- Search for the same changed marker in both HTML files.
-- Validate both edited files for errors.
+- Search for the changed marker in `tauri-app/index.html`.
+- Validate edited files for errors.

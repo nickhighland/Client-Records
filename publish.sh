@@ -51,10 +51,7 @@ echo "  Updated src-tauri/Cargo.toml"
 # Update version displayed next to "Client Data Organizer" in all HTML files
 echo "==> Updating version in HTML files..."
 for f in \
-  "$TAURI_DIR/index.html" \
-  "$TAURI_DIR/src/index.html" \
-  "$SCRIPT_DIR/ClientRecords/index.html" \
-  "$SCRIPT_DIR/ClientRecords/test.html"; do
+  "$TAURI_DIR/index.html"; do
   if [ -f "$f" ]; then
     # New header markup uses <span class="version-badge">vX.Y.Z</span>
     sed -E -i '' "s|(<span[^>]*class=\"version-badge\"[^>]*>)v[0-9][^<]*(</span>)|\\1v${VERSION}\\2|g" "$f"

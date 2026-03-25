@@ -12,6 +12,7 @@
         "CBT",
         "clawbacks",
         "Clawbacks",
+        "collapser",
         "Collapsers",
         "concentrat",
         "copays",
@@ -45,5 +46,12 @@
         "textareas",
         "us-central1",
         "vertex"
+    ],
+    "python-envs.pythonProjects": [
+        {
+            "path": ".",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        }
     ]
 }

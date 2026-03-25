@@ -1155,6 +1155,11 @@
             color: var(--modal-text);
         }
 
+        .modal-content.settings-modal-content {
+            max-height: min(92vh, 980px);
+            overflow-y: auto;
+        }
+
         .modal-content.goal-generator-modal {
             width: min(99vw, 1940px);
             max-width: min(99vw, 1940px);
@@ -2066,36 +2071,65 @@
                      <div class="panel-header">
                          <span>Session Information</span>
                          <button id="customInstructionsBtn" class="btn" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 8px;" title="Add custom AI instructions for this note">⚙️ Instructions</button>
-                         <button id="generateNoteBtn" class="btn" style="padding: 4px 8px; font-size: 0.8rem;" disabled>Generate Note</button>
-                     </div>
-                     <div class="panel-content">
-                         <div id="regularSessionFields">
-                         <textarea id="sessionInfo" placeholder="Select an appointment to enter session details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
-                         <div id="auditProofingBlock" class="audit-proofing-block">
-                             <div style="font-size: 0.85rem; color: var(--text-color-secondary); font-weight: 700; margin-bottom: 6px;">Audit-Proofing</div>
-                             <div class="audit-proofing-grid">
-                                 <div class="audit-proofing-field">
-                                     <label for="auditProofSymptoms">Symptom Pattern / Severity Context</label>
-                                     <textarea id="auditProofSymptoms" placeholder="Add symptom trend, frequency, intensity, and client-reported changes." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
-                                 </div>
-                                 <div class="audit-proofing-field">
-                                     <label for="auditProofFunctional">Functional Impact</label>
-                                     <textarea id="auditProofFunctional" placeholder="Document work/school/relationship/sleep/parenting or daily functioning impact." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
-                                 </div>
-                                 <div class="audit-proofing-field">
-                                     <label for="auditProofProgress">Progress / Response to Treatment</label>
-                                     <textarea id="auditProofProgress" placeholder="Describe measurable progress, barriers, and response to interventions." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
-                                 </div>
-                                 <div class="audit-proofing-field">
-                                     <label for="auditProofNecessity">Medical Necessity Rationale</label>
-                                     <textarea id="auditProofNecessity" placeholder="State why continued skilled treatment is needed at this level of care." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
-                                 </div>
+                         <div id="generateNoteMenuWrapper" style="position: relative;">
+                             <button id="generateNoteBtn" class="btn" style="padding: 4px 8px; font-size: 0.8rem;" disabled>Generate Note ▾</button>
+                             <div id="generateNoteMenu" class="hidden" style="position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 230px; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); overflow: hidden;">
+                                 <button id="generateNoteFromNotesBtn" class="btn" style="width: 100%; border-radius: 0; background: none; color: var(--text-color-primary); text-align: left; padding: 9px 12px;">Generate from Session Notes</button>
+                                 <button id="generateNoteFromTranscriptBtn" class="btn" style="width: 100%; border-radius: 0; background: none; color: var(--text-color-primary); text-align: left; padding: 9px 12px; border-top: 1px solid var(--panel-border);">Generate from Transcript</button>
+                                 <button id="generateNoteFromBothBtn" class="btn" style="width: 100%; border-radius: 0; background: none; color: var(--text-color-primary); text-align: left; padding: 9px 12px; border-top: 1px solid var(--panel-border);">Generate from Notes + Transcript</button>
                              </div>
                          </div>
+                     </div>
+                     <div id="sessionInfoTabs" style="display: flex; border-bottom: 2px solid var(--panel-border); background: var(--panel-bg); flex-shrink: 0; margin: 4px 12px 0 12px;">
+                         <button id="sessionNotesTabBtn" class="panel-tab-btn active" style="flex: 1; padding: 12px; border: none; background: none; cursor: pointer; font-weight: 600; color: var(--text-color-primary); border-bottom: 3px solid #3498db;">Session Notes</button>
+                         <button id="sessionTranscriptTabBtn" class="panel-tab-btn" style="flex: 1; padding: 12px; border: none; background: none; cursor: pointer; font-weight: 600; color: var(--text-color-secondary); border-bottom: 3px solid transparent;">Session Transcript</button>
+                     </div>
+                     <div id="recordSessionStatus" style="font-size: 0.78rem; color: var(--text-color-secondary); margin: 4px 12px 0 12px;">MLX Whisper initializing...</div>
+                     <div class="panel-content">
+                         <div id="sessionNotesTabContent">
+                             <div id="regularSessionFields">
+                             <textarea id="sessionInfo" placeholder="Select an appointment to enter session details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                             <div id="auditProofingBlock" class="audit-proofing-block">
+                                 <div style="font-size: 0.85rem; color: var(--text-color-secondary); font-weight: 700; margin-bottom: 6px;">Audit-Proofing</div>
+                                 <div class="audit-proofing-grid">
+                                     <div class="audit-proofing-field">
+                                         <label for="auditProofSymptoms">Symptom Pattern / Severity Context</label>
+                                         <textarea id="auditProofSymptoms" placeholder="Add symptom trend, frequency, intensity, and client-reported changes." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                                     </div>
+                                     <div class="audit-proofing-field">
+                                         <label for="auditProofFunctional">Functional Impact</label>
+                                         <textarea id="auditProofFunctional" placeholder="Document work/school/relationship/sleep/parenting or daily functioning impact." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                                     </div>
+                                     <div class="audit-proofing-field">
+                                         <label for="auditProofProgress">Progress / Response to Treatment</label>
+                                         <textarea id="auditProofProgress" placeholder="Describe measurable progress, barriers, and response to interventions." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                                     </div>
+                                     <div class="audit-proofing-field">
+                                         <label for="auditProofNecessity">Medical Necessity Rationale</label>
+                                         <textarea id="auditProofNecessity" placeholder="State why continued skilled treatment is needed at this level of care." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                                     </div>
+                                 </div>
+                             </div>
+                             </div>
+                             <div id="intakeSessionBlock" class="audit-proofing-block hidden">
+                                 <div style="font-size: 0.85rem; color: var(--text-color-secondary); font-weight: 700; margin-bottom: 6px;">Intake Session Prompts</div>
+                                 <div id="intakeFieldsContainer" class="audit-proofing-grid"></div>
+                             </div>
                          </div>
-                         <div id="intakeSessionBlock" class="audit-proofing-block hidden">
-                             <div style="font-size: 0.85rem; color: var(--text-color-secondary); font-weight: 700; margin-bottom: 6px;">Intake Session Prompts</div>
-                             <div id="intakeFieldsContainer" class="audit-proofing-grid"></div>
+                         <div id="sessionTranscriptTabContent" class="hidden" style="display: flex; flex-direction: column; gap: 0.75rem; min-height: 0;">
+                             <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                 <button id="recordSessionBtn" class="btn" style="padding: 4px 10px; font-size: 0.8rem;" disabled>Start Recording</button>
+                                 <button id="downloadTranscriptBtn" class="btn" style="padding: 4px 10px; font-size: 0.8rem;" disabled>Download Transcript</button>
+                                 <button id="downloadCounselorAudioBtn" class="btn" style="padding: 4px 10px; font-size: 0.8rem;" disabled>Download Counselor Audio</button>
+                                 <button id="downloadClientAudioBtn" class="btn" style="padding: 4px 10px; font-size: 0.8rem;" disabled>Download Client Audio</button>
+                             </div>
+                             <div style="font-size: 0.78rem; color: var(--text-color-secondary);">
+                                 Record the session, then transcription runs automatically after you stop.
+                             </div>
+                             <div style="font-size: 0.78rem; color: var(--text-color-secondary);">
+                                 For client/system audio on macOS, install a loopback virtual device (for example BlackHole) and select it in Settings.
+                             </div>
+                             <textarea id="sessionTranscript" readonly placeholder="Transcript will appear here after transcription..." style="width: 100%; min-height: 170px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text); resize: vertical;"></textarea>
                          </div>
                      </div>
                      <div class="panel-footer" id="sessionTimerWrapper" style="display: none;">
@@ -2198,7 +2232,7 @@
 
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal-overlay hidden">
-        <div class="modal-content">
+        <div class="modal-content settings-modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
                 <h2 style="font-size: 1.5rem; font-weight: bold;">Settings</h2>
                 <button id="closeSettingsBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
@@ -2296,6 +2330,42 @@
                      <button id="exportBtn" class="btn">Export Data</button>
                      <button id="importBtn" class="btn" style="background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);">Import Data</button>
                      <button id="eraseAllBtn" class="btn save-btn">Erase All Data</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">Transcription</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end;">
+                        <div style="display: flex; flex-direction: column; min-width: 240px; gap: 0.25rem; flex: 1;">
+                            <label for="counselorInputSelect" style="font-weight: 600; font-size: 0.82rem;">Counselor Input (Microphone)</label>
+                            <select id="counselorInputSelect" class="setting-input"></select>
+                        </div>
+                        <div style="display: flex; flex-direction: column; min-width: 240px; gap: 0.25rem; flex: 1;">
+                            <label for="clientInputSelect" style="font-weight: 600; font-size: 0.82rem;">Client Input (Loopback/System)</label>
+                            <select id="clientInputSelect" class="setting-input"></select>
+                        </div>
+                        <button id="refreshAudioInputsBtn" class="btn" style="padding: 6px 10px; font-size: 0.8rem;">Refresh Inputs</button>
+                        <button id="runCounselorDiagBtn" class="btn" style="padding: 6px 10px; font-size: 0.8rem;">Run Counselor Mic Test</button>
+                    </div>
+                    <div style="font-size: 0.78rem; color: var(--text-color-secondary);">
+                        For client/system audio on macOS, install a loopback virtual device (for example BlackHole).
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <label for="mlxWhisperModelSelect" style="font-weight: 600;">MLX Whisper Model (App-Wide)</label>
+                        <select id="mlxWhisperModelSelect" class="setting-input">
+                            <option value="mlx-community/whisper-tiny">mlx-community/whisper-tiny</option>
+                            <option value="mlx-community/whisper-base-mlx">mlx-community/whisper-base-mlx</option>
+                            <option value="mlx-community/whisper-small-mlx">mlx-community/whisper-small-mlx</option>
+                            <option value="mlx-community/whisper-medium-mlx">mlx-community/whisper-medium-mlx</option>
+                            <option value="mlx-community/whisper-large-v3-turbo">mlx-community/whisper-large-v3-turbo</option>
+                        </select>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <button id="downloadMlxModelBtn" class="btn" style="padding: 6px 10px; font-size: 0.8rem;">Download Model</button>
+                            <button id="deleteMlxModelBtn" class="btn" style="padding: 6px 10px; font-size: 0.8rem;">Delete Model</button>
+                            <span id="mlxModelDownloadStatus" style="font-size: 0.82rem; color: var(--text-color-secondary);">Downloaded models persist app-wide until manually deleted.</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2781,6 +2851,18 @@
             const auditProofingBlockEl = document.getElementById('auditProofingBlock');
             const intakeSessionBlockEl = document.getElementById('intakeSessionBlock');
             const intakeFieldsContainerEl = document.getElementById('intakeFieldsContainer');
+            const sessionNotesTabBtn = document.getElementById('sessionNotesTabBtn');
+            const sessionTranscriptTabBtn = document.getElementById('sessionTranscriptTabBtn');
+            const sessionNotesTabContent = document.getElementById('sessionNotesTabContent');
+            const sessionTranscriptTabContent = document.getElementById('sessionTranscriptTabContent');
+            const sessionTranscriptEl = document.getElementById('sessionTranscript');
+            const downloadTranscriptBtn = document.getElementById('downloadTranscriptBtn');
+            const downloadCounselorAudioBtn = document.getElementById('downloadCounselorAudioBtn');
+            const downloadClientAudioBtn = document.getElementById('downloadClientAudioBtn');
+            const counselorInputSelect = document.getElementById('counselorInputSelect');
+            const clientInputSelect = document.getElementById('clientInputSelect');
+            const refreshAudioInputsBtn = document.getElementById('refreshAudioInputsBtn');
+            const runCounselorDiagBtn = document.getElementById('runCounselorDiagBtn');
             const guidingModalitiesListEl = document.getElementById('guidingModalitiesList');
             const guidingModalityOtherWrapEl = document.getElementById('guidingModalityOtherWrap');
             const guidingModalityOtherEl = document.getElementById('guidingModalityOther');
@@ -2885,7 +2967,18 @@
             const apiStatus = document.getElementById('apiStatus');
             const modelSelect = document.getElementById('modelSelect');
             const modelSelectWrapper = document.getElementById('modelSelectWrapper');
+            const mlxWhisperModelSelect = document.getElementById('mlxWhisperModelSelect');
+            const downloadMlxModelBtn = document.getElementById('downloadMlxModelBtn');
+            const deleteMlxModelBtn = document.getElementById('deleteMlxModelBtn');
+            const mlxModelDownloadStatus = document.getElementById('mlxModelDownloadStatus');
+            const recordSessionBtn = document.getElementById('recordSessionBtn');
+            const recordSessionStatus = document.getElementById('recordSessionStatus');
             const generateNoteBtn = document.getElementById('generateNoteBtn');
+            const generateNoteMenu = document.getElementById('generateNoteMenu');
+            const generateNoteMenuWrapper = document.getElementById('generateNoteMenuWrapper');
+            const generateNoteFromNotesBtn = document.getElementById('generateNoteFromNotesBtn');
+            const generateNoteFromTranscriptBtn = document.getElementById('generateNoteFromTranscriptBtn');
+            const generateNoteFromBothBtn = document.getElementById('generateNoteFromBothBtn');
             const fileInput = document.getElementById('fileInput');
             const headerMenu = document.getElementById('headerMenu');
             const headerMenuBtn = document.getElementById('headerMenuBtn');
@@ -2922,6 +3015,38 @@
             let vertexLocation = 'us-central1';
             let openaiApiKey = null;
             let selectedModel = null;
+            let mlxWhisperRunning = false;
+            let mlxWhisperModel = localStorage.getItem('mlxWhisperModel') || 'mlx-community/whisper-small-mlx';
+            let mediaRecorder = null;
+            let mediaRecorderChunks = [];
+            let activeRecordingStream = null;
+            let counselorFallbackRecorder = null;
+            let counselorFallbackRecorderChunks = [];
+            let counselorFallbackRecordingStream = null;
+            let stereoMergeContext = null;
+            let stereoMergeDestination = null;
+            let stereoCounselorSource = null;
+            let stereoClientSource = null;
+            let stereoChannelMerger = null;
+            let stereoRecordingStream = null;
+            let counselorPcmCaptureContext = null;
+            let counselorPcmCaptureSource = null;
+            let counselorPcmCaptureProcessor = null;
+            let counselorPcmCaptureGain = null;
+            let counselorPcmCaptureChunks = [];
+            let counselorPcmCaptureSampleRate = 0;
+            let counselorPcmCaptureActive = false;
+            let clientMediaRecorder = null;
+            let clientMediaRecorderChunks = [];
+            let clientRecordingStream = null;
+            let isRecordingSession = false;
+            let isTranscribingSession = false;
+            let recordingStartedAt = 0;
+            let recordingClientId = null;
+            let recordingAppointmentId = null;
+            let activeSessionTab = 'notes';
+            let counselorInputDeviceId = localStorage.getItem('counselorInputDeviceId') || '';
+            let clientInputDeviceId = localStorage.getItem('clientInputDeviceId') || '';
             let sessionTimerInterval = null;
             let persistentInstructions = '';
             let sessionInstructions = '';
@@ -2935,16 +3060,416 @@
             let autoBackupPath = '';
             let backupWriteInProgress = false;
             let backupWritePending = false;
+            let lastRecordedSessionAudio = null;
             const INFORMED_CONSENT_CONVERSATION_NOTATION = 'Reviewed limits of confidentiality, including that information shared in session is confidential with exceptions for risk of serious harm to self or others, suspected abuse or neglect of a child, elderly person, or vulnerable adult, and legal requirements such as court orders or subpoenas. Reviewed fees and billing, including that sessions are billed at the agreed-upon rate, insurance is billed when applicable, and the client is responsible for copays, deductibles, and any denied claims. Reviewed cancellation and attendance policy, including that appointments cancelled with less than 24 hours\u2019 notice or missed sessions are charged the full session fee, and that the therapist waits up to 10 minutes before a session is considered a no-show. Reviewed communication guidelines, including that email is used for scheduling and administrative purposes only and is not appropriate for emergencies. Reviewed crisis procedures, including instruction to contact 988 or call 911 in case of emergency.';
             const PRONOUN_PRESETS = {
                 'he/him/his': { subject: 'he', object: 'him', possessive: 'his' },
                 'she/hers': { subject: 'she', object: 'her', possessive: 'hers' },
                 'they/them': { subject: 'they', object: 'them', possessive: 'their' }
             };
+            const DEFAULT_MLX_WHISPER_MODEL = 'mlx-community/whisper-small-mlx';
+            const tauriMlxModelOptions = [
+                'mlx-community/whisper-tiny',
+                'mlx-community/whisper-base-mlx',
+                'mlx-community/whisper-small-mlx',
+                'mlx-community/whisper-medium-mlx',
+                'mlx-community/whisper-large-v3-turbo'
+            ];
+            const MLX_MODEL_MIGRATIONS = {
+                'mlx-community/whisper-base': 'mlx-community/whisper-base-mlx',
+                'mlx-community/whisper-small': 'mlx-community/whisper-small-mlx',
+                'mlx-community/whisper-medium': 'mlx-community/whisper-medium-mlx'
+            };
+            const tauriInvoke = window.__TAURI__?.core?.invoke;
+
+            const ensureMlxWhisperModelOption = (modelId) => {
+                if (!mlxWhisperModelSelect || !modelId) return;
+                const exists = Array.from(mlxWhisperModelSelect.options).some(opt => opt.value === modelId);
+                if (!exists) {
+                    const option = document.createElement('option');
+                    option.value = modelId;
+                    option.textContent = modelId;
+                    mlxWhisperModelSelect.appendChild(option);
+                }
+            };
+
+            const setMlxModelDownloadStatus = (message, color = 'var(--text-color-secondary)') => {
+                if (!mlxModelDownloadStatus) return;
+                mlxModelDownloadStatus.textContent = message;
+                mlxModelDownloadStatus.style.color = color;
+            };
+
+            const setDeleteModelButtonEnabled = (enabled) => {
+                if (!deleteMlxModelBtn) return;
+                deleteMlxModelBtn.disabled = !enabled;
+                deleteMlxModelBtn.style.opacity = enabled ? '1' : '0.6';
+                deleteMlxModelBtn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+            };
+
+            const refreshSelectedMlxModelCacheStatus = async () => {
+                const model = (mlxWhisperModel || '').trim();
+                if (!model) {
+                    setDeleteModelButtonEnabled(false);
+                    setMlxModelDownloadStatus('Select a model first.', '#e74c3c');
+                    return;
+                }
+                if (!tauriInvoke) {
+                    setDeleteModelButtonEnabled(false);
+                    setMlxModelDownloadStatus('Desktop runtime required.', '#e74c3c');
+                    return;
+                }
+
+                try {
+                    const verifyResult = await tauriInvoke('verify_mlx_whisper_model_download', { model });
+                    if (verifyResult?.downloaded) {
+                        setDeleteModelButtonEnabled(true);
+                        setMlxModelDownloadStatus(`Cached locally: ${model}`, '#27ae60');
+                    } else {
+                        setDeleteModelButtonEnabled(false);
+                        setMlxModelDownloadStatus(`Not cached yet: ${model}`, 'var(--text-color-secondary)');
+                    }
+                } catch (error) {
+                    setDeleteModelButtonEnabled(false);
+                    setMlxModelDownloadStatus(`Unable to verify cache: ${resolveErrorMessage(error)}`, '#e67e22');
+                }
+            };
+
+            const waitForMediaDevices = async (retries = 4, delayMs = 250) => {
+                for (let attempt = 0; attempt <= retries; attempt += 1) {
+                    const mediaDevices = navigator.mediaDevices;
+                    if (mediaDevices?.getUserMedia) {
+                        return mediaDevices;
+                    }
+                    if (attempt < retries) {
+                        await new Promise(resolve => setTimeout(resolve, delayMs));
+                    }
+                }
+                return null;
+            };
+
+            const requestMicrophonePermissionOnLaunch = async () => {
+                const mediaDevices = await waitForMediaDevices();
+                if (!mediaDevices) {
+                    recordSessionStatus.textContent = 'Microphone service is still initializing. Keep the app open and try again in a moment.';
+                    recordSessionStatus.style.color = '#e67e22';
+                    return false;
+                }
+
+                try {
+                    if (navigator.permissions?.query) {
+                        const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+                        if (permissionStatus?.state === 'granted') {
+                            return true;
+                        }
+                        if (permissionStatus?.state === 'prompt') {
+                            // Prompt user now so the app can access and show devices promptly.
+                            const promptStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                            promptStream.getTracks().forEach(track => track.stop());
+                            return true;
+                        }
+                    }
+                } catch (error) {
+                    console.debug('Microphone permission status query unavailable or user dismissed prompt:', error);
+                }
+
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    fallbackStream.getTracks().forEach(track => track.stop());
+                    return true;
+                } catch (error) {
+                    console.debug('Microphone permission request failed (startup fallback):', error);
+                }
+
+                recordSessionStatus.textContent = 'Microphone permission is required for recording. Open Session Transcript or click Refresh Inputs.';
+                recordSessionStatus.style.color = 'var(--text-color-secondary)';
+                return false;
+            };
+
+            const refreshAudioInputDevices = async ({ askPermission = false } = {}) => {
+                const mediaDevices = await waitForMediaDevices();
+                if (!mediaDevices) {
+                    populateAudioInputSelect(counselorInputSelect, counselorInputDeviceId, []);
+                    populateAudioInputSelect(clientInputSelect, clientInputDeviceId, []);
+                    recordSessionStatus.textContent = 'Microphone access not ready yet. Keep the app open for a moment, then click Refresh Inputs.';
+                    recordSessionStatus.style.color = '#e67e22';
+                    return;
+                }
+
+                if (!mediaDevices.enumerateDevices) {
+                    populateAudioInputSelect(counselorInputSelect, counselorInputDeviceId, []);
+                    populateAudioInputSelect(clientInputSelect, clientInputDeviceId, []);
+                    if (askPermission) {
+                        let testStream = null;
+                        try {
+                            testStream = await mediaDevices.getUserMedia({ audio: true });
+                            recordSessionStatus.textContent = 'Microphone access granted. Device list is unavailable, so recording will use the system default input.';
+                            recordSessionStatus.style.color = '#f39c12';
+                        } catch (error) {
+                            const message = resolveErrorMessage(error);
+                            recordSessionStatus.textContent = `Microphone permission failed: ${message}`;
+                            recordSessionStatus.style.color = '#e74c3c';
+                        } finally {
+                            if (testStream) {
+                                testStream.getTracks().forEach(track => track.stop());
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                let permissionStream = null;
+                try {
+                    if (askPermission) {
+                        permissionStream = await mediaDevices.getUserMedia({ audio: true });
+                    }
+
+                    let devices = await mediaDevices.enumerateDevices();
+                    let audioInputs = devices.filter(device => device.kind === 'audioinput');
+                    if (!audioInputs.length) {
+                        try {
+                            if (!permissionStream) {
+                                permissionStream = await mediaDevices.getUserMedia({ audio: true });
+                            }
+                            devices = await mediaDevices.enumerateDevices();
+                            audioInputs = devices.filter(device => device.kind === 'audioinput');
+                        } catch (permissionError) {
+                            console.warn('Unable to acquire microphone permission for device refresh:', permissionError);
+                        }
+                    }
+
+                    populateAudioInputSelect(counselorInputSelect, counselorInputDeviceId, audioInputs);
+                    populateAudioInputSelect(clientInputSelect, clientInputDeviceId, audioInputs);
+
+                    if (!audioInputs.length) {
+                        recordSessionStatus.textContent = 'No audio inputs detected. Check macOS System Settings -> Privacy & Security -> Microphone, then click Refresh Inputs.';
+                        recordSessionStatus.style.color = '#e67e22';
+                    } else if (askPermission) {
+                        recordSessionStatus.textContent = 'Microphone access granted. Select Counselor and Client inputs, then record.';
+                        recordSessionStatus.style.color = '#27ae60';
+                    }
+                } catch (error) {
+                    const message = resolveErrorMessage(error);
+                    recordSessionStatus.textContent = `Unable to list audio inputs: ${message}`;
+                    recordSessionStatus.style.color = '#e74c3c';
+                } finally {
+                    if (permissionStream) {
+                        permissionStream.getTracks().forEach(track => track.stop());
+                    }
+                }
+            };
+
+            const populateAudioInputSelect = (selectEl, selectedId, devices) => {
+                if (!selectEl) return;
+                selectEl.innerHTML = '';
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'System default input';
+                selectEl.appendChild(defaultOption);
+
+                devices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.textContent = device.label || `Audio Input ${index + 1}`;
+                    selectEl.appendChild(option);
+                });
+
+                const hasSelected = devices.some(device => device.deviceId === selectedId);
+                selectEl.value = hasSelected ? selectedId : '';
+            };
+
+            const isLikelyLoopbackInput = (device) => {
+                const label = String(device?.label || '').toLowerCase();
+                if (!label) return false;
+                return /(blackhole|loopback|soundflower|aggregate|monitor|vb-audio|system audio|virtual audio)/.test(label);
+            };
+
+            const isLikelyPhysicalMicInput = (device) => {
+                const label = String(device?.label || '').toLowerCase();
+                if (!label) return false;
+                if (isLikelyLoopbackInput(device)) return false;
+                return /(microphone|mic|built-in|macbook|airpods|usb|headset|audio interface|external)/.test(label);
+            };
+
+            const resolveRecordingInputIds = async () => {
+                const mediaDevices = await waitForMediaDevices();
+                if (!mediaDevices?.enumerateDevices) {
+                    return {
+                        counselorId: counselorInputDeviceId || '',
+                        clientId: clientInputDeviceId || '',
+                        counselorLabel: '',
+                        clientLabel: ''
+                    };
+                }
+
+                const devices = await mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(device => device.kind === 'audioinput');
+                const byId = new Map(audioInputs.map(device => [device.deviceId, device]));
+
+                let counselorId = counselorInputDeviceId || '';
+                let clientId = clientInputDeviceId || '';
+
+                // Clear stale persisted IDs when devices are disconnected or renamed by the OS.
+                if (counselorId && !byId.has(counselorId)) {
+                    counselorId = '';
+                }
+                if (clientId && !byId.has(clientId)) {
+                    clientId = '';
+                }
+
+                const clientDevice = clientId ? byId.get(clientId) : null;
+                const counselorDevice = counselorId ? byId.get(counselorId) : null;
+                const clientIsLoopback = isLikelyLoopbackInput(clientDevice);
+                const counselorIsLoopback = isLikelyLoopbackInput(counselorDevice);
+
+                if ((clientIsLoopback && !counselorId) || (clientIsLoopback && counselorIsLoopback) || (clientId && counselorId && counselorId === clientId)) {
+                    const explicitPhysical = audioInputs.find((device) => {
+                        if (!device?.deviceId) return false;
+                        if (clientId && device.deviceId === clientId) return false;
+                        return isLikelyPhysicalMicInput(device);
+                    });
+                    const fallbackNonLoopback = audioInputs.find((device) => {
+                        if (!device?.deviceId) return false;
+                        if (clientId && device.deviceId === clientId) return false;
+                        return !isLikelyLoopbackInput(device);
+                    });
+                    const physicalCandidate = explicitPhysical || fallbackNonLoopback;
+                    if (physicalCandidate?.deviceId) {
+                        counselorId = physicalCandidate.deviceId;
+                    }
+                }
+
+                return {
+                    counselorId,
+                    clientId,
+                    counselorLabel: counselorId ? (byId.get(counselorId)?.label || '') : 'System default input',
+                    clientLabel: clientId ? (byId.get(clientId)?.label || '') : 'System default input'
+                };
+            };
+
+            const acquirePrimaryRecordingStream = async () => {
+                const attemptFailures = [];
+                const attempts = [
+                    {
+                        name: 'speech-enhanced',
+                        constraints: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true,
+                            channelCount: { ideal: 1 }
+                        }
+                    },
+                    {
+                        name: 'balanced',
+                        constraints: {
+                            echoCancellation: true,
+                            noiseSuppression: false,
+                            autoGainControl: false,
+                            channelCount: { ideal: 1 }
+                        }
+                    },
+                    {
+                        name: 'minimal',
+                        constraints: true
+                    }
+                ];
+
+                for (const attempt of attempts) {
+                    try {
+                        if (recordSessionStatus) {
+                            recordSessionStatus.textContent = `Initializing microphone using ${attempt.name} constraints...`;
+                            recordSessionStatus.style.color = '#e67e22';
+                        }
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: attempt.constraints });
+                        await ensureStreamTracksActive(stream, 'Microphone');
+                        return stream;
+                    } catch (error) {
+                        attemptFailures.push(`${attempt.name}: ${resolveErrorMessage(error)}`);
+                    }
+                }
+
+                throw new Error(`Unable to initialize microphone. Attempts failed: ${attemptFailures.join(' | ')}`);
+            };
+
+            const setActiveSessionTab = (tabName) => {
+                activeSessionTab = tabName === 'transcript' ? 'transcript' : 'notes';
+                const isTranscript = activeSessionTab === 'transcript';
+                sessionNotesTabContent.classList.toggle('hidden', isTranscript);
+                sessionTranscriptTabContent.classList.toggle('hidden', !isTranscript);
+                sessionNotesTabBtn.style.color = isTranscript
+                    ? 'var(--text-color-secondary)'
+                    : 'var(--text-color-primary)';
+                sessionNotesTabBtn.style.borderBottomColor = isTranscript ? 'transparent' : '#3498db';
+                sessionTranscriptTabBtn.style.color = isTranscript
+                    ? 'var(--text-color-primary)'
+                    : 'var(--text-color-secondary)';
+                sessionTranscriptTabBtn.style.borderBottomColor = isTranscript ? '#3498db' : 'transparent';
+            };
+
+            const downloadAndVerifyMlxModel = async () => {
+                if (!tauriInvoke) {
+                    setMlxModelDownloadStatus('Desktop runtime required.', '#e74c3c');
+                    return;
+                }
+
+                const model = (mlxWhisperModel || '').trim();
+                if (!model) {
+                    setMlxModelDownloadStatus('Select a model first.', '#e74c3c');
+                    return;
+                }
+
+                downloadMlxModelBtn.disabled = true;
+                setMlxModelDownloadStatus(`Downloading ${model}...`, '#f39c12');
+
+                try {
+                    await tauriInvoke('download_mlx_whisper_model', { model });
+                    const verifyResult = await tauriInvoke('verify_mlx_whisper_model_download', { model });
+                    if (verifyResult?.downloaded) {
+                        setMlxModelDownloadStatus(`Downloaded and verified: ${model}`, '#27ae60');
+                    } else {
+                        setMlxModelDownloadStatus(`Downloaded, but verification failed: ${model}`, '#e67e22');
+                    }
+                } catch (error) {
+                    setMlxModelDownloadStatus(`Download failed: ${resolveErrorMessage(error)}`, '#e74c3c');
+                } finally {
+                    downloadMlxModelBtn.disabled = false;
+                    await refreshSelectedMlxModelCacheStatus();
+                }
+            };
+
+            const deleteMlxModelCache = async () => {
+                if (!tauriInvoke) {
+                    setMlxModelDownloadStatus('Desktop runtime required.', '#e74c3c');
+                    return;
+                }
+
+                const model = (mlxWhisperModel || '').trim();
+                if (!model) {
+                    setMlxModelDownloadStatus('Select a model first.', '#e74c3c');
+                    return;
+                }
+
+                deleteMlxModelBtn.disabled = true;
+                setMlxModelDownloadStatus(`Deleting ${model}...`, '#f39c12');
+
+                try {
+                    const result = await tauriInvoke('delete_mlx_whisper_model', { model });
+                    if (result?.message) {
+                        setMlxModelDownloadStatus(result.message, '#27ae60');
+                    } else {
+                        setMlxModelDownloadStatus(`Model ${model} removed from local cache.`, '#27ae60');
+                    }
+                } catch (error) {
+                    setMlxModelDownloadStatus(`Delete failed: ${resolveErrorMessage(error)}`, '#e74c3c');
+                } finally {
+                    await refreshSelectedMlxModelCacheStatus();
+                }
+            };
             const getGoogleAccessToken = async (serviceAccountJson) => {
                 try {
-                    const { invoke } = window.__TAURI__.core;
-                    const token = await invoke('generate_google_token', { serviceAccountJson });
+                    if (!tauriInvoke) {
+                        throw new Error('Tauri invoke API unavailable.');
+                    }
+                    const token = await tauriInvoke('generate_google_token', { serviceAccountJson });
                     if (!token) {
                         throw new Error("Rust backend returned an empty token.");
                     }
@@ -3173,12 +3698,1433 @@
                 });
             };
 
-            const hasAppointmentGenerationInput = (appointment) => {
+            const hasAppointmentGenerationInput = (appointment, sourceMode = 'both') => {
                 if (!appointment) return false;
-                const hasSessionInfo = !!(appointment.sessionInfo || '').trim();
+                const mode = sourceMode === 'notes' || sourceMode === 'transcript' ? sourceMode : 'both';
+                const hasSessionInfo = mode !== 'transcript' && !!(appointment.sessionInfo || '').trim();
+                const hasWhisperTranscript = mode !== 'notes' && !!(appointment.whisperTranscript || '').trim();
                 const auditProofing = getAuditProofingData(appointment);
                 const hasAuditProofing = Object.values(auditProofing).some(value => !!(value || '').trim());
-                return hasSessionInfo || hasAuditProofing;
+                return hasSessionInfo || hasWhisperTranscript || (mode !== 'transcript' && hasAuditProofing);
+            };
+
+            const getWhisperTranscriptContext = (appointment) => {
+                const transcript = (appointment?.whisperTranscript || '').trim();
+                if (!transcript) return '';
+                return `\n- **Session Conversation Transcript (Whisper):**\n${transcript}`;
+            };
+
+            const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const dataUrl = reader.result;
+                    if (typeof dataUrl !== 'string') {
+                        reject(new Error('Failed to read recorded audio.'));
+                        return;
+                    }
+                    const parts = dataUrl.split(',');
+                    resolve(parts[1] || '');
+                };
+                reader.onerror = () => reject(new Error('Failed to convert audio to base64.'));
+                reader.readAsDataURL(blob);
+            });
+
+            const ensureStreamTracksActive = async (stream, label) => {
+                const tracks = stream?.getAudioTracks?.() || [];
+                console.log(`[${label}] Stream acquired. Track count: ${tracks.length}`);
+                
+                if (!tracks.length) {
+                    throw new Error(`${label} input did not provide an audio track.`);
+                }
+
+                tracks.forEach((track, i) => {
+                    track.enabled = true;
+                    console.log(`[${label}] Track ${i}: enabled=true, readyState=${track.readyState}, muted=${track.muted}, label=${track.label}`);
+                });
+
+                await new Promise(resolve => setTimeout(resolve, 150));
+
+                const hasLiveTrack = tracks.some(track => track.readyState === 'live');
+                if (!hasLiveTrack) {
+                    const states = tracks.map((t, i) => `Track${i}:${t.readyState}`).join(', ');
+                    console.error(`[${label}] No live tracks found. States: ${states}`);
+                    throw new Error(`${label} input is not active. Check selected input device and macOS microphone permissions.`);
+                }
+
+                // `muted` can be transiently true for newly-started tracks or loopback devices.
+                // Do not treat this as a hard permission failure.
+                let hasUnmutedTrack = tracks.some(track => !track.muted);
+                for (let attempt = 0; attempt < 4 && !hasUnmutedTrack; attempt += 1) {
+                    await new Promise(resolve => setTimeout(resolve, 220));
+                    hasUnmutedTrack = tracks.some(track => !track.muted);
+                }
+                if (!hasUnmutedTrack) {
+                    console.warn(`[${label}] Input track is currently muted; continuing and validating with signal checks.`);
+                }
+            };
+
+            const stopRecordingStream = () => {
+                void finalizeCounselorPcmCapture({ discard: true });
+                if (activeRecordingStream) {
+                    activeRecordingStream.getTracks().forEach(track => track.stop());
+                    activeRecordingStream = null;
+                }
+                if (counselorFallbackRecordingStream) {
+                    counselorFallbackRecordingStream.getTracks().forEach(track => track.stop());
+                    counselorFallbackRecordingStream = null;
+                }
+                if (clientRecordingStream) {
+                    clientRecordingStream.getTracks().forEach(track => track.stop());
+                    clientRecordingStream = null;
+                }
+                if (stereoRecordingStream) {
+                    stereoRecordingStream.getTracks().forEach(track => track.stop());
+                    stereoRecordingStream = null;
+                }
+                try { stereoCounselorSource?.disconnect(); } catch (_error) {}
+                try { stereoClientSource?.disconnect(); } catch (_error) {}
+                try { stereoChannelMerger?.disconnect(); } catch (_error) {}
+                try { stereoMergeDestination?.disconnect(); } catch (_error) {}
+                stereoCounselorSource = null;
+                stereoClientSource = null;
+                stereoChannelMerger = null;
+                stereoMergeDestination = null;
+                if (stereoMergeContext) {
+                    try {
+                        void stereoMergeContext.close();
+                    } catch (_error) {
+                    }
+                    stereoMergeContext = null;
+                }
+            };
+
+            const RECORDER_STOP_FLUSH_DELAY_MS = 900;
+
+            const mergeFloat32Chunks = (chunks) => {
+                const total = chunks.reduce((sum, chunk) => sum + (chunk?.length || 0), 0);
+                if (!total) return new Float32Array(0);
+                const merged = new Float32Array(total);
+                let offset = 0;
+                chunks.forEach((chunk) => {
+                    if (!chunk || !chunk.length) return;
+                    merged.set(chunk, offset);
+                    offset += chunk.length;
+                });
+                return merged;
+            };
+
+            const startCounselorPcmCapture = async (stream) => {
+                await finalizeCounselorPcmCapture({ discard: true });
+                const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextCtor) return;
+
+                const context = new AudioContextCtor();
+                const source = context.createMediaStreamSource(stream);
+                const processor = context.createScriptProcessor(4096, 1, 1);
+                const gain = context.createGain();
+                gain.gain.value = 0;
+
+                counselorPcmCaptureContext = context;
+                counselorPcmCaptureSource = source;
+                counselorPcmCaptureProcessor = processor;
+                counselorPcmCaptureGain = gain;
+                counselorPcmCaptureChunks = [];
+                counselorPcmCaptureSampleRate = context.sampleRate || 44100;
+                counselorPcmCaptureActive = true;
+
+                processor.onaudioprocess = (event) => {
+                    if (!counselorPcmCaptureActive) return;
+                    const input = event?.inputBuffer?.getChannelData?.(0);
+                    if (!input || input.length === 0) return;
+                    counselorPcmCaptureChunks.push(new Float32Array(input));
+                };
+
+                source.connect(processor);
+                processor.connect(gain);
+                gain.connect(context.destination);
+
+                if (context.state === 'suspended') {
+                    try {
+                        await context.resume();
+                    } catch (_error) {
+                    }
+                }
+            };
+
+            const finalizeCounselorPcmCapture = async ({ discard = false } = {}) => {
+                const context = counselorPcmCaptureContext;
+                const source = counselorPcmCaptureSource;
+                const processor = counselorPcmCaptureProcessor;
+                const gain = counselorPcmCaptureGain;
+                const chunks = counselorPcmCaptureChunks;
+                const sampleRate = counselorPcmCaptureSampleRate || 44100;
+
+                counselorPcmCaptureContext = null;
+                counselorPcmCaptureSource = null;
+                counselorPcmCaptureProcessor = null;
+                counselorPcmCaptureGain = null;
+                counselorPcmCaptureChunks = [];
+                counselorPcmCaptureSampleRate = 0;
+                counselorPcmCaptureActive = false;
+
+                try { source?.disconnect(); } catch (_error) {}
+                try { processor?.disconnect(); } catch (_error) {}
+                try { gain?.disconnect(); } catch (_error) {}
+                if (processor) {
+                    try { processor.onaudioprocess = null; } catch (_error) {}
+                }
+
+                if (context) {
+                    try {
+                        await context.close();
+                    } catch (_error) {
+                    }
+                }
+
+                if (discard) return null;
+                const merged = mergeFloat32Chunks(chunks || []);
+                if (!merged.length) return null;
+                return encodeMonoPcm16Wav(merged, sampleRate);
+            };
+
+            const getChunkBytes = (chunks) => chunks.reduce((total, chunk) => total + (chunk?.size || 0), 0);
+            const MIN_VALID_CAPTURE_BYTES = 2048;
+
+            const isUsableAudioBlob = (blob, minBytes = MIN_VALID_CAPTURE_BYTES) => {
+                return !!blob && (blob.size || 0) >= minBytes;
+            };
+
+            const getTrackDeviceMetadata = (stream) => {
+                const track = stream?.getAudioTracks?.()?.[0] || null;
+                const settings = track?.getSettings ? track.getSettings() : {};
+                return {
+                    track,
+                    deviceId: String(settings?.deviceId || '').trim(),
+                    groupId: String(settings?.groupId || '').trim(),
+                    sampleRate: settings?.sampleRate || null,
+                    channelCount: settings?.channelCount || null,
+                    label: String(track?.label || '').trim()
+                };
+            };
+
+            const normalizeDeviceLabel = (value) => String(value || '')
+                .toLowerCase()
+                .replace(/\([^)]*\)/g, ' ')
+                .replace(/[^a-z0-9]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            const labelsLikelyMatch = (a, b) => {
+                const normalizedA = normalizeDeviceLabel(a);
+                const normalizedB = normalizeDeviceLabel(b);
+                if (!normalizedA || !normalizedB) return false;
+                if (normalizedA === normalizedB) return true;
+                return normalizedA.includes(normalizedB) || normalizedB.includes(normalizedA);
+            };
+
+            const tokenizeTranscript = (text) => String(text || '')
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, ' ')
+                .split(/\s+/)
+                .filter(token => token.length > 2);
+
+            const transcriptSimilarityRatio = (a, b) => {
+                const tokensA = tokenizeTranscript(a);
+                const tokensB = tokenizeTranscript(b);
+                if (!tokensA.length || !tokensB.length) return 0;
+
+                const setA = new Set(tokensA);
+                const setB = new Set(tokensB);
+                const intersectionCount = Array.from(setA).filter(token => setB.has(token)).length;
+                const unionCount = new Set([...setA, ...setB]).size;
+                if (!unionCount) return 0;
+                return intersectionCount / unionCount;
+            };
+
+            const transcriptsLikelyMirrored = (counselorText, clientText) => {
+                const counselor = String(counselorText || '').trim();
+                const client = String(clientText || '').trim();
+                if (!counselor || !client) return false;
+
+                const exactMatch = counselor.toLowerCase() === client.toLowerCase();
+                if (exactMatch) return true;
+
+                const similarity = transcriptSimilarityRatio(counselor, client);
+                const minWords = Math.min(tokenizeTranscript(counselor).length, tokenizeTranscript(client).length);
+                return minWords >= 8 && similarity >= 0.78;
+            };
+
+            const splitTranscriptSentences = (text) => String(text || '')
+                .split(/(?<=[.!?])\s+|\n+/)
+                .map(part => String(part || '').trim())
+                .filter(part => part.length > 0);
+
+            const removeClientOverlapFromCounselor = (counselorText, clientText) => {
+                const counselorSentences = splitTranscriptSentences(counselorText);
+                const clientSentences = splitTranscriptSentences(clientText);
+                if (!counselorSentences.length || !clientSentences.length) {
+                    return String(counselorText || '').trim();
+                }
+
+                const filtered = counselorSentences.filter((sentence) => {
+                    const sentenceTokens = tokenizeTranscript(sentence).length;
+                    if (sentenceTokens < 3) return true;
+
+                    const maxSimilarity = clientSentences.reduce((best, clientSentence) => {
+                        const sim = transcriptSimilarityRatio(sentence, clientSentence);
+                        return sim > best ? sim : best;
+                    }, 0);
+
+                    // Remove likely client bleed that appears in both channels.
+                    return !(sentenceTokens >= 4 && maxSimilarity >= 0.72);
+                });
+
+                return filtered.join(' ').trim();
+            };
+
+            const selectBestCounselorTranscript = async (candidates, clientTranscript = '') => {
+                const normalizedClient = String(clientTranscript || '').trim();
+                const successful = [];
+                const failures = [];
+
+                for (const candidate of candidates || []) {
+                    if (!candidate?.blob || !isUsableAudioBlob(candidate.blob, 3072)) continue;
+                    try {
+                        const text = String(
+                            await transcribeAudioWithFallbacks(candidate.blob, {
+                                label: `Counselor (${candidate.name || 'source'})`
+                            }) || ''
+                        ).trim();
+                        if (!text) continue;
+                        const similarityToClient = normalizedClient
+                            ? transcriptSimilarityRatio(text, normalizedClient)
+                            : 0;
+                        successful.push({
+                            name: candidate.name || 'source',
+                            text,
+                            similarityToClient,
+                            tokenCount: tokenizeTranscript(text).length
+                        });
+                    } catch (error) {
+                        failures.push(`${candidate?.name || 'source'}: ${resolveErrorMessage(error)}`);
+                    }
+                }
+
+                if (!successful.length) {
+                    throw new Error(
+                        failures.length
+                            ? `Counselor transcription failed for all capture sources. ${failures.join(' | ')}`
+                            : 'Counselor transcription failed for all capture sources.'
+                    );
+                }
+
+                const ranked = successful.slice().sort((a, b) => {
+                    if (a.similarityToClient !== b.similarityToClient) {
+                        return a.similarityToClient - b.similarityToClient;
+                    }
+                    return b.tokenCount - a.tokenCount;
+                });
+
+                const picked = ranked[0];
+                const note = ranked.length > 1
+                    ? `Counselor source selected: ${picked.name} (similarity to client ${(picked.similarityToClient * 100).toFixed(1)}%).`
+                    : '';
+
+                return {
+                    text: picked.text,
+                    sourceName: picked.name,
+                    similarityToClient: picked.similarityToClient,
+                    note
+                };
+            };
+
+            const waitForChunkFlush = async (chunks, timeoutMs = 1400) => {
+                const startedAt = Date.now();
+                let previousBytes = -1;
+                while ((Date.now() - startedAt) < timeoutMs) {
+                    const currentBytes = getChunkBytes(chunks);
+                    if (currentBytes > 0 && currentBytes === previousBytes) {
+                        return currentBytes;
+                    }
+                    previousBytes = currentBytes;
+                    await new Promise(resolve => setTimeout(resolve, 120));
+                }
+                return getChunkBytes(chunks);
+            };
+
+            const probeRecorderBytes = async (stream, durationMs = 1200) => {
+                let probeRecorder = null;
+                let probeStream = null;
+                const probeChunks = [];
+                try {
+                    const sourceTrack = stream?.getAudioTracks?.()?.[0] || null;
+                    if (!sourceTrack) return 0;
+                    probeStream = new MediaStream([sourceTrack.clone()]);
+                    probeRecorder = createMediaRecorderSafe(probeStream);
+                    probeRecorder.addEventListener('dataavailable', (event) => {
+                        if (event.data && event.data.size > 0) {
+                            probeChunks.push(event.data);
+                        }
+                    });
+                    probeRecorder.start(250);
+                    await new Promise(resolve => setTimeout(resolve, Math.max(600, durationMs)));
+                    if (probeRecorder.state === 'recording') {
+                        try {
+                            probeRecorder.requestData();
+                        } catch (_error) {
+                        }
+                        probeRecorder.stop();
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                    return getChunkBytes(probeChunks);
+                } catch (_error) {
+                    return 0;
+                } finally {
+                    if (probeRecorder && probeRecorder.state !== 'inactive') {
+                        try { probeRecorder.stop(); } catch (_error) {}
+                    }
+                    if (probeStream) {
+                        try { probeStream.getTracks().forEach(track => track.stop()); } catch (_error) {}
+                    }
+                }
+            };
+
+            const probeStreamSignalLevel = async (stream, durationMs = 1000) => {
+                const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextCtor) return 0;
+
+                let context = null;
+                let source = null;
+                let analyser = null;
+                try {
+                    context = new AudioContextCtor();
+                    source = context.createMediaStreamSource(stream);
+                    analyser = context.createAnalyser();
+                    analyser.fftSize = 2048;
+                    source.connect(analyser);
+
+                    if (context.state === 'suspended') {
+                        try {
+                            await context.resume();
+                        } catch (_error) {
+                        }
+                    }
+
+                    const sampleBuffer = new Float32Array(analyser.fftSize);
+                    const startedAt = Date.now();
+                    let maxRms = 0;
+
+                    while ((Date.now() - startedAt) < Math.max(500, durationMs)) {
+                        analyser.getFloatTimeDomainData(sampleBuffer);
+                        let sumSquares = 0;
+                        for (let i = 0; i < sampleBuffer.length; i += 1) {
+                            const v = sampleBuffer[i] || 0;
+                            sumSquares += v * v;
+                        }
+                        const rms = Math.sqrt(sumSquares / sampleBuffer.length);
+                        if (rms > maxRms) maxRms = rms;
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+
+                    return maxRms;
+                } catch (_error) {
+                    return 0;
+                } finally {
+                    try { source?.disconnect(); } catch (_error) {}
+                    if (context) {
+                        try { await context.close(); } catch (_error) {}
+                    }
+                }
+            };
+
+            const getPreferredRecorderMimeType = () => {
+                if (typeof MediaRecorder === 'undefined') return '';
+                const preferredRecorderMimeTypes = [
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/mp4;codecs=mp4a.40.2',
+                    'audio/mp4'
+                ];
+                return preferredRecorderMimeTypes.find((mimeType) => MediaRecorder.isTypeSupported(mimeType)) || '';
+            };
+
+            const createMediaRecorderSafe = (stream) => {
+                const mimeType = getPreferredRecorderMimeType();
+                if (mimeType) {
+                    return new MediaRecorder(stream, { mimeType });
+                }
+                return new MediaRecorder(stream);
+            };
+
+            const getStreamCaptureDiagnostics = (stream) => {
+                const metadata = getTrackDeviceMetadata(stream);
+                return {
+                    label: metadata.label || 'n/a',
+                    deviceId: metadata.deviceId || 'n/a',
+                    groupId: metadata.groupId || 'n/a',
+                    sampleRate: metadata.sampleRate || 'n/a',
+                    channelCount: metadata.channelCount || 'n/a',
+                    readyState: metadata.track?.readyState || 'n/a',
+                    muted: typeof metadata.track?.muted === 'boolean' ? metadata.track.muted : 'n/a'
+                };
+            };
+
+            const getAudioBlobExtension = (blobType) => {
+                const type = String(blobType || '').toLowerCase();
+                if (type.includes('mp4') || type.includes('m4a')) return 'm4a';
+                if (type.includes('wav')) return 'wav';
+                if (type.includes('ogg')) return 'ogg';
+                return 'webm';
+            };
+
+            const inferAudioBlobExtension = async (audioBlob) => {
+                const fallback = getAudioBlobExtension(audioBlob?.type);
+                try {
+                    const buffer = await audioBlob.arrayBuffer();
+                    if (!buffer || buffer.byteLength < 4) return fallback;
+                    const bytes = new Uint8Array(buffer);
+
+                    // EBML header: WebM/Matroska
+                    if (bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) {
+                        return 'webm';
+                    }
+
+                    // RIFF/WAVE
+                    if (bytes.byteLength >= 12) {
+                        const riff = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]);
+                        const wave = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
+                        if (riff === 'RIFF' && wave === 'WAVE') {
+                            return 'wav';
+                        }
+                    }
+
+                    // OGG
+                    if (bytes[0] === 0x4f && bytes[1] === 0x67 && bytes[2] === 0x67 && bytes[3] === 0x53) {
+                        return 'ogg';
+                    }
+
+                    // MP4/M4A - box signature `ftyp` at bytes 4..7
+                    if (
+                        bytes.byteLength >= 8 &&
+                        bytes[4] === 0x66 &&
+                        bytes[5] === 0x74 &&
+                        bytes[6] === 0x79 &&
+                        bytes[7] === 0x70
+                    ) {
+                        return 'm4a';
+                    }
+                } catch (_error) {
+                }
+                return fallback;
+            };
+
+            const encodeMonoPcm16Wav = (samples, sampleRate) => {
+                const bytesPerSample = 2;
+                const blockAlign = bytesPerSample;
+                const byteRate = sampleRate * blockAlign;
+                const dataSize = samples.length * bytesPerSample;
+                const buffer = new ArrayBuffer(44 + dataSize);
+                const view = new DataView(buffer);
+
+                const writeAscii = (offset, text) => {
+                    for (let i = 0; i < text.length; i += 1) {
+                        view.setUint8(offset + i, text.charCodeAt(i));
+                    }
+                };
+
+                writeAscii(0, 'RIFF');
+                view.setUint32(4, 36 + dataSize, true);
+                writeAscii(8, 'WAVE');
+                writeAscii(12, 'fmt ');
+                view.setUint32(16, 16, true); // PCM chunk size
+                view.setUint16(20, 1, true); // audio format PCM
+                view.setUint16(22, 1, true); // mono
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, byteRate, true);
+                view.setUint16(32, blockAlign, true);
+                view.setUint16(34, 16, true); // bits per sample
+                writeAscii(36, 'data');
+                view.setUint32(40, dataSize, true);
+
+                let offset = 44;
+                for (let i = 0; i < samples.length; i += 1) {
+                    const s = Math.max(-1, Math.min(1, samples[i] || 0));
+                    const int16 = s < 0 ? s * 0x8000 : s * 0x7fff;
+                    view.setInt16(offset, int16, true);
+                    offset += 2;
+                }
+
+                return new Blob([buffer], { type: 'audio/wav' });
+            };
+
+            const normalizeAudioSamples = (samples, { targetPeak = 0.92, maxGain = 24 } = {}) => {
+                if (!samples || samples.length === 0) return new Float32Array(0);
+                let peak = 0;
+                for (let i = 0; i < samples.length; i += 1) {
+                    const abs = Math.abs(samples[i] || 0);
+                    if (abs > peak) peak = abs;
+                }
+                if (peak <= 0) {
+                    return new Float32Array(samples);
+                }
+
+                const desiredGain = Math.min(maxGain, Math.max(1, targetPeak / peak));
+                const out = new Float32Array(samples.length);
+                for (let i = 0; i < samples.length; i += 1) {
+                    out[i] = Math.max(-1, Math.min(1, (samples[i] || 0) * desiredGain));
+                }
+                return out;
+            };
+
+            const convertBlobToNormalizedWav = async (audioBlob, targetSampleRate = 16000) => {
+                const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextCtor) {
+                    throw new Error('AudioContext is unavailable for WAV conversion.');
+                }
+
+                const audioContext = new AudioContextCtor();
+                try {
+                    const arrayBuffer = await audioBlob.arrayBuffer();
+                    const decoded = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+
+                    const durationSeconds = Math.max(0.01, decoded.duration || 0.01);
+                    const frameCount = Math.max(1, Math.ceil(durationSeconds * targetSampleRate));
+                    const offline = new OfflineAudioContext(1, frameCount, targetSampleRate);
+
+                    const source = offline.createBufferSource();
+                    source.buffer = decoded;
+                    source.connect(offline.destination);
+                    source.start(0);
+
+                    const rendered = await offline.startRendering();
+                    const monoSamples = rendered.getChannelData(0);
+                    const normalizedSamples = normalizeAudioSamples(monoSamples);
+                    return encodeMonoPcm16Wav(normalizedSamples, targetSampleRate);
+                } finally {
+                    try {
+                        await audioContext.close();
+                    } catch (_error) {
+                    }
+                }
+            };
+
+            const createStereoMergedRecordingStream = async (counselorStream, clientStream) => {
+                const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextCtor) {
+                    throw new Error('AudioContext is unavailable for stereo channel recording.');
+                }
+
+                const context = new AudioContextCtor();
+                const destination = context.createMediaStreamDestination();
+                const counselorSource = context.createMediaStreamSource(counselorStream);
+                const clientSource = context.createMediaStreamSource(clientStream);
+                const merger = context.createChannelMerger(2);
+
+                // Counselor is hard-mapped to left channel (0), Client to right channel (1).
+                counselorSource.connect(merger, 0, 0);
+                clientSource.connect(merger, 0, 1);
+                merger.connect(destination);
+
+                if (context.state === 'suspended') {
+                    try {
+                        await context.resume();
+                    } catch (_error) {
+                    }
+                }
+
+                stereoMergeContext = context;
+                stereoMergeDestination = destination;
+                stereoCounselorSource = counselorSource;
+                stereoClientSource = clientSource;
+                stereoChannelMerger = merger;
+                stereoRecordingStream = destination.stream;
+                return destination.stream;
+            };
+
+            const splitStereoConversationBlob = async (audioBlob) => {
+                const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextCtor) {
+                    throw new Error('AudioContext is unavailable for channel split processing.');
+                }
+
+                const context = new AudioContextCtor();
+                try {
+                    const buffer = await audioBlob.arrayBuffer();
+                    const decoded = await context.decodeAudioData(buffer.slice(0));
+                    const channelCount = decoded.numberOfChannels || 1;
+                    if (channelCount < 2) {
+                        throw new Error(`Expected 2-channel recording but decoded ${channelCount} channel(s).`);
+                    }
+
+                    const sampleRate = Math.max(8000, Math.round(decoded.sampleRate || 44100));
+                    const counselorSamples = normalizeAudioSamples(new Float32Array(decoded.getChannelData(0)));
+                    const clientSamples = normalizeAudioSamples(new Float32Array(decoded.getChannelData(1)));
+
+                    return {
+                        counselorBlob: encodeMonoPcm16Wav(counselorSamples, sampleRate),
+                        clientBlob: encodeMonoPcm16Wav(clientSamples, sampleRate),
+                        sampleRate,
+                        channelCount
+                    };
+                } finally {
+                    try {
+                        await context.close();
+                    } catch (_error) {
+                    }
+                }
+            };
+
+            const transcribeAudioWithFallbacks = async (audioBlob, { label = 'Audio' } = {}) => {
+                const failures = [];
+                let wavBlob = null;
+
+                try {
+                    wavBlob = await convertBlobToNormalizedWav(audioBlob, 16000);
+                } catch (error) {
+                    failures.push(`${label} WAV normalize failed: ${resolveErrorMessage(error)}`);
+                }
+
+                const attempts = [];
+                if (wavBlob && wavBlob.size > 0) {
+                    attempts.push({ name: 'normalized-wav-auto', blob: wavBlob, language: '' });
+                    attempts.push({ name: 'normalized-wav-en', blob: wavBlob, language: 'en' });
+                }
+                attempts.push({ name: 'native-auto', blob: audioBlob, language: '' });
+                attempts.push({ name: 'native-en', blob: audioBlob, language: 'en' });
+
+                for (const attempt of attempts) {
+                    try {
+                        return await transcribeWithMlxWhisper(attempt.blob, { language: attempt.language });
+                    } catch (error) {
+                        failures.push(`${attempt.name}: ${resolveErrorMessage(error)}`);
+                    }
+                }
+
+                throw new Error(`${label} transcription failed across all attempts. ${failures.join(' | ')}`);
+            };
+
+            const acquireInputStream = async ({
+                deviceId,
+                label,
+                expectedDeviceLabel = '',
+                strictDeviceSelection = false,
+                preferSpeechEnhancement = false,
+                allowSystemFallback = true
+            }) => {
+                const attempts = [];
+                if (deviceId) {
+                    attempts.push({
+                        name: 'exact-device',
+                        constraints: {
+                            deviceId: { exact: deviceId },
+                            echoCancellation: !!preferSpeechEnhancement,
+                            noiseSuppression: !!preferSpeechEnhancement,
+                            autoGainControl: !!preferSpeechEnhancement,
+                            channelCount: { ideal: preferSpeechEnhancement ? 1 : 2 }
+                        }
+                    });
+                    if (preferSpeechEnhancement) {
+                        // Some macOS mic paths can become near-silent with enhanced processing enabled.
+                        attempts.push({
+                            name: 'exact-device-raw',
+                            constraints: {
+                                deviceId: { exact: deviceId },
+                                echoCancellation: false,
+                                noiseSuppression: false,
+                                autoGainControl: false,
+                                channelCount: { ideal: 1 }
+                            }
+                        });
+                    }
+                    if (!strictDeviceSelection) {
+                        attempts.push({
+                            name: 'ideal-device',
+                            constraints: {
+                                deviceId: { ideal: deviceId },
+                                echoCancellation: !!preferSpeechEnhancement,
+                                noiseSuppression: !!preferSpeechEnhancement,
+                                autoGainControl: !!preferSpeechEnhancement
+                            }
+                        });
+                        if (preferSpeechEnhancement) {
+                            attempts.push({
+                                name: 'ideal-device-raw',
+                                constraints: {
+                                    deviceId: { ideal: deviceId },
+                                    echoCancellation: false,
+                                    noiseSuppression: false,
+                                    autoGainControl: false,
+                                    channelCount: { ideal: 1 }
+                                }
+                            });
+                        }
+                    }
+                }
+                if (allowSystemFallback) {
+                    attempts.push({
+                        name: 'system-default',
+                        constraints: {
+                            echoCancellation: !!preferSpeechEnhancement,
+                            noiseSuppression: !!preferSpeechEnhancement,
+                            autoGainControl: !!preferSpeechEnhancement
+                        }
+                    });
+                    if (preferSpeechEnhancement) {
+                        attempts.push({
+                            name: 'system-default-raw',
+                            constraints: {
+                                echoCancellation: false,
+                                noiseSuppression: false,
+                                autoGainControl: false,
+                                channelCount: { ideal: 1 }
+                            }
+                        });
+                    }
+                    attempts.push({
+                        name: 'minimal',
+                        constraints: true
+                    });
+                }
+
+                const failures = [];
+                for (const attempt of attempts) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: attempt.constraints });
+                        await ensureStreamTracksActive(stream, label);
+                        if (deviceId) {
+                            const metadata = getTrackDeviceMetadata(stream);
+                            const strictAttempt = strictDeviceSelection || attempt.name.startsWith('exact-device');
+                            if (strictAttempt && metadata.deviceId && metadata.deviceId !== deviceId) {
+                                stream.getTracks().forEach(track => track.stop());
+                                failures.push(`${attempt.name}: device mismatch (requested ${deviceId}, received ${metadata.deviceId})`);
+                                continue;
+                            }
+                            if (strictAttempt && !metadata.deviceId && expectedDeviceLabel && metadata.label && !labelsLikelyMatch(expectedDeviceLabel, metadata.label)) {
+                                stream.getTracks().forEach(track => track.stop());
+                                failures.push(`${attempt.name}: label mismatch (requested \"${expectedDeviceLabel}\", received \"${metadata.label}\")`);
+                                continue;
+                            }
+                        }
+                        return stream;
+                    } catch (error) {
+                        failures.push(`${attempt.name}: ${resolveErrorMessage(error)}`);
+                    }
+                }
+
+                throw new Error(`Unable to initialize ${label} input. ${failures.join(' | ')}`);
+            };
+
+            const runCounselorInputDiagnostic = async () => {
+                if (typeof MediaRecorder === 'undefined') {
+                    alert('MediaRecorder is not supported in this runtime.');
+                    return;
+                }
+
+                if (runCounselorDiagBtn) runCounselorDiagBtn.disabled = true;
+                recordSessionStatus.textContent = 'Running counselor microphone diagnostic...';
+                recordSessionStatus.style.color = '#f39c12';
+
+                let testStream = null;
+                let testRecorder = null;
+                const testChunks = [];
+                try {
+                    await refreshAudioInputDevices({ askPermission: true });
+                    const resolvedInputs = await resolveRecordingInputIds();
+                    const counselorId = resolvedInputs.counselorId || '';
+
+                    if (!counselorId) {
+                        throw new Error('No counselor input selected. Choose a physical microphone and retry.');
+                    }
+
+                    testStream = await acquireInputStream({
+                        deviceId: counselorId,
+                        label: 'Counselor-Diagnostic',
+                        preferSpeechEnhancement: false,
+                        allowSystemFallback: false
+                    });
+
+                    const track = testStream.getAudioTracks()[0];
+                    const settings = track?.getSettings ? track.getSettings() : {};
+                    testRecorder = createMediaRecorderSafe(testStream);
+                    testRecorder.addEventListener('dataavailable', (event) => {
+                        if (event.data && event.data.size > 0) {
+                            testChunks.push(event.data);
+                        }
+                    });
+
+                    testRecorder.start(200);
+                    await new Promise(resolve => setTimeout(resolve, 1700));
+                    if (testRecorder.state === 'recording') {
+                        try {
+                            testRecorder.requestData();
+                        } catch (_error) {
+                        }
+                        testRecorder.stop();
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 550));
+
+                    const capturedBytes = getChunkBytes(testChunks);
+                    if (capturedBytes <= 0) {
+                        throw new Error(`Diagnostic captured 0 bytes from counselor input. Track settings: sampleRate=${settings?.sampleRate || 'unknown'}, channelCount=${settings?.channelCount || 'unknown'}, deviceId=${settings?.deviceId || 'unknown'}`);
+                    }
+
+                    recordSessionStatus.textContent = `Counselor mic test passed: captured ${capturedBytes} bytes (sampleRate ${settings?.sampleRate || 'n/a'}, channels ${settings?.channelCount || 'n/a'}).`;
+                    recordSessionStatus.style.color = '#27ae60';
+                } catch (error) {
+                    const message = resolveErrorMessage(error);
+                    recordSessionStatus.textContent = `Counselor mic test failed: ${message}`;
+                    recordSessionStatus.style.color = '#e74c3c';
+                    alert(`Counselor mic diagnostic failed.\n\n${message}\n\nClient-side checks:\n1) Confirm counselor is a physical mic, not loopback.\n2) Ensure counselor and client are different devices.\n3) Close any app that may hold exclusive control of the mic.\n4) In macOS Audio MIDI Setup, verify mic input activity responds.`);
+                } finally {
+                    if (testRecorder && testRecorder.state !== 'inactive') {
+                        try {
+                            testRecorder.stop();
+                        } catch (_error) {
+                        }
+                    }
+                    if (testStream) {
+                        testStream.getTracks().forEach(track => track.stop());
+                    }
+                    if (runCounselorDiagBtn) runCounselorDiagBtn.disabled = false;
+                }
+            };
+
+            const updateRecordSessionControls = () => {
+                if (!recordSessionBtn || !recordSessionStatus) return;
+
+                const client = findClient(selectedClientId);
+                const appointment = findAppointment(client, selectedAppointmentId);
+                const hasTranscript = !!(appointment?.whisperTranscript || '').trim();
+                const hasMatchingAudioArtifact =
+                    !!lastRecordedSessionAudio
+                    && lastRecordedSessionAudio.clientId === selectedClientId
+                    && lastRecordedSessionAudio.appointmentId === selectedAppointmentId;
+                if (sessionTranscriptEl) {
+                    sessionTranscriptEl.value = appointment ? (appointment.whisperTranscript || '') : '';
+                    sessionTranscriptEl.disabled = !appointment;
+                    sessionTranscriptEl.placeholder = appointment
+                        ? 'Transcript will appear here after transcription...'
+                        : 'Select an appointment to view transcript...';
+                }
+                if (downloadTranscriptBtn) {
+                    downloadTranscriptBtn.disabled = !appointment || !hasTranscript || isRecordingSession || isTranscribingSession;
+                }
+                if (downloadCounselorAudioBtn) {
+                    downloadCounselorAudioBtn.disabled = !hasMatchingAudioArtifact || !lastRecordedSessionAudio?.counselorBlob || isRecordingSession || isTranscribingSession;
+                }
+                if (downloadClientAudioBtn) {
+                    downloadClientAudioBtn.disabled = !hasMatchingAudioArtifact || !lastRecordedSessionAudio?.clientBlob || isRecordingSession || isTranscribingSession;
+                }
+
+                if (isTranscribingSession) {
+                    recordSessionBtn.disabled = true;
+                    recordSessionBtn.textContent = 'Transcribing...';
+                    recordSessionStatus.textContent = 'Finalizing transcript...';
+                    recordSessionStatus.style.color = 'var(--text-color-secondary)';
+                    return;
+                }
+
+                if (isRecordingSession) {
+                    recordSessionBtn.disabled = false;
+                    recordSessionBtn.textContent = 'Stop Recording';
+                    recordSessionStatus.textContent = 'Recording session audio...';
+                    recordSessionStatus.style.color = '#e67e22';
+                    return;
+                }
+
+                recordSessionBtn.textContent = 'Start Recording';
+                recordSessionBtn.disabled = !appointment || !mlxWhisperRunning;
+
+                if (!appointment) {
+                    recordSessionStatus.textContent = 'Select an appointment to record.';
+                    recordSessionStatus.style.color = 'var(--text-color-secondary)';
+                    return;
+                }
+
+                if (!mlxWhisperRunning) {
+                    recordSessionStatus.textContent = 'MLX Whisper unavailable. Check Python/MLX setup or restart app.';
+                    recordSessionStatus.style.color = '#e67e22';
+                    return;
+                }
+
+                if (hasTranscript) {
+                    recordSessionStatus.textContent = 'Transcript ready. Press Start Recording to capture a new one.';
+                    recordSessionStatus.style.color = '#27ae60';
+                } else {
+                    recordSessionStatus.textContent = 'No transcript recorded for this appointment yet.';
+                    recordSessionStatus.style.color = 'var(--text-color-secondary)';
+                }
+            };
+
+            const refreshMlxWhisperStatus = async () => {
+                if (!tauriInvoke) {
+                    mlxWhisperRunning = false;
+                    updateRecordSessionControls();
+                    return;
+                }
+                try {
+                    const status = await tauriInvoke('get_mlx_whisper_status');
+                    mlxWhisperRunning = !!status?.running;
+                } catch (_error) {
+                    mlxWhisperRunning = false;
+                }
+                updateRecordSessionControls();
+            };
+
+            const startMlxWhisperEngine = async ({ silent = false } = {}) => {
+                if (!tauriInvoke) {
+                    if (!silent) {
+                        alert('MLX Whisper controls require the desktop app runtime.');
+                    }
+                    return;
+                }
+                try {
+                    const status = await tauriInvoke('start_mlx_whisper');
+                    mlxWhisperRunning = !!status?.running;
+                    updateRecordSessionControls();
+                } catch (error) {
+                    mlxWhisperRunning = false;
+                    updateRecordSessionControls();
+                    if (!silent) {
+                        alert(`Unable to start MLX Whisper. ${error?.message || error}`);
+                    }
+                }
+            };
+
+            const stopMlxWhisperEngine = async () => {
+                if (!tauriInvoke) return;
+                try {
+                    await tauriInvoke('stop_mlx_whisper');
+                } catch (_error) {
+                } finally {
+                    mlxWhisperRunning = false;
+                    updateRecordSessionControls();
+                }
+            };
+
+            const transcribeWithMlxWhisper = async (audioBlob, { language = '' } = {}) => {
+                if (!tauriInvoke) {
+                    throw new Error('MLX Whisper transcription requires the desktop app runtime.');
+                }
+                if (!mlxWhisperRunning) {
+                    throw new Error('MLX Whisper is not running. Start MLX first.');
+                }
+
+                const base64Audio = await blobToBase64(audioBlob);
+                const extension = await inferAudioBlobExtension(audioBlob);
+                const transcript = await tauriInvoke('transcribe_with_mlx_whisper', {
+                    args: {
+                        audioBase64: base64Audio,
+                        extension,
+                        model: mlxWhisperModel,
+                        language
+                    }
+                });
+
+                const normalizedTranscript = String(transcript || '').trim();
+                if (!normalizedTranscript) {
+                    throw new Error('MLX Whisper returned an empty transcript.');
+                }
+                return normalizedTranscript;
+            };
+            const startSessionRecording = async () => {
+                if (isRecordingSession || isTranscribingSession) return;
+
+                const client = findClient(selectedClientId);
+                const appointment = findAppointment(client, selectedAppointmentId);
+                if (!appointment) {
+                    alert('Select an appointment before recording a session.');
+                    return;
+                }
+
+                if (typeof MediaRecorder === 'undefined') {
+                    alert('MediaRecorder is not supported in this runtime.');
+                    return;
+                }
+
+                try {
+                    await refreshAudioInputDevices({ askPermission: true });
+                    const resolvedInputs = await resolveRecordingInputIds();
+                    const resolvedCounselorInputId = resolvedInputs.counselorId || '';
+                    const resolvedClientInputId = resolvedInputs.clientId || '';
+
+                    if (clientInputDeviceId && !resolvedClientInputId) {
+                        throw new Error('The selected Client input is no longer available. Re-select the client input device (for example, BlackHole) and retry.');
+                    }
+                    if (counselorInputDeviceId && !resolvedCounselorInputId) {
+                        throw new Error('The selected Counselor input is no longer available. Re-select the counselor microphone and retry.');
+                    }
+
+                    if (resolvedClientInputId && resolvedCounselorInputId && resolvedClientInputId === resolvedCounselorInputId) {
+                        throw new Error('Counselor and Client inputs resolved to the same device. Choose distinct inputs (mic for counselor, BlackHole for client).');
+                    }
+
+                    if (resolvedCounselorInputId) {
+                        const mediaDevices = await waitForMediaDevices();
+                        if (mediaDevices?.enumerateDevices) {
+                            const devices = await mediaDevices.enumerateDevices();
+                            const byId = new Map(devices.filter(d => d.kind === 'audioinput').map(d => [d.deviceId, d]));
+                            const counselorDevice = byId.get(resolvedCounselorInputId);
+                            if (isLikelyLoopbackInput(counselorDevice)) {
+                                throw new Error('Counselor input appears to be a loopback device. Select a physical microphone for counselor input.');
+                            }
+                        }
+                    }
+
+                    counselorInputDeviceId = resolvedCounselorInputId;
+                    clientInputDeviceId = resolvedClientInputId;
+                    localStorage.setItem('counselorInputDeviceId', counselorInputDeviceId);
+                    localStorage.setItem('clientInputDeviceId', clientInputDeviceId);
+
+                    recordingClientId = selectedClientId;
+                    recordingAppointmentId = selectedAppointmentId;
+                    lastRecordedSessionAudio = null;
+
+                    appointment.whisperTranscript = '';
+                    delete appointment.auditCheck;
+                    markDirty();
+                    if (sessionTranscriptEl) {
+                        sessionTranscriptEl.value = '';
+                    }
+
+                    let counselorStream = await acquireInputStream({
+                        deviceId: resolvedCounselorInputId,
+                        label: 'Counselor',
+                        expectedDeviceLabel: resolvedInputs.counselorLabel || '',
+                        strictDeviceSelection: !!resolvedCounselorInputId,
+                        preferSpeechEnhancement: false,
+                        // If a counselor device is chosen, do not silently fall back to system default.
+                        allowSystemFallback: !resolvedCounselorInputId
+                    });
+                    const minSignalLevel = 0.002;
+                    let counselorSignalLevel = await probeStreamSignalLevel(counselorStream, 1000);
+                    if (counselorSignalLevel < minSignalLevel) {
+                        counselorStream.getTracks().forEach(track => track.stop());
+                        counselorStream = await acquireInputStream({
+                            deviceId: resolvedCounselorInputId,
+                            label: 'Counselor-Retry',
+                            expectedDeviceLabel: resolvedInputs.counselorLabel || '',
+                            strictDeviceSelection: !!resolvedCounselorInputId,
+                            preferSpeechEnhancement: true,
+                            allowSystemFallback: !resolvedCounselorInputId
+                        });
+                        counselorSignalLevel = await probeStreamSignalLevel(counselorStream, 1000);
+                    }
+                    if (counselorSignalLevel < minSignalLevel) {
+                        counselorStream.getTracks().forEach(track => track.stop());
+                        throw new Error('Selected counselor input did not show live microphone signal during preflight. Check input routing and speak into the selected mic, then retry.');
+                    }
+
+                    mediaRecorderChunks = [];
+                    clientMediaRecorderChunks = [];
+                    let clientSignalLevel = null;
+
+                    const hasDistinctClientInput = !!resolvedClientInputId && resolvedClientInputId !== resolvedCounselorInputId;
+                    if (hasDistinctClientInput) {
+                        clientRecordingStream = await acquireInputStream({
+                            deviceId: resolvedClientInputId,
+                            label: 'Client',
+                            expectedDeviceLabel: resolvedInputs.clientLabel || '',
+                            strictDeviceSelection: true,
+                            preferSpeechEnhancement: false,
+                            allowSystemFallback: false
+                        });
+                        clientSignalLevel = await probeStreamSignalLevel(clientRecordingStream, 800);
+                    } else {
+                        clientMediaRecorder = null;
+                    }
+
+                    const counselorTrackAfterClient = counselorStream?.getAudioTracks?.()?.[0] || null;
+                    if (!counselorTrackAfterClient || counselorTrackAfterClient.readyState !== 'live') {
+                        try { counselorStream.getTracks().forEach(track => track.stop()); } catch (_error) {}
+                        counselorStream = await acquireInputStream({
+                            deviceId: resolvedCounselorInputId,
+                            label: 'Counselor-Reacquire',
+                            expectedDeviceLabel: resolvedInputs.counselorLabel || '',
+                            strictDeviceSelection: !!resolvedCounselorInputId,
+                            preferSpeechEnhancement: true,
+                            allowSystemFallback: !resolvedCounselorInputId
+                        });
+                        counselorSignalLevel = await probeStreamSignalLevel(counselorStream, 800);
+                        if (counselorSignalLevel < minSignalLevel) {
+                            try { counselorStream.getTracks().forEach(track => track.stop()); } catch (_error) {}
+                            throw new Error('Counselor stream ended and could not be reacquired with a live signal.');
+                        }
+                    }
+
+                    if (hasDistinctClientInput) {
+                        const counselorMeta = getTrackDeviceMetadata(counselorStream);
+                        const clientMeta = getTrackDeviceMetadata(clientRecordingStream);
+                        const sameDeviceId = counselorMeta.deviceId
+                            && clientMeta.deviceId
+                            && counselorMeta.deviceId === clientMeta.deviceId;
+                        const sameGroupId = counselorMeta.groupId
+                            && clientMeta.groupId
+                            && counselorMeta.groupId === clientMeta.groupId;
+                        const sameLabel = counselorMeta.label
+                            && clientMeta.label
+                            && labelsLikelyMatch(counselorMeta.label, clientMeta.label);
+
+                        if (sameDeviceId || sameGroupId || sameLabel) {
+                            throw new Error(
+                                `Counselor and Client streams resolved to the same input source (counselor deviceId=${counselorMeta.deviceId || 'n/a'}, client deviceId=${clientMeta.deviceId || 'n/a'}). Re-select inputs and retry.`
+                            );
+                        }
+                    }
+
+                    activeRecordingStream = counselorStream;
+                    let recorderStream = counselorStream;
+                    if (hasDistinctClientInput && clientRecordingStream) {
+                        recorderStream = await createStereoMergedRecordingStream(counselorStream, clientRecordingStream);
+                    }
+                    mediaRecorder = createMediaRecorderSafe(recorderStream);
+                    try {
+                        await startCounselorPcmCapture(counselorStream);
+                    } catch (_error) {
+                    }
+
+                    if (recordSessionStatus) {
+                        recordSessionStatus.textContent = `Recording session audio... (Counselor: ${resolvedInputs.counselorLabel || 'System default input'} | Client: ${resolvedInputs.clientLabel || 'System default input'})`;
+                        recordSessionStatus.style.color = '#e67e22';
+                    }
+
+                    mediaRecorder.addEventListener('dataavailable', (event) => {
+                        if (event.data && event.data.size > 0) {
+                            mediaRecorderChunks.push(event.data);
+                        }
+                    });
+
+                    mediaRecorder.addEventListener('stop', async () => {
+                        isRecordingSession = false;
+                        isTranscribingSession = true;
+                        updateRecordSessionControls();
+
+                        try {
+                            await new Promise(resolve => setTimeout(resolve, RECORDER_STOP_FLUSH_DELAY_MS));
+                            await waitForChunkFlush(mediaRecorderChunks, 2200);
+
+                            const recordingClient = findClient(recordingClientId);
+                            const recordingAppointment = findAppointment(recordingClient, recordingAppointmentId);
+                            if (!recordingAppointment) {
+                                throw new Error('Recorded appointment is no longer available.');
+                            }
+
+                            const mergedMimeType = mediaRecorder?.mimeType || 'audio/webm';
+                            const mergedRecorderBlob = new Blob(mediaRecorderChunks, { type: mergedMimeType });
+
+                            const counselorPcmBlob = await finalizeCounselorPcmCapture({ discard: false });
+                            let splitCounselorBlob = null;
+                            let splitClientBlob = null;
+                            let counselorBlob = null;
+                            let clientBlob = null;
+                            if (hasDistinctClientInput) {
+                                const splitResult = await splitStereoConversationBlob(mergedRecorderBlob);
+                                splitCounselorBlob = splitResult.counselorBlob;
+                                splitClientBlob = splitResult.clientBlob;
+                                counselorBlob = splitCounselorBlob;
+                                clientBlob = splitClientBlob;
+
+                                const hasPcmCounselor = isUsableAudioBlob(counselorPcmBlob);
+                                if (hasPcmCounselor) {
+                                    if (!isUsableAudioBlob(counselorBlob) && isUsableAudioBlob(clientBlob)) {
+                                        // Preserve client split and recover counselor from direct mic PCM capture.
+                                        counselorBlob = counselorPcmBlob;
+                                    } else if (!isUsableAudioBlob(clientBlob) && isUsableAudioBlob(splitCounselorBlob)) {
+                                        // Some encoders collapse one channel; recover labels by using PCM counselor + split channel as client.
+                                        counselorBlob = counselorPcmBlob;
+                                        clientBlob = splitCounselorBlob;
+                                    }
+                                }
+                            } else {
+                                counselorBlob = mergedRecorderBlob && mergedRecorderBlob.size > 0
+                                    ? mergedRecorderBlob
+                                    : null;
+                            }
+
+                            lastRecordedSessionAudio = {
+                                clientId: recordingClientId,
+                                appointmentId: recordingAppointmentId,
+                                clientName: recordingClient?.name || 'client',
+                                appointmentDate: recordingAppointment?.date || new Date().toISOString().split('T')[0],
+                                counselorRecorderBlob: mergedRecorderBlob && mergedRecorderBlob.size > 0 ? mergedRecorderBlob : null,
+                                counselorBlob: counselorBlob && counselorBlob.size > 0 ? counselorBlob : null,
+                                clientBlob: clientBlob && clientBlob.size > 0 ? clientBlob : null,
+                                capturedAt: Date.now()
+                            };
+
+                            const counselorRecorderBytes = getChunkBytes(mediaRecorderChunks);
+                            const counselorPcmBytes = counselorPcmBlob?.size || 0;
+                            const counselorBytes = counselorBlob?.size || counselorRecorderBytes;
+                            const clientBytes = clientBlob?.size || 0;
+                            const counselorCaptureUsable = isUsableAudioBlob(counselorBlob);
+                            const clientCaptureUsable = isUsableAudioBlob(clientBlob);
+                            if (!(counselorBlob && counselorBlob.size > 0) && !(clientBlob && clientBlob.size > 0)) {
+                                throw new Error(`No audio bytes captured from selected inputs (counselor recorder: ${counselorRecorderBytes}, client: ${clientBytes}).`);
+                            }
+                            if (hasDistinctClientInput && !counselorCaptureUsable) {
+                                const counselorDiag = getStreamCaptureDiagnostics(counselorStream);
+                                const clientDiag = clientRecordingStream ? getStreamCaptureDiagnostics(clientRecordingStream) : null;
+                                if (!clientCaptureUsable) {
+                                    throw new Error(
+                                        `Counselor capture is invalid (${counselorBytes} bytes) and client capture is also too short (${clientBytes} bytes). Keep recording for at least 2-3 seconds before stopping. Diagnostics: counselorSignal=${counselorSignalLevel.toFixed(4)}, clientSignal=${Number(clientSignalLevel || 0).toFixed(4)}, counselorPcmBytes=${counselorPcmBytes}, counselorTrack=${JSON.stringify(counselorDiag)}, clientTrack=${JSON.stringify(clientDiag)}.`
+                                    );
+                                }
+                                throw new Error(
+                                    `Counselor microphone capture appears invalid (captured ${counselorBytes} bytes; minimum expected ${MIN_VALID_CAPTURE_BYTES}). Client capture is present (${clientBytes} bytes), so counselor input likely failed. Diagnostics: counselorSignal=${counselorSignalLevel.toFixed(4)}, clientSignal=${Number(clientSignalLevel || 0).toFixed(4)}, counselorPcmBytes=${counselorPcmBytes}, counselorMime=${mediaRecorder?.mimeType || 'n/a'}, clientMime=${clientMediaRecorder?.mimeType || 'n/a'}, counselorTrack=${JSON.stringify(counselorDiag)}, clientTrack=${JSON.stringify(clientDiag)}.`
+                                );
+                            }
+                            if (hasDistinctClientInput && !clientCaptureUsable) {
+                                const counselorDiag = getStreamCaptureDiagnostics(counselorStream);
+                                const clientDiag = clientRecordingStream ? getStreamCaptureDiagnostics(clientRecordingStream) : null;
+                                throw new Error(
+                                    `Client capture is invalid (captured ${clientBytes} bytes; minimum expected ${MIN_VALID_CAPTURE_BYTES}) while counselor capture is ${counselorBytes} bytes. Recording was rejected to prevent counselor-only attribution. Diagnostics: counselorSignal=${counselorSignalLevel.toFixed(4)}, clientSignal=${Number(clientSignalLevel || 0).toFixed(4)}, counselorMime=${mediaRecorder?.mimeType || 'n/a'}, clientMime=${clientMediaRecorder?.mimeType || 'n/a'}, counselorTrack=${JSON.stringify(counselorDiag)}, clientTrack=${JSON.stringify(clientDiag)}.`
+                                );
+                            }
+
+                            const transcriptSegments = [];
+                            const transcriptionIssues = [];
+                            let normalizedCounselorTranscript = '';
+                            let normalizedClientTranscript = '';
+                            if (clientBlob && clientBlob.size > 0) {
+                                try {
+                                    const clientTranscript = await transcribeAudioWithFallbacks(clientBlob, { label: 'Client' });
+                                    normalizedClientTranscript = String(clientTranscript || '').trim();
+                                    if (normalizedClientTranscript) {
+                                        transcriptSegments.push(`Client:\n${normalizedClientTranscript}`);
+                                    }
+                                } catch (error) {
+                                    transcriptionIssues.push(`Client: ${resolveErrorMessage(error)}`);
+                                }
+                            }
+
+                            if (counselorBlob && counselorBlob.size > 0) {
+                                try {
+                                    const counselorCandidates = [];
+                                    if (counselorBlob && counselorBlob.size > 0) {
+                                        counselorCandidates.push(counselorBlob);
+                                    }
+                                    if (counselorPcmBlob && counselorPcmBlob.size > 0 && counselorPcmBlob !== counselorBlob) {
+                                        counselorCandidates.push(counselorPcmBlob);
+                                    }
+
+                                    let counselorTranscript = '';
+                                    const counselorFailures = [];
+                                    for (let i = 0; i < counselorCandidates.length; i += 1) {
+                                        try {
+                                            counselorTranscript = await transcribeAudioWithFallbacks(counselorCandidates[i], {
+                                                label: `Counselor-${i + 1}`
+                                            });
+                                            if (String(counselorTranscript || '').trim()) {
+                                                break;
+                                            }
+                                        } catch (error) {
+                                            counselorFailures.push(resolveErrorMessage(error));
+                                        }
+                                    }
+                                    if (!String(counselorTranscript || '').trim()) {
+                                        throw new Error(counselorFailures.join(' | ') || 'No counselor speech detected from available counselor channels.');
+                                    }
+
+                                    normalizedCounselorTranscript = String(counselorTranscript || '').trim();
+                                    if (normalizedCounselorTranscript && normalizedClientTranscript) {
+                                        normalizedCounselorTranscript = removeClientOverlapFromCounselor(
+                                            normalizedCounselorTranscript,
+                                            normalizedClientTranscript
+                                        );
+                                    }
+                                    if (normalizedCounselorTranscript) {
+                                        transcriptSegments.unshift(`Counselor:\n${normalizedCounselorTranscript}`);
+                                    } else if (normalizedClientTranscript) {
+                                        transcriptionIssues.push('Counselor transcript overlapped client content and was filtered out.');
+                                    }
+                                } catch (error) {
+                                    transcriptionIssues.push(`Counselor: ${resolveErrorMessage(error)}`);
+                                }
+                            }
+
+                            if (hasDistinctClientInput && transcriptsLikelyMirrored(normalizedCounselorTranscript, normalizedClientTranscript)) {
+                                throw new Error(
+                                    `Counselor audio appears to mirror the Client stream, so counselor input was likely not isolated. Recording was rejected to avoid a misleading transcript (counselor bytes ${counselorBytes}, client bytes ${clientBytes}).`
+                                );
+                            }
+
+                            const mergedTranscript = transcriptSegments.join('\n\n').trim();
+                            if (!mergedTranscript) {
+                                throw new Error(
+                                    `No usable speech was detected. Whisper returned empty output (counselor bytes ${counselorBytes}, client bytes ${clientBytes}, counselor recorder bytes ${counselorRecorderBytes}). ${transcriptionIssues.length ? `Transcription issues: ${transcriptionIssues.join(' | ')}` : ''}`
+                                );
+                            }
+
+                            recordingAppointment.whisperTranscript = mergedTranscript;
+                            delete recordingAppointment.auditCheck;
+                            markDirty();
+
+                            if (selectedClientId !== recordingClientId || selectedAppointmentId !== recordingAppointmentId) {
+                                selectedClientId = recordingClientId;
+                                selectedAppointmentId = recordingAppointmentId;
+                                selectedNoteId = null;
+                                selectedIntakeId = null;
+                            }
+
+                            fullRender();
+                            if (transcriptionIssues.length > 0) {
+                                recordSessionStatus.textContent = `Transcript ready with warnings: ${transcriptionIssues.join(' | ')}`;
+                                recordSessionStatus.style.color = '#e67e22';
+                            } else {
+                                recordSessionStatus.textContent = 'Transcript ready. Click Generate Note when you are ready to create SOAP output.';
+                                recordSessionStatus.style.color = '#27ae60';
+                            }
+                        } catch (error) {
+                            console.error('Session recording/transcription failed:', error);
+                            alert(`Transcription failed. ${resolveErrorMessage(error)}`);
+                        } finally {
+                            mediaRecorder = null;
+                            mediaRecorderChunks = [];
+                            clientMediaRecorder = null;
+                            clientMediaRecorderChunks = [];
+                            recordingStartedAt = 0;
+                            isTranscribingSession = false;
+                            recordingClientId = null;
+                            recordingAppointmentId = null;
+                            stopRecordingStream();
+                            updateRecordSessionControls();
+                        }
+                    });
+
+                    mediaRecorder.start(300);
+                    recordingStartedAt = Date.now();
+                    isRecordingSession = true;
+                    updateRecordSessionControls();
+                } catch (error) {
+                    stopRecordingStream();
+                    recordingStartedAt = 0;
+                    const errorMsg = resolveErrorMessage(error);
+                    alert(`Unable to start recording. ${errorMsg}`);
+                    updateRecordSessionControls();
+                }
+            };
+
+            const stopSessionRecording = () => {
+                if (!isRecordingSession || !mediaRecorder) return;
+                if (mediaRecorder.state !== 'inactive') {
+                    const elapsedMs = recordingStartedAt ? (Date.now() - recordingStartedAt) : 0;
+                    const minCaptureMs = 2000;
+                    const stopDelayMs = elapsedMs < minCaptureMs
+                        ? Math.max(RECORDER_STOP_FLUSH_DELAY_MS, minCaptureMs - elapsedMs)
+                        : RECORDER_STOP_FLUSH_DELAY_MS;
+
+                    window.setTimeout(() => {
+                        if (mediaRecorder && mediaRecorder.state === 'recording') {
+                            try {
+                                mediaRecorder.requestData();
+                            } catch (_error) {
+                            }
+                        }
+                        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                            mediaRecorder.stop();
+                        }
+                    }, stopDelayMs);
+                }
             };
 
             const runSoapAuditCheck = (client, appointment) => {
@@ -3834,7 +5780,8 @@ Requirements:
             };
 
             const fetchGoalDraftsFromAI = async (problem, goalCount, objectiveCount, format, modalities) => {
-                if (!selectedModel) {
+                const resolvedModel = resolveActiveModelSelection();
+                if (!resolvedModel) {
                     throw new Error('Please connect to a provider and select a model in Settings.');
                 }
 
@@ -4297,6 +6244,7 @@ Requirements:
                 renderSoap();
                 
                 generateNoteBtn.disabled = !appointment || !hasAppointmentGenerationInput(appointment);
+                updateRecordSessionControls();
             };
 
             const renderGoals = () => {
@@ -5772,23 +7720,56 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
 {"s":"• Ct said they felt bad.","o":"• Writer talked about coping.","a":"• Ct displays affect congruent with mood.","p":"• Continue to explore themes of loss.","i":"• Psychoeducation\\n• Cognitive Restructuring","s_suggestion":[{"original":"• Ct said they felt bad.","suggested":"• Ct reported experiencing significant distress."}],"o_suggestion":[{"original":"• Writer talked about coping.","suggested":"• Writer provided psychoeducation on coping strategies."}],"a_suggestion":["Client appears to be making progress toward treatment goals related to anxiety."],"p_suggestion":["Continue to utilize CBT techniques to challenge cognitive distortions in the next session."]};
             `;
 
-            const generateSoapNote = async () => {
+            const getGenerationContentByMode = (appointment, sourceMode = 'both') => {
+                const mode = sourceMode === 'notes' || sourceMode === 'transcript' ? sourceMode : 'both';
+                const includeNotes = mode !== 'transcript';
+                const includeTranscript = mode !== 'notes';
+                return {
+                    appointmentSessionInfo: includeNotes ? (appointment?.sessionInfo || '') : '',
+                    transcriptContext: includeTranscript ? getWhisperTranscriptContext(appointment) : ''
+                };
+            };
+
+            const resolveActiveModelSelection = () => {
+                if (typeof selectedModel === 'string' && selectedModel.trim()) {
+                    return selectedModel.trim();
+                }
+
+                let candidate = '';
+                if (apiProvider === 'vertex') {
+                    candidate = (vertexModelInput?.value || '').trim() || (localStorage.getItem('vertexModel') || '').trim();
+                } else if (apiProvider === 'openai') {
+                    candidate = (openaiModelInput?.value || '').trim() || (localStorage.getItem('openaiModel') || '').trim();
+                } else if (apiProvider === 'ollama') {
+                    candidate = (modelSelect?.value || '').trim() || (localStorage.getItem('ollamaModel') || '').trim();
+                } else {
+                    candidate = (modelSelect?.value || '').trim() || (localStorage.getItem('openWebUIModel') || '').trim();
+                }
+
+                if (candidate) {
+                    selectedModel = candidate;
+                }
+                return candidate;
+            };
+
+            const generateSoapNote = async (sourceMode = 'both') => {
                 if (selectedNoteId || selectedIntakeId) {
                     alert('SOAP note generation is only available for appointments, not Notes or Intake Sessions.');
                     return;
                 }
-                if (!selectedModel) {
+                const resolvedModel = resolveActiveModelSelection();
+                if (!resolvedModel) {
                     alert('Please connect to a provider and select a model in Settings.');
                     return;
                 }
                 if (apiProvider === 'openwebui') {
-                    await generateSoapNoteWithOpenWebUI();
+                    await generateSoapNoteWithOpenWebUI(sourceMode);
                 } else if (apiProvider === 'vertex') {
-                    await generateSoapNoteWithVertex();
+                    await generateSoapNoteWithVertex(sourceMode);
                 } else if (apiProvider === 'openai') {
-                    await generateSoapNoteWithOpenAI();
+                    await generateSoapNoteWithOpenAI(sourceMode);
                 } else if (apiProvider === 'ollama') {
-                    await generateSoapNoteWithOllama();
+                    await generateSoapNoteWithOllama(sourceMode);
                 } else {
                     alert('Invalid API provider selected.');
                 }
@@ -5870,7 +7851,7 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                           : 'No interventions identified directly in Objective section.';
              };
 
-            const generateSoapNoteWithOpenAI = async () => {
+            const generateSoapNoteWithOpenAI = async (sourceMode = 'both') => {
                 if (!selectedModel || !openaiApiKey) {
                     alert('Please connect to OpenAI with an API key and model first.');
                     return;
@@ -5878,8 +7859,8 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
 
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
-                if (!client || !appointment || !hasAppointmentGenerationInput(appointment)) {
-                    alert('Please select a client and appointment, and enter session information and/or audit-proofing details.');
+                if (!client || !appointment || !hasAppointmentGenerationInput(appointment, sourceMode)) {
+                    alert('Please select a client and appointment, and ensure the selected generation source has content.');
                     return;
                 }
 
@@ -5890,7 +7871,9 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                 const selectedObjectivesContext = getSelectedObjectivesContext(client);
                 const interventionContext = getInterventionContext(appointment);
                 const modalityLensContext = getClientSoapModalityContext(client, appointment);
-                const appointmentSessionInfo = appointment.sessionInfo || '';
+                const generationContent = getGenerationContentByMode(appointment, sourceMode);
+                const appointmentSessionInfo = generationContent.appointmentSessionInfo;
+                const transcriptContext = generationContent.transcriptContext;
                 const instructionsContext = getInstructionsContext(client, appointment);
                 const auditProofing = getAuditProofingData(appointment);
                 // Split audit-proofing into Subjective vs Assessment contexts
@@ -5899,7 +7882,7 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                 const auditProofingAssessment = auditAssessmentParts ? `\n- **Audit (Assessment):**\n${auditAssessmentParts}` : '';
                 const auditProofingContext = `${auditProofingSubjective}${auditProofingAssessment}`;
 
-                const userPrompt = `- **Session Information (This Session):**\n${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${interventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}`;
+                const userPrompt = `- **Session Information (This Session):**\n${appointmentSessionInfo}${transcriptContext}${treatmentGoalsContext}${selectedObjectivesContext}${interventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}`;
 
                 const payload = {
                     model: selectedModel,
@@ -5947,7 +7930,7 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                 }
             };
 
-            const generateSoapNoteWithVertex = async () => {
+            const generateSoapNoteWithVertex = async (sourceMode = 'both') => {
                 if (!selectedModel || !vertexServiceAccount || !vertexLocation) {
                     alert('Please connect to Vertex AI with Service Account JSON and location first.');
                     return;
@@ -5955,8 +7938,8 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
 
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
-                if (!client || !appointment || !hasAppointmentGenerationInput(appointment)) {
-                    alert('Please select a client and appointment, and enter session information and/or audit-proofing details.');
+                if (!client || !appointment || !hasAppointmentGenerationInput(appointment, sourceMode)) {
+                    alert('Please select a client and appointment, and ensure the selected generation source has content.');
                     return;
                 }
 
@@ -5967,7 +7950,9 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                 const selectedObjectivesContext = getSelectedObjectivesContext(client);
                 const interventionContext = getInterventionContext(appointment);
                 const modalityLensContext = getClientSoapModalityContext(client, appointment);
-                const appointmentSessionInfo = appointment.sessionInfo || '';
+                const generationContent = getGenerationContentByMode(appointment, sourceMode);
+                const appointmentSessionInfo = generationContent.appointmentSessionInfo;
+                const transcriptContext = generationContent.transcriptContext;
                 const instructionsContext = getInstructionsContext(client, appointment);
                 const auditProofing = getAuditProofingData(appointment);
                 // Split audit-proofing into Subjective vs Assessment contexts
@@ -5978,7 +7963,7 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
 
                 const userPrompt = `
 - **Session Information (This Session):**
-${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${interventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}
+${appointmentSessionInfo}${transcriptContext}${treatmentGoalsContext}${selectedObjectivesContext}${interventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}
 `;
                 const fullPrompt = `${systemPrompt}\n\n**User Input:**\n${userPrompt}`;
 
@@ -6037,7 +8022,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
                 }
             };
 
-            const generateSoapNoteWithOpenWebUI = async () => {
+            const generateSoapNoteWithOpenWebUI = async (sourceMode = 'both') => {
                 if (!selectedModel) {
                     alert('Please connect to your server and select a model first.');
                     return;
@@ -6045,8 +8030,8 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
 
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
-                if (!client || !appointment || !hasAppointmentGenerationInput(appointment)) {
-                    alert('Please select a client and appointment, and enter session information and/or audit-proofing details.');
+                if (!client || !appointment || !hasAppointmentGenerationInput(appointment, sourceMode)) {
+                    alert('Please select a client and appointment, and ensure the selected generation source has content.');
                     return;
                 }
 
@@ -6057,7 +8042,9 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
                 const selectedObjectivesContext = getSelectedObjectivesContext(client);
                 const interventionContext = getInterventionContext(appointment);
                 const modalityLensContext = getClientSoapModalityContext(client, appointment);
-                const appointmentSessionInfo = appointment.sessionInfo || '';
+                const generationContent = getGenerationContentByMode(appointment, sourceMode);
+                const appointmentSessionInfo = generationContent.appointmentSessionInfo;
+                const transcriptContext = generationContent.transcriptContext;
                 const instructionsContext = getInstructionsContext(client, appointment);
                 const auditProofing = getAuditProofingData(appointment);
                 const auditProofingLines = [
@@ -6073,7 +8060,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
                 const userPrompt = `
 - **Client Name:** ${client.name}
 - **Session Information (This Session):**
-${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${interventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}`;
+${appointmentSessionInfo}${transcriptContext}${treatmentGoalsContext}${selectedObjectivesContext}${interventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}`;
 
                 const payload = {
                     model: selectedModel,
@@ -6171,7 +8158,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
                 }
             };
 
-            const generateSoapNoteWithOllama = async () => {
+            const generateSoapNoteWithOllama = async (sourceMode = 'both') => {
                 if (!selectedModel) {
                     alert('Please connect to Ollama and select a model first.');
                     return;
@@ -6179,8 +8166,8 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
 
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
-                if (!client || !appointment || !hasAppointmentGenerationInput(appointment)) {
-                    alert('Please select a client and appointment, and enter session information and/or audit-proofing details.');
+                if (!client || !appointment || !hasAppointmentGenerationInput(appointment, sourceMode)) {
+                    alert('Please select a client and appointment, and ensure the selected generation source has content.');
                     return;
                 }
 
@@ -6198,7 +8185,9 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
                 const selectedObjectivesContext = getSelectedObjectivesContext(client);
                 const interventionContext = getInterventionContext(appointment);
                 const modalityLensContext = getClientSoapModalityContext(client, appointment);
-                const appointmentSessionInfo = appointment.sessionInfo || '';
+                const generationContent = getGenerationContentByMode(appointment, sourceMode);
+                const appointmentSessionInfo = generationContent.appointmentSessionInfo;
+                const transcriptContext = generationContent.transcriptContext;
                 const instructionsContext = getInstructionsContext(client, appointment);
                 const auditProofing = getAuditProofingData(appointment);
                 const auditProofingLines = [
@@ -6214,7 +8203,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
                 const userPrompt = `
 - **Client Name:** ${client.name}
 - **Session Information (This Session):**
-${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${interventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}`;
+${appointmentSessionInfo}${transcriptContext}${treatmentGoalsContext}${selectedObjectivesContext}${interventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}`;
 
                 const payload = {
                     model: selectedModel,
@@ -7110,6 +9099,9 @@ This error cannot be fixed within this application's code; it requires a configu
                     localStorage.removeItem('columnSizes');
                     localStorage.removeItem('rowSizes');
                     localStorage.removeItem('theme');
+                    localStorage.removeItem('mlxWhisperModel');
+                    localStorage.removeItem('counselorInputDeviceId');
+                    localStorage.removeItem('clientInputDeviceId');
                     alert('All data has been permanently erased. The page will now reload.');
                     window.location.reload();
                 } else if (userInput !== null) {
@@ -7299,6 +9291,108 @@ This error cannot be fixed within this application's code; it requires a configu
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
+            };
+
+            const sanitizeFileStem = (value, fallback = 'session') => {
+                const normalized = String(value || '')
+                    .trim()
+                    .replace(/[^a-zA-Z0-9-_]+/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '');
+                return normalized || fallback;
+            };
+
+            const downloadCurrentTranscript = async () => {
+                const client = findClient(selectedClientId);
+                const appointment = findAppointment(client, selectedAppointmentId);
+                const transcript = String(appointment?.whisperTranscript || sessionTranscriptEl?.value || '').trim();
+                if (!transcript) {
+                    alert('No transcript is available to download for this appointment.');
+                    return;
+                }
+
+                const clientName = sanitizeFileStem(client?.name || 'client', 'client');
+                const appointmentDate = sanitizeFileStem(appointment?.date || new Date().toISOString().split('T')[0], 'date');
+                const defaultFileName = `transcript-${clientName}-${appointmentDate}.txt`;
+                const isTauriRuntime = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
+
+                if (isTauriRuntime) {
+                    try {
+                        const lastTranscriptPath = localStorage.getItem('lastTranscriptPath') || defaultFileName;
+                        const selectedPath = await save({
+                            title: 'Save Session Transcript',
+                            defaultPath: lastTranscriptPath,
+                            filters: [
+                                {
+                                    name: 'Text Files',
+                                    extensions: ['txt']
+                                }
+                            ]
+                        });
+
+                        if (!selectedPath) return;
+
+                        const normalizedPath = normalizeSelectedPath(selectedPath);
+                        if (!normalizedPath) {
+                            throw new Error('No valid save path returned by dialog.');
+                        }
+
+                        await writeTextFile(normalizedPath, transcript, { create: true });
+                        localStorage.setItem('lastTranscriptPath', normalizedPath);
+                        updateSaveStatus('Transcript saved.', true, 2500);
+                        return;
+                    } catch (error) {
+                        console.error('Failed to save transcript with native dialog:', error);
+                        alert(`Transcript save failed. ${resolveErrorMessage(error)}`);
+                        updateSaveStatus('Transcript save failed.', false, 3000);
+                        return;
+                    }
+                }
+
+                const blob = new Blob([transcript], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = defaultFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            const downloadSessionAudioTrack = async (trackKind) => {
+                const artifact = lastRecordedSessionAudio;
+                if (!artifact) {
+                    alert('No recorded session audio is available yet. Record a session first.');
+                    return;
+                }
+
+                const sourceBlob = (() => {
+                    if (trackKind === 'counselor') {
+                        return artifact.counselorBlob;
+                    }
+                    return artifact.clientBlob;
+                })();
+                if (!sourceBlob || sourceBlob.size <= 0) {
+                    alert(`${trackKind === 'counselor' ? 'Counselor' : 'Client'} audio is not available for download from the last recording.`);
+                    return;
+                }
+
+                const ext = getAudioBlobExtension(sourceBlob.type);
+                const label = trackKind === 'counselor' ? 'counselor' : 'client';
+                const clientName = sanitizeFileStem(artifact.clientName || 'client', 'client');
+                const appointmentDate = sanitizeFileStem(artifact.appointmentDate || new Date().toISOString().split('T')[0], 'date');
+                const defaultFileName = `session-audio-${label}-${clientName}-${appointmentDate}.${ext}`;
+
+                const url = URL.createObjectURL(sourceBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = defaultFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                updateSaveStatus(`${trackKind === 'counselor' ? 'Counselor' : 'Client'} audio downloaded.`, true, 2000);
             };
 
             // --- Event Listeners ---
@@ -7561,7 +9655,68 @@ This error cannot be fixed within this application's code; it requires a configu
                 }
                 changePasswordBtn.disabled = false;
             });
-            generateNoteBtn.addEventListener('click', generateSoapNote);
+            generateNoteBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (generateNoteBtn.disabled) return;
+                generateNoteMenu.classList.toggle('hidden');
+            });
+            generateNoteFromNotesBtn.addEventListener('click', async () => {
+                generateNoteMenu.classList.add('hidden');
+                await generateSoapNote('notes');
+            });
+            generateNoteFromTranscriptBtn.addEventListener('click', async () => {
+                generateNoteMenu.classList.add('hidden');
+                await generateSoapNote('transcript');
+            });
+            generateNoteFromBothBtn.addEventListener('click', async () => {
+                generateNoteMenu.classList.add('hidden');
+                await generateSoapNote('both');
+            });
+            document.addEventListener('click', (event) => {
+                if (!generateNoteMenuWrapper?.contains(event.target)) {
+                    generateNoteMenu.classList.add('hidden');
+                }
+            });
+            recordSessionBtn.addEventListener('click', async () => {
+                if (isRecordingSession) {
+                    stopSessionRecording();
+                    return;
+                }
+                await startSessionRecording();
+            });
+            downloadTranscriptBtn?.addEventListener('click', async () => {
+                await downloadCurrentTranscript();
+            });
+            downloadCounselorAudioBtn?.addEventListener('click', async () => {
+                await downloadSessionAudioTrack('counselor');
+            });
+            downloadClientAudioBtn?.addEventListener('click', async () => {
+                await downloadSessionAudioTrack('client');
+            });
+            counselorInputSelect.addEventListener('change', () => {
+                counselorInputDeviceId = counselorInputSelect.value || '';
+                localStorage.setItem('counselorInputDeviceId', counselorInputDeviceId);
+            });
+            clientInputSelect.addEventListener('change', () => {
+                clientInputDeviceId = clientInputSelect.value || '';
+                localStorage.setItem('clientInputDeviceId', clientInputDeviceId);
+            });
+            refreshAudioInputsBtn.addEventListener('click', () => {
+                refreshAudioInputDevices({ askPermission: true });
+            });
+            runCounselorDiagBtn?.addEventListener('click', async () => {
+                await runCounselorInputDiagnostic();
+            });
+            if (navigator.mediaDevices?.addEventListener) {
+                navigator.mediaDevices.addEventListener('devicechange', () => {
+                    refreshAudioInputDevices({ askPermission: false });
+                });
+            }
+            sessionNotesTabBtn.addEventListener('click', () => setActiveSessionTab('notes'));
+            sessionTranscriptTabBtn.addEventListener('click', async () => {
+                setActiveSessionTab('transcript');
+                await refreshAudioInputDevices({ askPermission: true });
+            });
             connectApiBtn.addEventListener('click', connectToServer);
             verifyApiBtn.addEventListener('click', verifyApiConnection);
             
@@ -7691,7 +9846,11 @@ This error cannot be fixed within this application's code; it requires a configu
             configureBackupBtn?.addEventListener('click', configureSecondaryBackupLocation);
             clearBackupBtn?.addEventListener('click', clearSecondaryBackupLocation);
 
-            settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+            settingsBtn.addEventListener('click', async () => {
+                settingsModal.classList.remove('hidden');
+                await refreshAudioInputDevices({ askPermission: false });
+                await refreshSelectedMlxModelCacheStatus();
+            });
             
             checkForUpdatesBtn?.addEventListener('click', async () => {
                 try {
@@ -7922,6 +10081,14 @@ This error cannot be fixed within this application's code; it requires a configu
                 goalGeneratorModalityOther = customInstructionsModalityOtherEl.value;
                 saveClientGoalGenerationLens();
             });
+            mlxWhisperModelSelect.addEventListener('change', () => {
+                const value = mlxWhisperModelSelect.value.trim();
+                mlxWhisperModel = value || DEFAULT_MLX_WHISPER_MODEL;
+                localStorage.setItem('mlxWhisperModel', mlxWhisperModel);
+                refreshSelectedMlxModelCacheStatus();
+            });
+            downloadMlxModelBtn.addEventListener('click', downloadAndVerifyMlxModel);
+            deleteMlxModelBtn.addEventListener('click', deleteMlxModelCache);
             modelSelect.addEventListener('change', (e) => {
                 selectedModel = e.target.value;
                 if (apiProvider === 'openwebui') {
@@ -7967,7 +10134,7 @@ This error cannot be fixed within this application's code; it requires a configu
             };
             apiProviderSelect.addEventListener('change', toggleProviderSettings);
 
-            startTimerBtn.addEventListener('click', () => {
+            startTimerBtn.addEventListener('click', async () => {
                 const appointment = findAppointment(findClient(selectedClientId), selectedAppointmentId);
                 if (appointment) {
                     appointment.startTime = new Date().toISOString();
@@ -7975,6 +10142,10 @@ This error cannot be fixed within this application's code; it requires a configu
                     delete appointment.auditCheck;
                     markDirty();
                     renderSessionTimer(appointment);
+
+                    if (!isRecordingSession && !isTranscribingSession) {
+                        await startSessionRecording();
+                    }
                 }
             });
 
@@ -7986,6 +10157,10 @@ This error cannot be fixed within this application's code; it requires a configu
                     delete appointment.auditCheck;
                     markDirty();
                     renderSessionTimer(appointment);
+                }
+
+                if (isRecordingSession) {
+                    stopSessionRecording();
                 }
             });
 
@@ -8360,6 +10535,16 @@ This error cannot be fixed within this application's code; it requires a configu
                 const savedVertexLocation = localStorage.getItem('vertexLocation');
                 const savedOpenAIKey = localStorage.getItem('openaiApiKey');
                 const savedOllamaAddress = localStorage.getItem('ollamaAddress');
+                const savedMlxWhisperModel = localStorage.getItem('mlxWhisperModel');
+
+                tauriMlxModelOptions.forEach(ensureMlxWhisperModelOption);
+                mlxWhisperModel = savedMlxWhisperModel || mlxWhisperModel || DEFAULT_MLX_WHISPER_MODEL;
+                ensureMlxWhisperModelOption(mlxWhisperModel);
+                if (mlxWhisperModelSelect) {
+                    mlxWhisperModelSelect.value = mlxWhisperModel;
+                }
+                setDeleteModelButtonEnabled(false);
+                refreshSelectedMlxModelCacheStatus();
                 
                 toggleProviderSettings(); // Set initial UI state
 
@@ -8402,6 +10587,16 @@ This error cannot be fixed within this application's code; it requires a configu
             initializeColumnCollapsers();
             loadCollapsedStates();
             loadTheme();
+            setActiveSessionTab('notes');
+            requestMicrophonePermissionOnLaunch()
+                .catch(error => {
+                    console.warn('Startup microphone permission request failed:', error);
+                })
+                .finally(() => {
+                    refreshAudioInputDevices({ askPermission: true });
+                });
+            refreshMlxWhisperStatus();
+            startMlxWhisperEngine({ silent: true });
             
             makeResizable(document.getElementById('resizer1'), document.getElementById('panelClients'), document.getElementById('panelAppointments'));
             makeResizable(document.getElementById('resizer2'), document.getElementById('panelAppointments'), document.getElementById('panelSession'));
@@ -8413,6 +10608,11 @@ This error cannot be fixed within this application's code; it requires a configu
                 normalizeClientData,
                 fullRender
             };
+
+            window.addEventListener('beforeunload', () => {
+                if (!mlxWhisperRunning || !tauriInvoke) return;
+                tauriInvoke('stop_mlx_whisper').catch(() => {});
+            });
 
         });
 

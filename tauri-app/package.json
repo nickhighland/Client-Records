@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:build:testmac": "tauri build --bundles app --config src-tauri/tauri.conf.json --config src-tauri/tauri.test.conf.json"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

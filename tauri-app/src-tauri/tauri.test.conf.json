@@ -1,0 +1,23 @@
+{
+  "$schema": "./gen/schemas/desktop-schema.json",
+  "productName": "Client Records Listener Test",
+  "identifier": "com.clientrecords.tauriapp.listenertest",
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "resources": [
+      "resources/ffmpeg"
+    ],
+    "macOS": {
+      "infoPlist": "Info.plist"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": false
+    }
+  }
+}

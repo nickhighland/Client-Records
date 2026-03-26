@@ -37,10 +37,190 @@ pub fn run() {
             transcribe_with_mlx_whisper,
             download_mlx_whisper_model,
             verify_mlx_whisper_model_download,
-            delete_mlx_whisper_model
+            delete_mlx_whisper_model,
+            get_audio_setup_status,
+            setup_audio_devices,
+            teardown_audio_devices,
+            install_blackhole
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+// ---------------------------------------------------------------------------
+// Audio loopback setup — CoreAudio aggregate device management via Swift helper
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AudioSetupStatus {
+    helper_available: bool,
+    blackhole_installed: bool,
+    blackhole_name: String,
+    aggregate_input_exists: bool,
+    aggregate_output_exists: bool,
+    aggregate_input_uid: String,
+    aggregate_output_uid: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AudioSetupResult {
+    success: bool,
+    aggregate_input_uid: String,
+    aggregate_output_uid: String,
+    output_switched: bool,
+    mic_name: String,
+    blackhole_name: String,
+    error: Option<String>,
+    warning: Option<String>,
+}
+
+fn resolve_audio_helper(app: &tauri::AppHandle) -> Option<PathBuf> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        candidates.push(resource_dir.join("audio_setup"));
+        candidates.push(resource_dir.join("resources").join("audio_setup"));
+    }
+
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("resources")
+            .join("audio_setup"),
+    );
+
+    candidates.into_iter().find(|p| p.exists())
+}
+
+fn ensure_executable(path: &std::path::Path) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(path)
+            .map_err(|e| format!("Cannot read helper metadata: {e}"))?
+            .permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(path, perms)
+            .map_err(|e| format!("Cannot chmod helper: {e}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_audio_setup_status(app: tauri::AppHandle) -> Result<AudioSetupStatus, String> {
+    let Some(helper) = resolve_audio_helper(&app) else {
+        return Ok(AudioSetupStatus {
+            helper_available: false,
+            blackhole_installed: false,
+            blackhole_name: String::new(),
+            aggregate_input_exists: false,
+            aggregate_output_exists: false,
+            aggregate_input_uid: String::new(),
+            aggregate_output_uid: String::new(),
+        });
+    };
+
+    ensure_executable(&helper)?;
+
+    let output = Command::new(&helper)
+        .arg("status")
+        .output()
+        .map_err(|e| format!("Failed to run audio helper: {e}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let v: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("Bad helper output: {e}\n{stdout}"))?;
+
+    Ok(AudioSetupStatus {
+        helper_available: true,
+        blackhole_installed:    v["blackholeInstalled"].as_bool().unwrap_or(false),
+        blackhole_name:         v["blackholeName"].as_str().unwrap_or("").to_string(),
+        aggregate_input_exists:  v["aggregateInputExists"].as_bool().unwrap_or(false),
+        aggregate_output_exists: v["aggregateOutputExists"].as_bool().unwrap_or(false),
+        aggregate_input_uid:     v["aggregateInputUID"].as_str().unwrap_or("").to_string(),
+        aggregate_output_uid:    v["aggregateOutputUID"].as_str().unwrap_or("").to_string(),
+    })
+}
+
+#[tauri::command]
+async fn setup_audio_devices(
+    app: tauri::AppHandle,
+    preferred_mic_uid: Option<String>,
+) -> Result<AudioSetupResult, String> {
+    let helper = resolve_audio_helper(&app)
+        .ok_or("Audio setup helper not found in app resources")?;
+    ensure_executable(&helper)?;
+
+    let mut cmd = Command::new(&helper);
+    cmd.arg("setup");
+    if let Some(uid) = preferred_mic_uid {
+        cmd.arg("--preferred-mic-uid").arg(uid);
+    }
+
+    let output = cmd.output()
+        .map_err(|e| format!("Failed to run audio setup: {e}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let v: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("Bad setup output: {e}\n{stdout}"))?;
+
+    Ok(AudioSetupResult {
+        success:              v["success"].as_bool().unwrap_or(false),
+        aggregate_input_uid:  v["aggregateInputUID"].as_str().unwrap_or("").to_string(),
+        aggregate_output_uid: v["aggregateOutputUID"].as_str().unwrap_or("").to_string(),
+        output_switched:      v["outputSwitched"].as_bool().unwrap_or(false),
+        mic_name:             v["micName"].as_str().unwrap_or("").to_string(),
+        blackhole_name:       v["blackholeName"].as_str().unwrap_or("").to_string(),
+        error:                v["error"].as_str().map(String::from),
+        warning:              v["warning"].as_str().map(String::from),
+    })
+}
+
+#[tauri::command]
+async fn teardown_audio_devices(app: tauri::AppHandle) -> Result<(), String> {
+    let helper = resolve_audio_helper(&app)
+        .ok_or("Audio setup helper not found")?;
+    ensure_executable(&helper)?;
+
+    let output = Command::new(&helper)
+        .arg("teardown")
+        .output()
+        .map_err(|e| format!("Failed to run audio teardown: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Teardown failed: {stderr}"));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn install_blackhole() -> Result<String, String> {
+    let brew_candidates = ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"];
+    let brew = brew_candidates
+        .iter()
+        .find(|&&p| std::path::Path::new(p).exists())
+        .ok_or_else(|| {
+            "Homebrew not found. Install Homebrew from https://brew.sh, \
+             then run: brew install blackhole-2ch".to_string()
+        })?;
+
+    let output = Command::new(brew)
+        .arg("install")
+        .arg("blackhole-2ch")
+        .output()
+        .map_err(|e| format!("Failed to run brew: {e}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{stdout}{stderr}");
+
+    if output.status.success() || combined.contains("already installed") {
+        Ok("BlackHole 2ch installed successfully.".to_string())
+    } else {
+        Err(format!("Homebrew install failed: {stderr}"))
+    }
 }
 
 use serde::{Deserialize, Serialize};

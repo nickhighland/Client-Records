@@ -36,7 +36,8 @@
       "dmg"
     ],
     "resources": [
-      "resources/ffmpeg"
+      "resources/ffmpeg",
+      "resources/audio_setup"
     ],
     "macOS": {
       "infoPlist": "Info.plist"

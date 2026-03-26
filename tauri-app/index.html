@@ -2127,7 +2127,7 @@
                                  Record the session, then transcription runs automatically after you stop.
                              </div>
                              <div style="font-size: 0.78rem; color: var(--text-color-secondary);">
-                                 For client/system audio on macOS, install a loopback virtual device (for example BlackHole) and select it in Settings.
+                                 For client audio routing, open Settings → Transcription → Loopback Audio Setup.
                              </div>
                              <textarea id="sessionTranscript" readonly placeholder="Transcript will appear here after transcription..." style="width: 100%; min-height: 170px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text); resize: vertical;"></textarea>
                          </div>
@@ -2348,8 +2348,21 @@
                         <button id="refreshAudioInputsBtn" class="btn" style="padding: 6px 10px; font-size: 0.8rem;">Refresh Inputs</button>
                         <button id="runCounselorDiagBtn" class="btn" style="padding: 6px 10px; font-size: 0.8rem;">Run Counselor Mic Test</button>
                     </div>
-                    <div style="font-size: 0.78rem; color: var(--text-color-secondary);">
-                        For client/system audio on macOS, install a loopback virtual device (for example BlackHole).
+                    <!-- Loopback audio setup panel -->
+                    <div id="loopbackSetupPanel" style="border: 1px solid var(--input-border); border-radius: 8px; padding: 0.9rem; background: var(--input-bg);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                            <span style="font-weight: 600; font-size: 0.88rem;">Loopback Audio Setup</span>
+                            <span id="loopbackStatusBadge" style="font-size: 0.72rem; padding: 2px 9px; border-radius: 12px; background: #7f8c8d; color: #fff;">Checking…</span>
+                        </div>
+                        <div id="loopbackStatusText" style="font-size: 0.79rem; color: var(--text-color-secondary); margin-bottom: 0.6rem;">
+                            Checking audio setup status…
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.45rem;">
+                            <button id="installBlackholeBtn" class="btn" style="padding: 5px 10px; font-size: 0.79rem; display: none;">Install BlackHole via Homebrew</button>
+                            <button id="setupAudioBtn" class="btn" style="padding: 5px 10px; font-size: 0.79rem; display: none;">Set Up Audio Routing</button>
+                            <button id="teardownAudioBtn" class="btn" style="padding: 5px 10px; font-size: 0.79rem; display: none;">Remove Audio Routing</button>
+                            <button id="refreshLoopbackStatusBtn" class="btn" style="padding: 5px 10px; font-size: 0.79rem;">Refresh</button>
+                        </div>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.4rem;">
                         <label for="mlxWhisperModelSelect" style="font-weight: 600;">MLX Whisper Model (App-Wide)</label>
@@ -3029,6 +3042,13 @@
             let stereoClientSource = null;
             let stereoChannelMerger = null;
             let stereoRecordingStream = null;
+            let stereoCaptureProcessor = null;
+            let stereoCaptureGain = null;
+            let stereoCaptureCounselorChunks = [];
+            let stereoCaptureClientChunks = [];
+            let stereoCaptureSampleRate = 0;
+            let stereoCaptureActive = false;
+            let stereoCaptureStats = null;
             let counselorPcmCaptureContext = null;
             let counselorPcmCaptureSource = null;
             let counselorPcmCaptureProcessor = null;
@@ -3036,6 +3056,12 @@
             let counselorPcmCaptureChunks = [];
             let counselorPcmCaptureSampleRate = 0;
             let counselorPcmCaptureActive = false;
+            let counselorPcmCaptureMaxRms = 0;
+            let counselorPcmCapturePeak = 0;
+            let counselorDirectCapture = null;
+            let clientDirectCapture = null;
+            let recordingHealthMonitorInterval = null;
+            let recordingHealthMonitorBusy = false;
             let clientMediaRecorder = null;
             let clientMediaRecorderChunks = [];
             let clientRecordingStream = null;
@@ -3314,6 +3340,14 @@
                 }
                 if (clientId && !byId.has(clientId)) {
                     clientId = '';
+                }
+
+                // If "Client Records Input" (our aggregate device) is present and no client
+                // device is selected yet, prefer it for the client input automatically.
+                if (!clientId) {
+                    const aggInput = audioInputs.find(d =>
+                        String(d?.label || '').toLowerCase().includes('client records input'));
+                    if (aggInput?.deviceId) clientId = aggInput.deviceId;
                 }
 
                 const clientDevice = clientId ? byId.get(clientId) : null;
@@ -3729,7 +3763,14 @@
                 reader.readAsDataURL(blob);
             });
 
-            const ensureStreamTracksActive = async (stream, label) => {
+            const getPrimaryAudioTrack = (stream) => stream?.getAudioTracks?.()?.[0] || null;
+
+            const isAudioTrackLive = (stream) => {
+                const track = getPrimaryAudioTrack(stream);
+                return !!track && track.readyState === 'live';
+            };
+
+            const ensureStreamTracksActive = async (stream, label, { liveWaitMs = 240 } = {}) => {
                 const tracks = stream?.getAudioTracks?.() || [];
                 console.log(`[${label}] Stream acquired. Track count: ${tracks.length}`);
                 
@@ -3742,13 +3783,16 @@
                     console.log(`[${label}] Track ${i}: enabled=true, readyState=${track.readyState}, muted=${track.muted}, label=${track.label}`);
                 });
 
-                await new Promise(resolve => setTimeout(resolve, 150));
-
-                const hasLiveTrack = tracks.some(track => track.readyState === 'live');
+                const startedAt = Date.now();
+                let hasLiveTrack = tracks.some(track => track.readyState === 'live');
+                while (!hasLiveTrack && (Date.now() - startedAt) < Math.max(150, liveWaitMs)) {
+                    await new Promise(resolve => setTimeout(resolve, 120));
+                    hasLiveTrack = tracks.some(track => track.readyState === 'live');
+                }
                 if (!hasLiveTrack) {
                     const states = tracks.map((t, i) => `Track${i}:${t.readyState}`).join(', ');
                     console.error(`[${label}] No live tracks found. States: ${states}`);
-                    throw new Error(`${label} input is not active. Check selected input device and macOS microphone permissions.`);
+                    throw new Error(`${label} input is not active. Check the selected input device and macOS audio routing/permissions.`);
                 }
 
                 // `muted` can be transiently true for newly-started tracks or loopback devices.
@@ -3763,8 +3807,36 @@
                 }
             };
 
+            const ensureStreamTracksRemainLive = async (stream, label, durationMs = 900, pollMs = 120) => {
+                const tracks = stream?.getAudioTracks?.() || [];
+                if (!tracks.length) {
+                    throw new Error(`${label} input did not provide an audio track.`);
+                }
+
+                const startedAt = Date.now();
+                while ((Date.now() - startedAt) < Math.max(240, durationMs)) {
+                    const liveTrack = tracks.some(track => track.readyState === 'live');
+                    if (!liveTrack) {
+                        const states = tracks.map((track, index) => `${index}:${track.readyState}`).join(', ');
+                        throw new Error(`${label} input ended during setup (${states}).`);
+                    }
+                    await new Promise(resolve => setTimeout(resolve, pollMs));
+                }
+            };
+
+            const clearRecordingHealthMonitor = () => {
+                if (recordingHealthMonitorInterval) {
+                    window.clearInterval(recordingHealthMonitorInterval);
+                    recordingHealthMonitorInterval = null;
+                }
+                recordingHealthMonitorBusy = false;
+            };
+
             const stopRecordingStream = () => {
+                clearRecordingHealthMonitor();
+                void finalizeStereoConversationCapture({ discard: true });
                 void finalizeCounselorPcmCapture({ discard: true });
+                void finalizeClientPcmCapture({ discard: true });
                 if (activeRecordingStream) {
                     activeRecordingStream.getTracks().forEach(track => track.stop());
                     activeRecordingStream = null;
@@ -3784,10 +3856,19 @@
                 try { stereoCounselorSource?.disconnect(); } catch (_error) {}
                 try { stereoClientSource?.disconnect(); } catch (_error) {}
                 try { stereoChannelMerger?.disconnect(); } catch (_error) {}
+                try { stereoCaptureProcessor?.disconnect(); } catch (_error) {}
+                try { stereoCaptureGain?.disconnect(); } catch (_error) {}
                 try { stereoMergeDestination?.disconnect(); } catch (_error) {}
                 stereoCounselorSource = null;
                 stereoClientSource = null;
                 stereoChannelMerger = null;
+                stereoCaptureProcessor = null;
+                stereoCaptureGain = null;
+                stereoCaptureCounselorChunks = [];
+                stereoCaptureClientChunks = [];
+                stereoCaptureSampleRate = 0;
+                stereoCaptureActive = false;
+                stereoCaptureStats = null;
                 stereoMergeDestination = null;
                 if (stereoMergeContext) {
                     try {
@@ -3799,6 +3880,8 @@
             };
 
             const RECORDER_STOP_FLUSH_DELAY_MS = 900;
+            const MIN_VALID_CAPTURE_RMS = 0.0002;
+            const MIN_VALID_CAPTURE_PEAK = 0.002;
 
             const mergeFloat32Chunks = (chunks) => {
                 const total = chunks.reduce((sum, chunk) => sum + (chunk?.length || 0), 0);
@@ -3813,33 +3896,105 @@
                 return merged;
             };
 
-            const startCounselorPcmCapture = async (stream) => {
-                await finalizeCounselorPcmCapture({ discard: true });
+            const getEmptySignalStats = () => ({ maxRms: 0, peak: 0 });
+
+            const getSignalMetrics = (samples) => {
+                if (!samples || samples.length === 0) {
+                    return { rms: 0, peak: 0 };
+                }
+
+                let sumSquares = 0;
+                let peak = 0;
+                for (let i = 0; i < samples.length; i += 1) {
+                    const value = samples[i] || 0;
+                    const abs = Math.abs(value);
+                    sumSquares += value * value;
+                    if (abs > peak) peak = abs;
+                }
+
+                return {
+                    rms: Math.sqrt(sumSquares / samples.length),
+                    peak
+                };
+            };
+
+            const updateSignalStatsFromSamples = (stats, samples) => {
+                if (!stats || !samples || samples.length === 0) return;
+                const metrics = getSignalMetrics(samples);
+                stats.maxRms = Math.max(stats.maxRms || 0, metrics.rms);
+                stats.peak = Math.max(stats.peak || 0, metrics.peak);
+            };
+
+            const combineSignalStats = (...statsList) => {
+                return statsList.reduce((combined, stats) => ({
+                    maxRms: Math.max(combined.maxRms || 0, stats?.maxRms || 0),
+                    peak: Math.max(combined.peak || 0, stats?.peak || 0)
+                }), getEmptySignalStats());
+            };
+
+            const isSignalStatsUsable = (
+                stats,
+                { minMaxRms = MIN_VALID_CAPTURE_RMS, minPeak = MIN_VALID_CAPTURE_PEAK } = {}
+            ) => {
+                const maxRms = Number(stats?.maxRms || 0);
+                const peak = Number(stats?.peak || 0);
+                return maxRms >= minMaxRms || peak >= minPeak;
+            };
+
+            const formatSignalStats = (stats) => {
+                const maxRms = Number(stats?.maxRms || 0);
+                const peak = Number(stats?.peak || 0);
+                return `maxRms=${maxRms.toFixed(4)}, peak=${peak.toFixed(4)}`;
+            };
+
+            const formatLevel = (value) => (
+                typeof value === 'number' && Number.isFinite(value)
+                    ? value.toFixed(4)
+                    : 'n/a'
+            );
+
+            const padFloat32Samples = (samples, targetLength) => {
+                const normalizedTarget = Math.max(0, targetLength || 0);
+                if (!normalizedTarget) return new Float32Array(0);
+                if (samples?.length === normalizedTarget) {
+                    return samples;
+                }
+                const padded = new Float32Array(normalizedTarget);
+                if (samples?.length) {
+                    padded.set(samples.subarray(0, Math.min(samples.length, normalizedTarget)));
+                }
+                return padded;
+            };
+
+            const createDirectPcmCapture = async (label) => {
                 const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContextCtor) return;
+                if (!AudioContextCtor) return null;
 
                 const context = new AudioContextCtor();
-                const source = context.createMediaStreamSource(stream);
                 const processor = context.createScriptProcessor(4096, 1, 1);
                 const gain = context.createGain();
                 gain.gain.value = 0;
 
-                counselorPcmCaptureContext = context;
-                counselorPcmCaptureSource = source;
-                counselorPcmCaptureProcessor = processor;
-                counselorPcmCaptureGain = gain;
-                counselorPcmCaptureChunks = [];
-                counselorPcmCaptureSampleRate = context.sampleRate || 44100;
-                counselorPcmCaptureActive = true;
-
-                processor.onaudioprocess = (event) => {
-                    if (!counselorPcmCaptureActive) return;
-                    const input = event?.inputBuffer?.getChannelData?.(0);
-                    if (!input || input.length === 0) return;
-                    counselorPcmCaptureChunks.push(new Float32Array(input));
+                const capture = {
+                    label,
+                    context,
+                    processor,
+                    gain,
+                    source: null,
+                    chunks: [],
+                    sampleRate: context.sampleRate || 44100,
+                    active: true,
+                    stats: getEmptySignalStats()
                 };
 
-                source.connect(processor);
+                processor.onaudioprocess = (event) => {
+                    if (!capture.active) return;
+                    const input = event?.inputBuffer?.getChannelData?.(0);
+                    if (!input || input.length === 0) return;
+                    capture.chunks.push(new Float32Array(input));
+                    updateSignalStatsFromSamples(capture.stats, input);
+                };
+
                 processor.connect(gain);
                 gain.connect(context.destination);
 
@@ -3849,30 +4004,42 @@
                     } catch (_error) {
                     }
                 }
+
+                return capture;
             };
 
-            const finalizeCounselorPcmCapture = async ({ discard = false } = {}) => {
-                const context = counselorPcmCaptureContext;
-                const source = counselorPcmCaptureSource;
-                const processor = counselorPcmCaptureProcessor;
-                const gain = counselorPcmCaptureGain;
-                const chunks = counselorPcmCaptureChunks;
-                const sampleRate = counselorPcmCaptureSampleRate || 44100;
+            const bindStreamToDirectPcmCapture = async (capture, stream) => {
+                if (!capture || !stream) return;
+                try { capture.source?.disconnect(); } catch (_error) {}
+                capture.source = capture.context.createMediaStreamSource(stream);
+                capture.source.connect(capture.processor);
+                if (capture.context.state === 'suspended') {
+                    try {
+                        await capture.context.resume();
+                    } catch (_error) {
+                    }
+                }
+            };
 
-                counselorPcmCaptureContext = null;
-                counselorPcmCaptureSource = null;
-                counselorPcmCaptureProcessor = null;
-                counselorPcmCaptureGain = null;
-                counselorPcmCaptureChunks = [];
-                counselorPcmCaptureSampleRate = 0;
-                counselorPcmCaptureActive = false;
+            const startDirectPcmCapture = async (stream, label, existingCapture = null) => {
+                const capture = existingCapture || await createDirectPcmCapture(label);
+                if (!capture) return null;
+                await bindStreamToDirectPcmCapture(capture, stream);
+                return capture;
+            };
+
+            const finalizeDirectPcmCapture = async (capture, { discard = false } = {}) => {
+                if (!capture) {
+                    return discard ? null : { blob: null, stats: getEmptySignalStats() };
+                }
+
+                capture.active = false;
+                const { context, source, processor, gain, chunks, sampleRate, stats } = capture;
 
                 try { source?.disconnect(); } catch (_error) {}
                 try { processor?.disconnect(); } catch (_error) {}
                 try { gain?.disconnect(); } catch (_error) {}
-                if (processor) {
-                    try { processor.onaudioprocess = null; } catch (_error) {}
-                }
+                try { processor.onaudioprocess = null; } catch (_error) {}
 
                 if (context) {
                     try {
@@ -3882,9 +4049,47 @@
                 }
 
                 if (discard) return null;
+
                 const merged = mergeFloat32Chunks(chunks || []);
-                if (!merged.length) return null;
-                return encodeMonoPcm16Wav(merged, sampleRate);
+                if (!merged.length) {
+                    return {
+                        blob: null,
+                        stats
+                    };
+                }
+
+                return {
+                    blob: encodeMonoPcm16Wav(merged, sampleRate),
+                    stats
+                };
+            };
+
+            const startCounselorPcmCapture = async (stream, { preserve = false } = {}) => {
+                if (!preserve) {
+                    await finalizeDirectPcmCapture(counselorDirectCapture, { discard: true });
+                    counselorDirectCapture = null;
+                }
+                counselorDirectCapture = await startDirectPcmCapture(stream, 'Counselor', counselorDirectCapture);
+            };
+
+            const startClientPcmCapture = async (stream, { preserve = false } = {}) => {
+                if (!preserve) {
+                    await finalizeDirectPcmCapture(clientDirectCapture, { discard: true });
+                    clientDirectCapture = null;
+                }
+                clientDirectCapture = await startDirectPcmCapture(stream, 'Client', clientDirectCapture);
+            };
+
+            const finalizeCounselorPcmCapture = async ({ discard = false } = {}) => {
+                const result = await finalizeDirectPcmCapture(counselorDirectCapture, { discard });
+                counselorDirectCapture = null;
+                return result;
+            };
+
+            const finalizeClientPcmCapture = async ({ discard = false } = {}) => {
+                const result = await finalizeDirectPcmCapture(clientDirectCapture, { discard });
+                clientDirectCapture = null;
+                return result;
             };
 
             const getChunkBytes = (chunks) => chunks.reduce((total, chunk) => total + (chunk?.size || 0), 0);
@@ -4096,9 +4301,13 @@
                 let context = null;
                 let source = null;
                 let analyser = null;
+                let probeStream = null;
                 try {
+                    const sourceTrack = getPrimaryAudioTrack(stream);
+                    if (!sourceTrack) return 0;
+                    probeStream = new MediaStream([sourceTrack.clone()]);
                     context = new AudioContextCtor();
-                    source = context.createMediaStreamSource(stream);
+                    source = context.createMediaStreamSource(probeStream);
                     analyser = context.createAnalyser();
                     analyser.fftSize = 2048;
                     source.connect(analyser);
@@ -4131,6 +4340,9 @@
                     return 0;
                 } finally {
                     try { source?.disconnect(); } catch (_error) {}
+                    if (probeStream) {
+                        try { probeStream.getTracks().forEach(track => track.stop()); } catch (_error) {}
+                    }
                     if (context) {
                         try { await context.close(); } catch (_error) {}
                     }
@@ -4257,6 +4469,51 @@
                 return new Blob([buffer], { type: 'audio/wav' });
             };
 
+            const encodeStereoPcm16Wav = (leftSamples, rightSamples, sampleRate) => {
+                const frameCount = Math.max(leftSamples?.length || 0, rightSamples?.length || 0);
+                const channelCount = 2;
+                const bytesPerSample = 2;
+                const blockAlign = channelCount * bytesPerSample;
+                const byteRate = sampleRate * blockAlign;
+                const dataSize = frameCount * blockAlign;
+                const buffer = new ArrayBuffer(44 + dataSize);
+                const view = new DataView(buffer);
+
+                const writeAscii = (offset, text) => {
+                    for (let i = 0; i < text.length; i += 1) {
+                        view.setUint8(offset + i, text.charCodeAt(i));
+                    }
+                };
+
+                writeAscii(0, 'RIFF');
+                view.setUint32(4, 36 + dataSize, true);
+                writeAscii(8, 'WAVE');
+                writeAscii(12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, channelCount, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, byteRate, true);
+                view.setUint16(32, blockAlign, true);
+                view.setUint16(34, 16, true);
+                writeAscii(36, 'data');
+                view.setUint32(40, dataSize, true);
+
+                let offset = 44;
+                for (let i = 0; i < frameCount; i += 1) {
+                    const left = Math.max(-1, Math.min(1, leftSamples?.[i] || 0));
+                    const right = Math.max(-1, Math.min(1, rightSamples?.[i] || 0));
+                    const leftInt16 = left < 0 ? left * 0x8000 : left * 0x7fff;
+                    const rightInt16 = right < 0 ? right * 0x8000 : right * 0x7fff;
+                    view.setInt16(offset, leftInt16, true);
+                    offset += 2;
+                    view.setInt16(offset, rightInt16, true);
+                    offset += 2;
+                }
+
+                return new Blob([buffer], { type: 'audio/wav' });
+            };
+
             const normalizeAudioSamples = (samples, { targetPeak = 0.92, maxGain = 24 } = {}) => {
                 if (!samples || samples.length === 0) return new Float32Array(0);
                 let peak = 0;
@@ -4308,22 +4565,98 @@
                 }
             };
 
-            const createStereoMergedRecordingStream = async (counselorStream, clientStream) => {
+            const createPcmCaptureRecorderController = () => {
+                const listeners = {
+                    stop: [],
+                    dataavailable: []
+                };
+
+                return {
+                    state: 'inactive',
+                    mimeType: 'audio/wav',
+                    addEventListener(type, handler) {
+                        if (!listeners[type] || typeof handler !== 'function') return;
+                        listeners[type].push(handler);
+                    },
+                    start() {
+                        this.state = 'recording';
+                    },
+                    requestData() {
+                    },
+                    async stop() {
+                        if (this.state === 'inactive') return;
+                        this.state = 'inactive';
+                        const stopListeners = [...listeners.stop];
+                        for (const listener of stopListeners) {
+                            await listener();
+                        }
+                    }
+                };
+            };
+
+            const startStereoConversationCapture = async (counselorStream, clientStream) => {
+                await finalizeStereoConversationCapture({ discard: true });
                 const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContextCtor) {
-                    throw new Error('AudioContext is unavailable for stereo channel recording.');
+                    throw new Error('AudioContext is unavailable for stereo conversation capture.');
                 }
 
                 const context = new AudioContextCtor();
-                const destination = context.createMediaStreamDestination();
                 const counselorSource = context.createMediaStreamSource(counselorStream);
                 const clientSource = context.createMediaStreamSource(clientStream);
                 const merger = context.createChannelMerger(2);
+                const processor = context.createScriptProcessor(4096, 2, 2);
+                const gain = context.createGain();
+                gain.gain.value = 0;
+
+                try {
+                    merger.channelInterpretation = 'discrete';
+                    merger.channelCountMode = 'explicit';
+                    processor.channelInterpretation = 'discrete';
+                    processor.channelCountMode = 'explicit';
+                    processor.channelCount = 2;
+                } catch (_error) {
+                }
 
                 // Counselor is hard-mapped to left channel (0), Client to right channel (1).
                 counselorSource.connect(merger, 0, 0);
                 clientSource.connect(merger, 0, 1);
-                merger.connect(destination);
+                merger.connect(processor);
+                processor.connect(gain);
+                gain.connect(context.destination);
+
+                stereoCaptureCounselorChunks = [];
+                stereoCaptureClientChunks = [];
+                stereoCaptureSampleRate = context.sampleRate || 44100;
+                stereoCaptureActive = true;
+                stereoCaptureStats = {
+                    counselor: getEmptySignalStats(),
+                    client: getEmptySignalStats()
+                };
+
+                processor.onaudioprocess = (event) => {
+                    if (!stereoCaptureActive) return;
+                    const inputBuffer = event?.inputBuffer;
+                    const frameLength = inputBuffer?.length || 0;
+                    const counselorInput = inputBuffer?.numberOfChannels > 0
+                        ? inputBuffer.getChannelData(0)
+                        : null;
+                    const clientInput = inputBuffer?.numberOfChannels > 1
+                        ? inputBuffer.getChannelData(1)
+                        : null;
+
+                    const counselorCopy = counselorInput
+                        ? new Float32Array(counselorInput)
+                        : new Float32Array(frameLength);
+                    const clientCopy = clientInput
+                        ? new Float32Array(clientInput)
+                        : new Float32Array(frameLength);
+
+                    stereoCaptureCounselorChunks.push(counselorCopy);
+                    stereoCaptureClientChunks.push(clientCopy);
+                    updateSignalStatsFromSamples(stereoCaptureStats?.counselor, counselorCopy);
+                    updateSignalStatsFromSamples(stereoCaptureStats?.client, clientCopy);
+                };
 
                 if (context.state === 'suspended') {
                     try {
@@ -4333,45 +4666,92 @@
                 }
 
                 stereoMergeContext = context;
-                stereoMergeDestination = destination;
                 stereoCounselorSource = counselorSource;
                 stereoClientSource = clientSource;
                 stereoChannelMerger = merger;
-                stereoRecordingStream = destination.stream;
-                return destination.stream;
+                stereoCaptureProcessor = processor;
+                stereoCaptureGain = gain;
             };
 
-            const splitStereoConversationBlob = async (audioBlob) => {
-                const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContextCtor) {
-                    throw new Error('AudioContext is unavailable for channel split processing.');
-                }
-
-                const context = new AudioContextCtor();
-                try {
-                    const buffer = await audioBlob.arrayBuffer();
-                    const decoded = await context.decodeAudioData(buffer.slice(0));
-                    const channelCount = decoded.numberOfChannels || 1;
-                    if (channelCount < 2) {
-                        throw new Error(`Expected 2-channel recording but decoded ${channelCount} channel(s).`);
+            const finalizeStereoConversationCapture = async ({ discard = false } = {}) => {
+                const context = stereoMergeContext;
+                const counselorSource = stereoCounselorSource;
+                const clientSource = stereoClientSource;
+                const merger = stereoChannelMerger;
+                const processor = stereoCaptureProcessor;
+                const gain = stereoCaptureGain;
+                const counselorChunks = stereoCaptureCounselorChunks;
+                const clientChunks = stereoCaptureClientChunks;
+                const sampleRate = stereoCaptureSampleRate || 44100;
+                const stats = {
+                    counselor: {
+                        maxRms: Number(stereoCaptureStats?.counselor?.maxRms || 0),
+                        peak: Number(stereoCaptureStats?.counselor?.peak || 0)
+                    },
+                    client: {
+                        maxRms: Number(stereoCaptureStats?.client?.maxRms || 0),
+                        peak: Number(stereoCaptureStats?.client?.peak || 0)
                     }
+                };
 
-                    const sampleRate = Math.max(8000, Math.round(decoded.sampleRate || 44100));
-                    const counselorSamples = normalizeAudioSamples(new Float32Array(decoded.getChannelData(0)));
-                    const clientSamples = normalizeAudioSamples(new Float32Array(decoded.getChannelData(1)));
+                stereoCaptureActive = false;
+                stereoMergeContext = null;
+                stereoMergeDestination = null;
+                stereoCounselorSource = null;
+                stereoClientSource = null;
+                stereoChannelMerger = null;
+                stereoRecordingStream = null;
+                stereoCaptureProcessor = null;
+                stereoCaptureGain = null;
+                stereoCaptureCounselorChunks = [];
+                stereoCaptureClientChunks = [];
+                stereoCaptureSampleRate = 0;
+                stereoCaptureStats = null;
 
-                    return {
-                        counselorBlob: encodeMonoPcm16Wav(counselorSamples, sampleRate),
-                        clientBlob: encodeMonoPcm16Wav(clientSamples, sampleRate),
-                        sampleRate,
-                        channelCount
-                    };
-                } finally {
+                try { counselorSource?.disconnect(); } catch (_error) {}
+                try { clientSource?.disconnect(); } catch (_error) {}
+                try { merger?.disconnect(); } catch (_error) {}
+                if (processor) {
+                    try { processor.onaudioprocess = null; } catch (_error) {}
+                }
+                try { processor?.disconnect(); } catch (_error) {}
+                try { gain?.disconnect(); } catch (_error) {}
+                if (context) {
                     try {
                         await context.close();
                     } catch (_error) {
                     }
                 }
+
+                if (discard) return null;
+
+                const counselorMerged = mergeFloat32Chunks(counselorChunks || []);
+                const clientMerged = mergeFloat32Chunks(clientChunks || []);
+                const frameCount = Math.max(counselorMerged.length, clientMerged.length);
+                if (!frameCount) {
+                    return {
+                        counselorBlob: null,
+                        clientBlob: null,
+                        mergedBlob: null,
+                        sampleRate,
+                        frameCount: 0,
+                        stats
+                    };
+                }
+
+                const paddedCounselor = padFloat32Samples(counselorMerged, frameCount);
+                const paddedClient = padFloat32Samples(clientMerged, frameCount);
+                const normalizedCounselor = normalizeAudioSamples(paddedCounselor);
+                const normalizedClient = normalizeAudioSamples(paddedClient);
+
+                return {
+                    counselorBlob: encodeMonoPcm16Wav(normalizedCounselor, sampleRate),
+                    clientBlob: encodeMonoPcm16Wav(normalizedClient, sampleRate),
+                    mergedBlob: encodeStereoPcm16Wav(normalizedCounselor, normalizedClient, sampleRate),
+                    sampleRate,
+                    frameCount,
+                    stats
+                };
             };
 
             const transcribeAudioWithFallbacks = async (audioBlob, { label = 'Audio' } = {}) => {
@@ -4409,7 +4789,8 @@
                 expectedDeviceLabel = '',
                 strictDeviceSelection = false,
                 preferSpeechEnhancement = false,
-                allowSystemFallback = true
+                allowSystemFallback = true,
+                liveWaitMs = 240
             }) => {
                 const attempts = [];
                 if (deviceId) {
@@ -4490,7 +4871,7 @@
                 for (const attempt of attempts) {
                     try {
                         const stream = await navigator.mediaDevices.getUserMedia({ audio: attempt.constraints });
-                        await ensureStreamTracksActive(stream, label);
+                        await ensureStreamTracksActive(stream, label, { liveWaitMs });
                         if (deviceId) {
                             const metadata = getTrackDeviceMetadata(stream);
                             const strictAttempt = strictDeviceSelection || attempt.name.startsWith('exact-device');
@@ -4737,11 +5118,6 @@
                     return;
                 }
 
-                if (typeof MediaRecorder === 'undefined') {
-                    alert('MediaRecorder is not supported in this runtime.');
-                    return;
-                }
-
                 try {
                     await refreshAudioInputDevices({ askPermission: true });
                     const resolvedInputs = await resolveRecordingInputIds();
@@ -4794,65 +5170,76 @@
                         strictDeviceSelection: !!resolvedCounselorInputId,
                         preferSpeechEnhancement: false,
                         // If a counselor device is chosen, do not silently fall back to system default.
-                        allowSystemFallback: !resolvedCounselorInputId
+                        allowSystemFallback: !resolvedCounselorInputId,
+                        liveWaitMs: 500
                     });
-                    const minSignalLevel = 0.002;
-                    let counselorSignalLevel = await probeStreamSignalLevel(counselorStream, 1000);
-                    if (counselorSignalLevel < minSignalLevel) {
-                        counselorStream.getTracks().forEach(track => track.stop());
-                        counselorStream = await acquireInputStream({
+                    let counselorSignalLevel = null;
+                    let clientSignalLevel = null;
+                    let startupRecordingWarnings = [];
+                    const reacquireCounselorStream = async (label = 'Counselor-Retry') => {
+                        const reacquiredStream = await acquireInputStream({
                             deviceId: resolvedCounselorInputId,
-                            label: 'Counselor-Retry',
+                            label,
                             expectedDeviceLabel: resolvedInputs.counselorLabel || '',
                             strictDeviceSelection: !!resolvedCounselorInputId,
                             preferSpeechEnhancement: true,
-                            allowSystemFallback: !resolvedCounselorInputId
+                            allowSystemFallback: !resolvedCounselorInputId,
+                            liveWaitMs: 900
                         });
-                        counselorSignalLevel = await probeStreamSignalLevel(counselorStream, 1000);
-                    }
-                    if (counselorSignalLevel < minSignalLevel) {
-                        counselorStream.getTracks().forEach(track => track.stop());
-                        throw new Error('Selected counselor input did not show live microphone signal during preflight. Check input routing and speak into the selected mic, then retry.');
-                    }
+                        return {
+                            stream: reacquiredStream,
+                            signalLevel: null
+                        };
+                    };
 
                     mediaRecorderChunks = [];
                     clientMediaRecorderChunks = [];
-                    let clientSignalLevel = null;
 
                     const hasDistinctClientInput = !!resolvedClientInputId && resolvedClientInputId !== resolvedCounselorInputId;
-                    if (hasDistinctClientInput) {
-                        clientRecordingStream = await acquireInputStream({
+                    const reacquireClientStream = async (label = 'Client') => {
+                        const reacquiredStream = await acquireInputStream({
                             deviceId: resolvedClientInputId,
-                            label: 'Client',
+                            label,
                             expectedDeviceLabel: resolvedInputs.clientLabel || '',
                             strictDeviceSelection: true,
                             preferSpeechEnhancement: false,
-                            allowSystemFallback: false
+                            allowSystemFallback: false,
+                            liveWaitMs: 1600
                         });
-                        clientSignalLevel = await probeStreamSignalLevel(clientRecordingStream, 800);
+                        return reacquiredStream;
+                    };
+
+                    if (hasDistinctClientInput) {
+                        try {
+                            clientRecordingStream = await reacquireClientStream('Client');
+                        } catch (error) {
+                            clientRecordingStream = null;
+                            startupRecordingWarnings.push(
+                                `Client input was unavailable at start: ${resolveErrorMessage(error)}`
+                            );
+                        }
                     } else {
                         clientMediaRecorder = null;
                     }
 
-                    const counselorTrackAfterClient = counselorStream?.getAudioTracks?.()?.[0] || null;
-                    if (!counselorTrackAfterClient || counselorTrackAfterClient.readyState !== 'live') {
+                    if (!isAudioTrackLive(counselorStream)) {
                         try { counselorStream.getTracks().forEach(track => track.stop()); } catch (_error) {}
-                        counselorStream = await acquireInputStream({
-                            deviceId: resolvedCounselorInputId,
-                            label: 'Counselor-Reacquire',
-                            expectedDeviceLabel: resolvedInputs.counselorLabel || '',
-                            strictDeviceSelection: !!resolvedCounselorInputId,
-                            preferSpeechEnhancement: true,
-                            allowSystemFallback: !resolvedCounselorInputId
-                        });
-                        counselorSignalLevel = await probeStreamSignalLevel(counselorStream, 800);
-                        if (counselorSignalLevel < minSignalLevel) {
-                            try { counselorStream.getTracks().forEach(track => track.stop()); } catch (_error) {}
-                            throw new Error('Counselor stream ended and could not be reacquired with a live signal.');
-                        }
+                        const reacquiredCounselor = await reacquireCounselorStream('Counselor-Reacquire');
+                        counselorStream = reacquiredCounselor.stream;
+                        counselorSignalLevel = reacquiredCounselor.signalLevel;
                     }
 
-                    if (hasDistinctClientInput) {
+                    if (!isAudioTrackLive(counselorStream)) {
+                        throw new Error('Counselor stream ended and could not be reacquired.');
+                    }
+
+                    if (hasDistinctClientInput && clientRecordingStream && !isAudioTrackLive(clientRecordingStream)) {
+                        try { clientRecordingStream.getTracks().forEach(track => track.stop()); } catch (_error) {}
+                        clientRecordingStream = null;
+                        startupRecordingWarnings.push('Client input was not live at start. Recording will begin and keep retrying the client input in the background.');
+                    }
+
+                    if (hasDistinctClientInput && clientRecordingStream) {
                         const counselorMeta = getTrackDeviceMetadata(counselorStream);
                         const clientMeta = getTrackDeviceMetadata(clientRecordingStream);
                         const sameDeviceId = counselorMeta.deviceId
@@ -4873,19 +5260,60 @@
                     }
 
                     activeRecordingStream = counselorStream;
-                    let recorderStream = counselorStream;
-                    if (hasDistinctClientInput && clientRecordingStream) {
-                        recorderStream = await createStereoMergedRecordingStream(counselorStream, clientRecordingStream);
-                    }
-                    mediaRecorder = createMediaRecorderSafe(recorderStream);
+                    const usingIndependentDualCapture = hasDistinctClientInput;
+                    mediaRecorder = createPcmCaptureRecorderController();
                     try {
                         await startCounselorPcmCapture(counselorStream);
+                        if (usingIndependentDualCapture && clientRecordingStream) {
+                            await startClientPcmCapture(clientRecordingStream);
+                        } else {
+                            await finalizeClientPcmCapture({ discard: true });
+                        }
                     } catch (_error) {
                     }
 
+                    clearRecordingHealthMonitor();
+                    recordingHealthMonitorInterval = window.setInterval(async () => {
+                        if (!isRecordingSession || isTranscribingSession || recordingHealthMonitorBusy) return;
+                        recordingHealthMonitorBusy = true;
+                        try {
+                            if (!isAudioTrackLive(counselorStream)) {
+                                console.warn('Counselor stream ended during recording. Attempting reacquire.');
+                                try { counselorStream?.getTracks().forEach(track => track.stop()); } catch (_error) {}
+                                const reacquiredCounselor = await reacquireCounselorStream('Counselor-Live-Reacquire');
+                                counselorStream = reacquiredCounselor.stream;
+                                counselorSignalLevel = reacquiredCounselor.signalLevel;
+                                activeRecordingStream = counselorStream;
+                                await startCounselorPcmCapture(counselorStream, { preserve: true });
+                            }
+
+                            if (usingIndependentDualCapture && !isAudioTrackLive(clientRecordingStream)) {
+                                console.warn('Client stream ended during recording. Attempting reacquire.');
+                                try { clientRecordingStream?.getTracks().forEach(track => track.stop()); } catch (_error) {}
+                                clientRecordingStream = await reacquireClientStream('Client-Live-Reacquire');
+                                clientSignalLevel = await probeStreamSignalLevel(clientRecordingStream, 800);
+                                await startClientPcmCapture(clientRecordingStream, { preserve: true });
+                            }
+                        } catch (monitorError) {
+                            console.error('Recording health monitor failed:', monitorError);
+                            if (recordSessionStatus) {
+                                recordSessionStatus.textContent = `Recording warning: ${resolveErrorMessage(monitorError)} Continuing to preserve captured audio.`;
+                                recordSessionStatus.style.color = '#e67e22';
+                            }
+                        } finally {
+                            recordingHealthMonitorBusy = false;
+                        }
+                    }, 650);
+
                     if (recordSessionStatus) {
-                        recordSessionStatus.textContent = `Recording session audio... (Counselor: ${resolvedInputs.counselorLabel || 'System default input'} | Client: ${resolvedInputs.clientLabel || 'System default input'})`;
-                        recordSessionStatus.style.color = '#e67e22';
+                        const baseMessage = `Recording session audio... (Counselor: ${resolvedInputs.counselorLabel || 'System default input'} | Client: ${resolvedInputs.clientLabel || 'System default input'})`;
+                        if (startupRecordingWarnings.length > 0) {
+                            recordSessionStatus.textContent = `${baseMessage} Warning: ${startupRecordingWarnings.join(' | ')}`;
+                            recordSessionStatus.style.color = '#e67e22';
+                        } else {
+                            recordSessionStatus.textContent = baseMessage;
+                            recordSessionStatus.style.color = '#e67e22';
+                        }
                     }
 
                     mediaRecorder.addEventListener('dataavailable', (event) => {
@@ -4900,8 +5328,8 @@
                         updateRecordSessionControls();
 
                         try {
-                            await new Promise(resolve => setTimeout(resolve, RECORDER_STOP_FLUSH_DELAY_MS));
-                            await waitForChunkFlush(mediaRecorderChunks, 2200);
+                            clearRecordingHealthMonitor();
+                            await new Promise(resolve => setTimeout(resolve, 120));
 
                             const recordingClient = findClient(recordingClientId);
                             const recordingAppointment = findAppointment(recordingClient, recordingAppointmentId);
@@ -4909,37 +5337,17 @@
                                 throw new Error('Recorded appointment is no longer available.');
                             }
 
-                            const mergedMimeType = mediaRecorder?.mimeType || 'audio/webm';
-                            const mergedRecorderBlob = new Blob(mediaRecorderChunks, { type: mergedMimeType });
-
-                            const counselorPcmBlob = await finalizeCounselorPcmCapture({ discard: false });
-                            let splitCounselorBlob = null;
-                            let splitClientBlob = null;
-                            let counselorBlob = null;
-                            let clientBlob = null;
-                            if (hasDistinctClientInput) {
-                                const splitResult = await splitStereoConversationBlob(mergedRecorderBlob);
-                                splitCounselorBlob = splitResult.counselorBlob;
-                                splitClientBlob = splitResult.clientBlob;
-                                counselorBlob = splitCounselorBlob;
-                                clientBlob = splitClientBlob;
-
-                                const hasPcmCounselor = isUsableAudioBlob(counselorPcmBlob);
-                                if (hasPcmCounselor) {
-                                    if (!isUsableAudioBlob(counselorBlob) && isUsableAudioBlob(clientBlob)) {
-                                        // Preserve client split and recover counselor from direct mic PCM capture.
-                                        counselorBlob = counselorPcmBlob;
-                                    } else if (!isUsableAudioBlob(clientBlob) && isUsableAudioBlob(splitCounselorBlob)) {
-                                        // Some encoders collapse one channel; recover labels by using PCM counselor + split channel as client.
-                                        counselorBlob = counselorPcmBlob;
-                                        clientBlob = splitCounselorBlob;
-                                    }
-                                }
-                            } else {
-                                counselorBlob = mergedRecorderBlob && mergedRecorderBlob.size > 0
-                                    ? mergedRecorderBlob
-                                    : null;
-                            }
+                            const counselorPcmResult = await finalizeCounselorPcmCapture({ discard: false });
+                            const clientPcmResult = usingIndependentDualCapture
+                                ? await finalizeClientPcmCapture({ discard: false })
+                                : { blob: null, stats: getEmptySignalStats() };
+                            const counselorPcmBlob = counselorPcmResult?.blob || null;
+                            const counselorPcmStats = counselorPcmResult?.stats || getEmptySignalStats();
+                            const clientPcmBlob = clientPcmResult?.blob || null;
+                            const clientPcmStats = clientPcmResult?.stats || getEmptySignalStats();
+                            const mergedRecorderBlob = counselorPcmBlob && counselorPcmBlob.size > 0 ? counselorPcmBlob : null;
+                            const counselorBlob = counselorPcmBlob && counselorPcmBlob.size > 0 ? counselorPcmBlob : null;
+                            const clientBlob = clientPcmBlob && clientPcmBlob.size > 0 ? clientPcmBlob : null;
 
                             lastRecordedSessionAudio = {
                                 clientId: recordingClientId,
@@ -4949,35 +5357,60 @@
                                 counselorRecorderBlob: mergedRecorderBlob && mergedRecorderBlob.size > 0 ? mergedRecorderBlob : null,
                                 counselorBlob: counselorBlob && counselorBlob.size > 0 ? counselorBlob : null,
                                 clientBlob: clientBlob && clientBlob.size > 0 ? clientBlob : null,
+                                captureStats: {
+                                    counselor: counselorPcmStats,
+                                    client: clientPcmStats,
+                                    counselorFallback: counselorPcmStats
+                                },
                                 capturedAt: Date.now()
                             };
 
-                            const counselorRecorderBytes = getChunkBytes(mediaRecorderChunks);
+                            const counselorRecorderBytes = mergedRecorderBlob?.size || 0;
                             const counselorPcmBytes = counselorPcmBlob?.size || 0;
                             const counselorBytes = counselorBlob?.size || counselorRecorderBytes;
                             const clientBytes = clientBlob?.size || 0;
-                            const counselorCaptureUsable = isUsableAudioBlob(counselorBlob);
-                            const clientCaptureUsable = isUsableAudioBlob(clientBlob);
+                            const counselorCaptureStats = counselorPcmStats;
+                            const clientCaptureStats = clientPcmStats;
+                            const counselorCaptureUsable = hasDistinctClientInput
+                                ? isUsableAudioBlob(counselorBlob) && isSignalStatsUsable(counselorCaptureStats)
+                                : isUsableAudioBlob(counselorBlob);
+                            const clientCaptureUsable = hasDistinctClientInput
+                                ? isUsableAudioBlob(clientBlob) && isSignalStatsUsable(clientCaptureStats)
+                                : isUsableAudioBlob(clientBlob);
+
+                            console.info('[SessionCapture] Final channel diagnostics', {
+                                usingIndependentDualCapture,
+                                counselorSignalLevel,
+                                clientSignalLevel,
+                                counselorCapture: counselorPcmStats,
+                                clientCapture: clientPcmStats,
+                                counselorBytes,
+                                clientBytes
+                            });
+
                             if (!(counselorBlob && counselorBlob.size > 0) && !(clientBlob && clientBlob.size > 0)) {
                                 throw new Error(`No audio bytes captured from selected inputs (counselor recorder: ${counselorRecorderBytes}, client: ${clientBytes}).`);
                             }
-                            if (hasDistinctClientInput && !counselorCaptureUsable) {
+                            const captureWarnings = [];
+                            if (hasDistinctClientInput && !counselorCaptureUsable && !clientCaptureUsable) {
                                 const counselorDiag = getStreamCaptureDiagnostics(counselorStream);
                                 const clientDiag = clientRecordingStream ? getStreamCaptureDiagnostics(clientRecordingStream) : null;
-                                if (!clientCaptureUsable) {
-                                    throw new Error(
-                                        `Counselor capture is invalid (${counselorBytes} bytes) and client capture is also too short (${clientBytes} bytes). Keep recording for at least 2-3 seconds before stopping. Diagnostics: counselorSignal=${counselorSignalLevel.toFixed(4)}, clientSignal=${Number(clientSignalLevel || 0).toFixed(4)}, counselorPcmBytes=${counselorPcmBytes}, counselorTrack=${JSON.stringify(counselorDiag)}, clientTrack=${JSON.stringify(clientDiag)}.`
-                                    );
-                                }
                                 throw new Error(
-                                    `Counselor microphone capture appears invalid (captured ${counselorBytes} bytes; minimum expected ${MIN_VALID_CAPTURE_BYTES}). Client capture is present (${clientBytes} bytes), so counselor input likely failed. Diagnostics: counselorSignal=${counselorSignalLevel.toFixed(4)}, clientSignal=${Number(clientSignalLevel || 0).toFixed(4)}, counselorPcmBytes=${counselorPcmBytes}, counselorMime=${mediaRecorder?.mimeType || 'n/a'}, clientMime=${clientMediaRecorder?.mimeType || 'n/a'}, counselorTrack=${JSON.stringify(counselorDiag)}, clientTrack=${JSON.stringify(clientDiag)}.`
+                                    `Counselor and Client captures both appear inactive after recording. Diagnostics: counselorBytes=${counselorBytes}, clientBytes=${clientBytes}, counselorChannel=${formatSignalStats(counselorCaptureStats)}, clientChannel=${formatSignalStats(clientCaptureStats)}, preflightCounselor=${formatLevel(counselorSignalLevel)}, preflightClient=${formatLevel(clientSignalLevel)}, counselorPcmBytes=${counselorPcmBytes}, counselorTrack=${JSON.stringify(counselorDiag)}, clientTrack=${JSON.stringify(clientDiag)}.`
                                 );
                             }
-                            if (hasDistinctClientInput && !clientCaptureUsable) {
+                            if (hasDistinctClientInput && !counselorCaptureUsable && clientCaptureUsable) {
                                 const counselorDiag = getStreamCaptureDiagnostics(counselorStream);
                                 const clientDiag = clientRecordingStream ? getStreamCaptureDiagnostics(clientRecordingStream) : null;
-                                throw new Error(
-                                    `Client capture is invalid (captured ${clientBytes} bytes; minimum expected ${MIN_VALID_CAPTURE_BYTES}) while counselor capture is ${counselorBytes} bytes. Recording was rejected to prevent counselor-only attribution. Diagnostics: counselorSignal=${counselorSignalLevel.toFixed(4)}, clientSignal=${Number(clientSignalLevel || 0).toFixed(4)}, counselorMime=${mediaRecorder?.mimeType || 'n/a'}, clientMime=${clientMediaRecorder?.mimeType || 'n/a'}, counselorTrack=${JSON.stringify(counselorDiag)}, clientTrack=${JSON.stringify(clientDiag)}.`
+                                captureWarnings.push(
+                                    `Counselor capture was unreliable, so this recording contains only client audio. Diagnostics: counselorBytes=${counselorBytes}, clientBytes=${clientBytes}, counselorChannel=${formatSignalStats(counselorCaptureStats)}, clientChannel=${formatSignalStats(clientCaptureStats)}, preflightCounselor=${formatLevel(counselorSignalLevel)}, preflightClient=${formatLevel(clientSignalLevel)}, counselorTrack=${JSON.stringify(counselorDiag)}, clientTrack=${JSON.stringify(clientDiag)}.`
+                                );
+                            }
+                            if (hasDistinctClientInput && !clientCaptureUsable && counselorCaptureUsable) {
+                                const counselorDiag = getStreamCaptureDiagnostics(counselorStream);
+                                const clientDiag = clientRecordingStream ? getStreamCaptureDiagnostics(clientRecordingStream) : null;
+                                captureWarnings.push(
+                                    `Client capture was unreliable, so this recording contains only counselor audio. Diagnostics: counselorBytes=${counselorBytes}, clientBytes=${clientBytes}, counselorChannel=${formatSignalStats(counselorCaptureStats)}, clientChannel=${formatSignalStats(clientCaptureStats)}, preflightCounselor=${formatLevel(counselorSignalLevel)}, preflightClient=${formatLevel(clientSignalLevel)}, counselorMime=${mediaRecorder?.mimeType || 'n/a'}, clientMime=${clientMediaRecorder?.mimeType || 'n/a'}, counselorTrack=${JSON.stringify(counselorDiag)}, clientTrack=${JSON.stringify(clientDiag)}.`
                                 );
                             }
 
@@ -5001,31 +5434,27 @@
                                 try {
                                     const counselorCandidates = [];
                                     if (counselorBlob && counselorBlob.size > 0) {
-                                        counselorCandidates.push(counselorBlob);
+                                        counselorCandidates.push({
+                                            name: 'counselor-recording',
+                                            blob: counselorBlob
+                                        });
                                     }
                                     if (counselorPcmBlob && counselorPcmBlob.size > 0 && counselorPcmBlob !== counselorBlob) {
-                                        counselorCandidates.push(counselorPcmBlob);
+                                        counselorCandidates.push({
+                                            name: 'direct-counselor-fallback',
+                                            blob: counselorPcmBlob
+                                        });
                                     }
 
-                                    let counselorTranscript = '';
-                                    const counselorFailures = [];
-                                    for (let i = 0; i < counselorCandidates.length; i += 1) {
-                                        try {
-                                            counselorTranscript = await transcribeAudioWithFallbacks(counselorCandidates[i], {
-                                                label: `Counselor-${i + 1}`
-                                            });
-                                            if (String(counselorTranscript || '').trim()) {
-                                                break;
-                                            }
-                                        } catch (error) {
-                                            counselorFailures.push(resolveErrorMessage(error));
-                                        }
-                                    }
-                                    if (!String(counselorTranscript || '').trim()) {
-                                        throw new Error(counselorFailures.join(' | ') || 'No counselor speech detected from available counselor channels.');
+                                    const counselorSelection = await selectBestCounselorTranscript(
+                                        counselorCandidates,
+                                        normalizedClientTranscript
+                                    );
+                                    if (counselorSelection?.note) {
+                                        console.info('[SessionCapture]', counselorSelection.note);
                                     }
 
-                                    normalizedCounselorTranscript = String(counselorTranscript || '').trim();
+                                    normalizedCounselorTranscript = String(counselorSelection?.text || '').trim();
                                     if (normalizedCounselorTranscript && normalizedClientTranscript) {
                                         normalizedCounselorTranscript = removeClientOverlapFromCounselor(
                                             normalizedCounselorTranscript,
@@ -5043,15 +5472,15 @@
                             }
 
                             if (hasDistinctClientInput && transcriptsLikelyMirrored(normalizedCounselorTranscript, normalizedClientTranscript)) {
-                                throw new Error(
-                                    `Counselor audio appears to mirror the Client stream, so counselor input was likely not isolated. Recording was rejected to avoid a misleading transcript (counselor bytes ${counselorBytes}, client bytes ${clientBytes}).`
+                                transcriptionIssues.push(
+                                    `Counselor audio appears to mirror the Client stream, so speaker isolation may have failed (counselor bytes ${counselorBytes}, client bytes ${clientBytes}, counselorChannel ${formatSignalStats(counselorCaptureStats)}, clientChannel ${formatSignalStats(clientCaptureStats)}).`
                                 );
                             }
 
                             const mergedTranscript = transcriptSegments.join('\n\n').trim();
                             if (!mergedTranscript) {
                                 throw new Error(
-                                    `No usable speech was detected. Whisper returned empty output (counselor bytes ${counselorBytes}, client bytes ${clientBytes}, counselor recorder bytes ${counselorRecorderBytes}). ${transcriptionIssues.length ? `Transcription issues: ${transcriptionIssues.join(' | ')}` : ''}`
+                                    `No usable speech was detected. Whisper returned empty output (counselor bytes ${counselorBytes}, client bytes ${clientBytes}, counselor recorder bytes ${counselorRecorderBytes}, counselorChannel ${formatSignalStats(counselorCaptureStats)}, clientChannel ${formatSignalStats(clientCaptureStats)}). ${transcriptionIssues.length ? `Transcription issues: ${transcriptionIssues.join(' | ')}` : ''}`
                                 );
                             }
 
@@ -5067,8 +5496,9 @@
                             }
 
                             fullRender();
-                            if (transcriptionIssues.length > 0) {
-                                recordSessionStatus.textContent = `Transcript ready with warnings: ${transcriptionIssues.join(' | ')}`;
+                            const allWarnings = [...captureWarnings, ...transcriptionIssues];
+                            if (allWarnings.length > 0) {
+                                recordSessionStatus.textContent = `Transcript ready with warnings: ${allWarnings.join(' | ')}`;
                                 recordSessionStatus.style.color = '#e67e22';
                             } else {
                                 recordSessionStatus.textContent = 'Transcript ready. Click Generate Note when you are ready to create SOAP output.';
@@ -9707,6 +10137,143 @@ This error cannot be fixed within this application's code; it requires a configu
             runCounselorDiagBtn?.addEventListener('click', async () => {
                 await runCounselorInputDiagnostic();
             });
+
+            // ----------------------------------------------------------------
+            // Loopback audio setup (BlackHole + CoreAudio aggregate devices)
+            // ----------------------------------------------------------------
+
+            const loopbackStatusBadge  = document.getElementById('loopbackStatusBadge');
+            const loopbackStatusText   = document.getElementById('loopbackStatusText');
+            const installBlackholeBtn  = document.getElementById('installBlackholeBtn');
+            const setupAudioBtn        = document.getElementById('setupAudioBtn');
+            const teardownAudioBtn     = document.getElementById('teardownAudioBtn');
+            const refreshLoopbackStatusBtn = document.getElementById('refreshLoopbackStatusBtn');
+
+            const setBadge = (text, color) => {
+                if (!loopbackStatusBadge) return;
+                loopbackStatusBadge.textContent = text;
+                loopbackStatusBadge.style.background = color;
+            };
+
+            const refreshLoopbackStatus = async () => {
+                if (loopbackStatusText) loopbackStatusText.textContent = 'Checking…';
+                setBadge('Checking…', '#7f8c8d');
+                try {
+                    const s = await window.__TAURI__.core.invoke('get_audio_setup_status');
+
+                    if (!s.helperAvailable) {
+                        setBadge('Helper Missing', '#e74c3c');
+                        if (loopbackStatusText) loopbackStatusText.textContent =
+                            'Audio setup helper not found. Rebuild the app to compile it.';
+                        if (installBlackholeBtn)  installBlackholeBtn.style.display  = 'none';
+                        if (setupAudioBtn)         setupAudioBtn.style.display         = 'none';
+                        if (teardownAudioBtn)      teardownAudioBtn.style.display      = 'none';
+                        return;
+                    }
+
+                    const showBtn = (el, show) => { if (el) el.style.display = show ? '' : 'none'; };
+
+                    if (!s.blackholeInstalled) {
+                        setBadge('BlackHole Not Installed', '#e74c3c');
+                        if (loopbackStatusText) loopbackStatusText.textContent =
+                            'BlackHole audio driver not found. Click "Install BlackHole via Homebrew" to install it automatically, or download it from existingblackhole.org.';
+                        showBtn(installBlackholeBtn, true);
+                        showBtn(setupAudioBtn,        false);
+                        showBtn(teardownAudioBtn,     false);
+                    } else if (!s.aggregateInputExists || !s.aggregateOutputExists) {
+                        setBadge('Not Configured', '#e67e22');
+                        if (loopbackStatusText) loopbackStatusText.textContent =
+                            `BlackHole detected (${s.blackholeName || 'BlackHole'}). Click "Set Up Audio Routing" to create the aggregate input device and output mirror automatically.`;
+                        showBtn(installBlackholeBtn, false);
+                        showBtn(setupAudioBtn,        true);
+                        showBtn(teardownAudioBtn,     s.aggregateInputExists || s.aggregateOutputExists);
+                    } else {
+                        setBadge('Active', '#27ae60');
+                        if (loopbackStatusText) loopbackStatusText.textContent =
+                            'Audio routing active. "Client Records Input" captures your mic (ch 0) + BlackHole (ch 1). System audio is mirrored to BlackHole so remote client audio is captured automatically.';
+                        showBtn(installBlackholeBtn, false);
+                        showBtn(setupAudioBtn,        true);
+                        showBtn(teardownAudioBtn,     true);
+                        // Auto-refresh device list so new aggregate devices appear in the selectors
+                        await refreshAudioInputDevices({ askPermission: false });
+                    }
+                } catch (err) {
+                    setBadge('Error', '#e74c3c');
+                    if (loopbackStatusText) loopbackStatusText.textContent = `Status check failed: ${err}`;
+                }
+            };
+
+            installBlackholeBtn?.addEventListener('click', async () => {
+                installBlackholeBtn.disabled = true;
+                installBlackholeBtn.textContent = 'Installing…';
+                try {
+                    const msg = await window.__TAURI__.core.invoke('install_blackhole');
+                    if (loopbackStatusText) loopbackStatusText.textContent = msg;
+                    await refreshLoopbackStatus();
+                } catch (err) {
+                    if (loopbackStatusText) loopbackStatusText.textContent = `Install failed: ${err}`;
+                } finally {
+                    installBlackholeBtn.disabled = false;
+                    installBlackholeBtn.textContent = 'Install BlackHole via Homebrew';
+                }
+            });
+
+            setupAudioBtn?.addEventListener('click', async () => {
+                setupAudioBtn.disabled = true;
+                setupAudioBtn.textContent = 'Setting up…';
+                if (loopbackStatusText) loopbackStatusText.textContent = 'Creating aggregate devices…';
+                try {
+                    // Pass current counselor device UID as the preferred mic, if one is selected
+                    const preferredMicUid = counselorInputDeviceId || null;
+                    const result = await window.__TAURI__.core.invoke('setup_audio_devices',
+                        { preferredMicUid });
+                    if (result.success) {
+                        const outputNote = result.outputSwitched
+                            ? ' System output switched to audio mirror device.'
+                            : ' (Could not switch system output — route audio to BlackHole manually.)';
+                        if (loopbackStatusText) loopbackStatusText.textContent =
+                            `Setup complete. Mic: ${result.micName}, BlackHole: ${result.blackholeName}.${outputNote}`;
+                        await refreshLoopbackStatus();
+                    } else {
+                        if (loopbackStatusText) loopbackStatusText.textContent =
+                            `Setup failed: ${result.error || 'Unknown error'}`;
+                    }
+                } catch (err) {
+                    if (loopbackStatusText) loopbackStatusText.textContent = `Setup error: ${err}`;
+                } finally {
+                    setupAudioBtn.disabled = false;
+                    setupAudioBtn.textContent = 'Set Up Audio Routing';
+                }
+            });
+
+            teardownAudioBtn?.addEventListener('click', async () => {
+                teardownAudioBtn.disabled = true;
+                teardownAudioBtn.textContent = 'Removing…';
+                try {
+                    await window.__TAURI__.core.invoke('teardown_audio_devices');
+                    if (loopbackStatusText) loopbackStatusText.textContent =
+                        'Audio routing removed. System output restored.';
+                    await refreshLoopbackStatus();
+                    await refreshAudioInputDevices({ askPermission: false });
+                } catch (err) {
+                    if (loopbackStatusText) loopbackStatusText.textContent = `Teardown error: ${err}`;
+                } finally {
+                    teardownAudioBtn.disabled = false;
+                    teardownAudioBtn.textContent = 'Remove Audio Routing';
+                }
+            });
+
+            refreshLoopbackStatusBtn?.addEventListener('click', () => refreshLoopbackStatus());
+
+            // Run status check whenever the settings modal is opened
+            const _origSettingsOpen = document.getElementById('settingsBtn')?.onclick;
+            document.getElementById('settingsBtn')?.addEventListener('click', () => {
+                setTimeout(refreshLoopbackStatus, 150);
+            });
+
+            // Initial status check on load
+            setTimeout(refreshLoopbackStatus, 800);
+
             if (navigator.mediaDevices?.addEventListener) {
                 navigator.mediaDevices.addEventListener('devicechange', () => {
                     refreshAudioInputDevices({ askPermission: false });

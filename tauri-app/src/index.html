@@ -1158,7 +1158,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.31</span>
+                <span class="version-badge">v1.0.32</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2594,6 +2594,151 @@
                 .split(' ')
                 .map(stemInterventionToken)
                 .filter(Boolean);
+            const soapTopicStopWords = new Set([
+                'and', 'or', 'the', 'with', 'for', 'to', 'of', 'in', 'on', 'a', 'an', 'by',
+                'writer', 'client', 'ct', 'session', 'during', 'through', 'from', 'that', 'this',
+                'were', 'was', 'are', 'is', 'be', 'been', 'it', 'as', 'at', 'into', 'within',
+                'not', 'no', 'yes', 'per', 'then', 'than', 'also', 'about', 'related'
+            ]);
+
+            const splitSoapBulletItems = (value) => String(value || '')
+                .split(/\n+/)
+                .map(line => line.trim())
+                .filter(Boolean)
+                .map(line => line.replace(/^•\s*/, '').trim())
+                .filter(Boolean);
+
+            const joinSoapBulletItems = (items) => (items || [])
+                .map(item => String(item || '').replace(/^•\s*/, '').trim())
+                .filter(Boolean)
+                .map(item => `• ${item}`)
+                .join('\n');
+
+            const tokenizeForSoapTopic = (value) => normalizeForInterventionMatch(value)
+                .split(' ')
+                .map(stemInterventionToken)
+                .filter(token => token.length > 2 && !soapTopicStopWords.has(token));
+
+            const getTopicTextFromSuggestion = (suggestion) => {
+                if (typeof suggestion === 'string') return suggestion;
+                if (suggestion && typeof suggestion === 'object') {
+                    return [suggestion.suggested, suggestion.original].filter(Boolean).join(' ');
+                }
+                return '';
+            };
+
+            const scoreTopicOverlap = (tokenSet, topicTokenSet) => {
+                if (!tokenSet || !topicTokenSet || tokenSet.size === 0 || topicTokenSet.size === 0) return { overlap: 0, score: 0 };
+                const overlap = [...tokenSet].filter(token => topicTokenSet.has(token)).length;
+                if (overlap === 0) return { overlap: 0, score: 0 };
+                const score = overlap / Math.min(tokenSet.size, topicTokenSet.size);
+                return { overlap, score };
+            };
+
+            const buildObjectiveTopicClusters = (objectiveItems) => {
+                const topics = [];
+                const assignments = [];
+
+                (objectiveItems || []).forEach(item => {
+                    const tokens = new Set(tokenizeForSoapTopic(item));
+                    if (tokens.size === 0) {
+                        assignments.push(Number.POSITIVE_INFINITY);
+                        return;
+                    }
+
+                    let bestTopicIndex = -1;
+                    let bestOverlap = 0;
+                    let bestScore = 0;
+
+                    topics.forEach((topic, index) => {
+                        const { overlap, score } = scoreTopicOverlap(tokens, topic.tokens);
+                        if (score > bestScore || (score === bestScore && overlap > bestOverlap)) {
+                            bestTopicIndex = index;
+                            bestOverlap = overlap;
+                            bestScore = score;
+                        }
+                    });
+
+                    const shouldAttachToExisting = bestTopicIndex !== -1 && (bestOverlap >= 2 || bestScore >= 0.6);
+                    if (shouldAttachToExisting) {
+                        tokens.forEach(token => topics[bestTopicIndex].tokens.add(token));
+                        assignments.push(bestTopicIndex);
+                    } else {
+                        topics.push({ tokens: new Set(tokens) });
+                        assignments.push(topics.length - 1);
+                    }
+                });
+
+                return { topics, assignments };
+            };
+
+            const getTopicRankForText = (text, topics) => {
+                const tokens = new Set(tokenizeForSoapTopic(text));
+                if (tokens.size === 0 || !Array.isArray(topics) || topics.length === 0) {
+                    return Number.POSITIVE_INFINITY;
+                }
+
+                let bestTopicIndex = -1;
+                let bestOverlap = 0;
+                let bestScore = 0;
+
+                topics.forEach((topic, index) => {
+                    const { overlap, score } = scoreTopicOverlap(tokens, topic.tokens);
+                    if (score > bestScore || (score === bestScore && overlap > bestOverlap)) {
+                        bestTopicIndex = index;
+                        bestOverlap = overlap;
+                        bestScore = score;
+                    }
+                });
+
+                if (bestTopicIndex === -1) return Number.POSITIVE_INFINITY;
+                if (bestOverlap >= 2 || bestScore >= 0.4) return bestTopicIndex;
+                return Number.POSITIVE_INFINITY;
+            };
+
+            const sortByTopicOrderStable = (items, getTopicText, topics) => (items || [])
+                .map((item, originalIndex) => ({
+                    item,
+                    originalIndex,
+                    topicRank: getTopicRankForText(getTopicText(item), topics)
+                }))
+                .sort((a, b) => {
+                    if (a.topicRank === b.topicRank) return a.originalIndex - b.originalIndex;
+                    return a.topicRank - b.topicRank;
+                })
+                .map(entry => entry.item);
+
+            const alignSoapSectionsByObjectiveOrder = (soap) => {
+                if (!soap || typeof soap !== 'object') return;
+
+                const objectiveTextItems = splitSoapBulletItems(soap.o || '');
+                const objectiveSuggestionItems = Array.isArray(soap.o_suggestion)
+                    ? soap.o_suggestion.map(getTopicTextFromSuggestion).filter(Boolean)
+                    : [];
+                const objectiveSeedItems = [...objectiveTextItems, ...objectiveSuggestionItems];
+                if (objectiveSeedItems.length === 0) return;
+
+                const { topics } = buildObjectiveTopicClusters(objectiveSeedItems);
+                if (topics.length === 0) return;
+
+                ['o', 's', 'a', 'p'].forEach(sectionKey => {
+                    const sectionItems = splitSoapBulletItems(soap[sectionKey] || '');
+                    if (sectionItems.length > 0) {
+                        const sortedSectionItems = sortByTopicOrderStable(sectionItems, item => item, topics);
+                        soap[sectionKey] = joinSoapBulletItems(sortedSectionItems);
+                    }
+
+                    const suggestionKey = `${sectionKey}_suggestion`;
+                    if (Array.isArray(soap[suggestionKey]) && soap[suggestionKey].length > 0) {
+                        soap[suggestionKey] = sortByTopicOrderStable(
+                            soap[suggestionKey],
+                            suggestion => getTopicTextFromSuggestion(suggestion),
+                            topics
+                        );
+                    }
+                });
+            };
+
 
             const mergeInterventions = (existing, incoming) => {
                 const set = new Set([...(existing || []), ...(incoming || [])].filter(Boolean));
@@ -5060,6 +5205,8 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                      // Always store the full list of suggestions for user approval
                      appointment.soap[suggestionKey] = suggestions;
                  });
+
+                 alignSoapSectionsByObjectiveOrder(appointment.soap);
 
                  const objectiveSuggestions = Array.isArray(appointment.soap.o_suggestion)
                      ? appointment.soap.o_suggestion

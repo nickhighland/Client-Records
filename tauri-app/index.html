@@ -201,6 +201,19 @@
             background: linear-gradient(135deg, #7f8c8d 0%, #5d6d7e 100%);
         }
 
+        .menu-label-wrap {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .update-asterisk {
+            color: #f1c40f;
+            font-weight: 800;
+            margin-left: 4px;
+            line-height: 1;
+            text-shadow: 0 0 6px rgba(241, 196, 15, 0.45);
+        }
+
         .header-menu-dropdown {
             position: absolute;
             right: 0;
@@ -1905,7 +1918,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.34</span>
+                <span class="version-badge">v1.0.35</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -1932,7 +1945,7 @@
             </div>
 
             <div class="header-menu" id="headerMenu">
-                <button id="headerMenuBtn" class="btn header-menu-btn" title="Open menu">Menu ▾</button>
+                <button id="headerMenuBtn" class="btn header-menu-btn" title="Open menu"><span class="menu-label-wrap">Menu<span id="menuUpdateAsterisk" class="update-asterisk hidden" aria-hidden="true">*</span></span> ▾</button>
                 <div id="headerMenuDropdown" class="header-menu-dropdown hidden">
                     <button id="informedConsentBtn" class="menu-item-btn">Informed Consent</button>
                     <button id="cssrsBtn" class="menu-item-btn">CSSRS</button>
@@ -1941,7 +1954,7 @@
                     <button id="configureBackupBtn" class="menu-item-btn">Set Secondary Backup Location</button>
                     <button id="clearBackupBtn" class="menu-item-btn">Clear Secondary Backup</button>
                     <button id="manualSaveBtn" class="menu-item-btn save">Save Now</button>
-                    <button id="checkForUpdatesBtn" class="menu-item-btn">Check for Updates</button>
+                    <button id="checkForUpdatesBtn" class="menu-item-btn"><span>Check for Updates</span><span id="checkForUpdatesAsterisk" class="update-asterisk hidden" aria-hidden="true">*</span></button>
                     <button id="settingsBtn" class="menu-item-btn settings">Settings</button>
                     <button id="themeToggleBtn" class="menu-item-btn theme" title="Toggle Theme">Theme</button>
                     <button id="lockScreenBtn" class="menu-item-btn" title="Lock Screen">Lock Screen</button>
@@ -2795,6 +2808,8 @@
             // Settings and Modal Elements
             const settingsBtn = document.getElementById('settingsBtn');
             const checkForUpdatesBtn = document.getElementById('checkForUpdatesBtn');
+            const menuUpdateAsterisk = document.getElementById('menuUpdateAsterisk');
+            const checkForUpdatesAsterisk = document.getElementById('checkForUpdatesAsterisk');
             const settingsModal = document.getElementById('settingsModal');
             const closeSettingsBtn = document.getElementById('closeSettingsBtn');
             const informedConsentBtn = document.getElementById('informedConsentBtn');
@@ -8018,49 +8033,130 @@ This error cannot be fixed within this application's code; it requires a configu
             clearBackupBtn?.addEventListener('click', clearSecondaryBackupLocation);
 
             settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
-            
-            checkForUpdatesBtn?.addEventListener('click', async () => {
+
+            const UPDATE_POLL_INTERVAL_MS = 30 * 60 * 1000;
+            let updatePollingIntervalId = null;
+            let updateCheckInProgress = false;
+            let startupUpdateCheckScheduled = false;
+
+            const setUpdateAsteriskVisibility = (isVisible) => {
+                menuUpdateAsterisk?.classList.toggle('hidden', !isVisible);
+                checkForUpdatesAsterisk?.classList.toggle('hidden', !isVisible);
+            };
+
+            const getUpdateReleaseNotes = (update) => {
+                if (typeof update?.body !== 'string') return 'No release notes provided.';
+                const notes = update.body.trim();
+                return notes || 'No release notes provided.';
+            };
+
+            const promptAndInstallUpdate = async (update) => {
+                const yes = await ask(`Update to ${update.version} is available!\n\nRelease notes: ${getUpdateReleaseNotes(update)}\n\nDo you want to download and install it now?`, {
+                    title: 'Update Available',
+                    kind: 'info',
+                });
+                if (!yes) return false;
+
+                let downloaded = 0;
+                let contentLength = 0;
+                await update.downloadAndInstall((event) => {
+                    switch (event.event) {
+                        case 'Started':
+                            contentLength = event.data.contentLength;
+                            console.log(`started downloading ${event.data.contentLength} bytes`);
+                            break;
+                        case 'Progress':
+                            downloaded += event.data.chunkLength;
+                            console.log(`downloaded ${downloaded} from ${contentLength}`);
+                            break;
+                        case 'Finished':
+                            console.log('download finished');
+                            break;
+                    }
+                });
+
+                const restart = await ask('Update installed successfully. Do you want to restart the app now?', {
+                    title: 'Restart Required',
+                    kind: 'info',
+                });
+                if (restart) {
+                    await relaunch();
+                }
+                return true;
+            };
+
+            const checkForAvailableUpdate = async ({
+                promptIfAvailable = false,
+                showNoUpdateMessage = false,
+                showErrors = false,
+                setAsteriskIfAvailable = false
+            } = {}) => {
+                if (!isTauriRuntime()) return null;
+                if (updateCheckInProgress) return null;
+
+                updateCheckInProgress = true;
                 try {
                     const update = await check();
                     if (update) {
-                        const yes = await ask(`Update to ${update.version} is available!\n\nRelease notes: ${update.body}\n\nDo you want to download and install it now?`, {
-                            title: 'Update Available',
-                            kind: 'info',
-                        });
-                        if (yes) {
-                            let downloaded = 0;
-                            let contentLength = 0;
-                            await update.downloadAndInstall((event) => {
-                                switch (event.event) {
-                                    case 'Started':
-                                        contentLength = event.data.contentLength;
-                                        console.log(`started downloading ${event.data.contentLength} bytes`);
-                                        break;
-                                    case 'Progress':
-                                        downloaded += event.data.chunkLength;
-                                        console.log(`downloaded ${downloaded} from ${contentLength}`);
-                                        break;
-                                    case 'Finished':
-                                        console.log('download finished');
-                                        break;
-                                }
-                            });
-                            
-                            const restart = await ask('Update installed successfully. Do you want to restart the app now?', {
-                                title: 'Restart Required',
-                                kind: 'info',
-                            });
-                            if (restart) {
-                                await relaunch();
-                            }
+                        if (setAsteriskIfAvailable) {
+                            setUpdateAsteriskVisibility(true);
                         }
-                    } else {
+                        if (promptIfAvailable) {
+                            await promptAndInstallUpdate(update);
+                        }
+                        return update;
+                    }
+
+                    setUpdateAsteriskVisibility(false);
+                    if (showNoUpdateMessage) {
                         await message('You are on the latest version.', { title: 'No Updates Available', kind: 'info' });
                     }
+                    return null;
                 } catch (error) {
                     console.error('Failed to check for updates:', error);
-                    await message(`Failed to check for updates: ${error.message || error}`, { title: 'Error', kind: 'error' });
+                    if (showErrors) {
+                        await message(`Failed to check for updates: ${error.message || error}`, { title: 'Error', kind: 'error' });
+                    }
+                    return null;
+                } finally {
+                    updateCheckInProgress = false;
                 }
+            };
+
+            const scheduleStartupUpdateCheck = () => {
+                if (!isTauriRuntime() || startupUpdateCheckScheduled) return;
+                startupUpdateCheckScheduled = true;
+                setTimeout(() => {
+                    void checkForAvailableUpdate({
+                        promptIfAvailable: true,
+                        showNoUpdateMessage: false,
+                        showErrors: false,
+                        setAsteriskIfAvailable: false
+                    });
+                }, 1200);
+            };
+
+            const startRecurringUpdateChecks = () => {
+                if (!isTauriRuntime() || updatePollingIntervalId) return;
+                updatePollingIntervalId = setInterval(() => {
+                    void checkForAvailableUpdate({
+                        promptIfAvailable: false,
+                        showNoUpdateMessage: false,
+                        showErrors: false,
+                        setAsteriskIfAvailable: true
+                    });
+                }, UPDATE_POLL_INTERVAL_MS);
+            };
+
+            setUpdateAsteriskVisibility(false);
+
+            checkForUpdatesBtn?.addEventListener('click', async () => {
+                await checkForAvailableUpdate({
+                    promptIfAvailable: true,
+                    showNoUpdateMessage: true,
+                    showErrors: true,
+                    setAsteriskIfAvailable: true
+                });
             });
 
             closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
@@ -9339,6 +9435,8 @@ This error cannot be fixed within this application's code; it requires a configu
 
         // Initialize login screen
         initLoginScreen();
+        scheduleStartupUpdateCheck();
+        startRecurringUpdateChecks();
 
         // Reset timer on user activity
         ['mousemove', 'keydown', 'scroll', 'click'].forEach(event => {

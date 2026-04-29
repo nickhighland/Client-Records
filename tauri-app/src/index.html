@@ -1950,6 +1950,8 @@
                     <button id="informedConsentBtn" class="menu-item-btn">Informed Consent</button>
                     <button id="cssrsBtn" class="menu-item-btn">CSSRS</button>
                     <button id="soapAuditGuideBtn" class="menu-item-btn">SOAP Audit Guide</button>
+                    <button id="soapInstructionsBtn" class="menu-item-btn">SOAP Instructions</button>
+                    <button id="treatmentGoalsInstructionsBtn" class="menu-item-btn">Treatment Goals Instructions</button>
                     <button id="interventionBankBtn" class="menu-item-btn">Intervention Bank</button>
                     <button id="configureBackupBtn" class="menu-item-btn">Set Secondary Backup Location</button>
                     <button id="clearBackupBtn" class="menu-item-btn">Clear Secondary Backup</button>
@@ -2205,6 +2207,42 @@
             <div style="display: flex; gap: 1rem;">
                 <button id="saveCustomInstructionsBtn" class="btn save-btn" style="flex-grow: 1;">Save Instructions</button>
                 <button id="clearCustomInstructionsBtn" class="btn" style="flex-grow: 1; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Clear Instructions</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SOAP Instructions Modal -->
+    <div id="soapInstructionsModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">SOAP Instructions</h2>
+                <button id="closeSoapInstructionsBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <div style="margin-bottom: 0.75rem; color: var(--text-color-secondary); font-size: 0.9rem;">
+                These instructions are sent to the AI when generating SOAP notes. Edit with care.
+            </div>
+            <textarea id="soapInstructionsInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 12px; width: 100%; background-color: var(--input-bg); color: var(--input-text); font-family: inherit; font-size: 14px; min-height: 260px; resize: vertical;"></textarea>
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button id="saveSoapInstructionsBtn" class="btn save-btn" style="flex-grow: 1;">Save Instructions</button>
+                <button id="resetSoapInstructionsBtn" class="btn" style="flex-grow: 1; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Reset to Default</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Treatment Goals Instructions Modal -->
+    <div id="treatmentGoalsInstructionsModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">Treatment Goals Instructions</h2>
+                <button id="closeTreatmentGoalsInstructionsBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <div style="margin-bottom: 0.75rem; color: var(--text-color-secondary); font-size: 0.9rem;">
+                These instructions are sent to the AI when generating treatment goals and objectives.
+            </div>
+            <textarea id="treatmentGoalsInstructionsInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 12px; width: 100%; background-color: var(--input-bg); color: var(--input-text); font-family: inherit; font-size: 14px; min-height: 240px; resize: vertical;"></textarea>
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button id="saveTreatmentGoalsInstructionsBtn" class="btn save-btn" style="flex-grow: 1;">Save Instructions</button>
+                <button id="resetTreatmentGoalsInstructionsBtn" class="btn" style="flex-grow: 1; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Reset to Default</button>
             </div>
         </div>
     </div>
@@ -2815,6 +2853,8 @@
             const informedConsentBtn = document.getElementById('informedConsentBtn');
             const cssrsBtn = document.getElementById('cssrsBtn');
             const soapAuditGuideBtn = document.getElementById('soapAuditGuideBtn');
+            const soapInstructionsBtn = document.getElementById('soapInstructionsBtn');
+            const treatmentGoalsInstructionsBtn = document.getElementById('treatmentGoalsInstructionsBtn');
             const interventionBankBtn = document.getElementById('interventionBankBtn');
             const informedConsentModal = document.getElementById('informedConsentModal');
             const closeConsentBtn = document.getElementById('closeConsentBtn');
@@ -2877,6 +2917,16 @@
             const customInstructionsModalitiesListEl = document.getElementById('customInstructionsModalitiesList');
             const customInstructionsModalityOtherWrapEl = document.getElementById('customInstructionsModalityOtherWrap');
             const customInstructionsModalityOtherEl = document.getElementById('customInstructionsModalityOther');
+            const soapInstructionsModal = document.getElementById('soapInstructionsModal');
+            const closeSoapInstructionsBtn = document.getElementById('closeSoapInstructionsBtn');
+            const soapInstructionsInput = document.getElementById('soapInstructionsInput');
+            const saveSoapInstructionsBtn = document.getElementById('saveSoapInstructionsBtn');
+            const resetSoapInstructionsBtn = document.getElementById('resetSoapInstructionsBtn');
+            const treatmentGoalsInstructionsModal = document.getElementById('treatmentGoalsInstructionsModal');
+            const closeTreatmentGoalsInstructionsBtn = document.getElementById('closeTreatmentGoalsInstructionsBtn');
+            const treatmentGoalsInstructionsInput = document.getElementById('treatmentGoalsInstructionsInput');
+            const saveTreatmentGoalsInstructionsBtn = document.getElementById('saveTreatmentGoalsInstructionsBtn');
+            const resetTreatmentGoalsInstructionsBtn = document.getElementById('resetTreatmentGoalsInstructionsBtn');
             // AI Integration Elements
             const apiProviderSelect = document.getElementById('apiProviderSelect');
             const openwebuiSettings = document.getElementById('openwebuiSettings');
@@ -2985,7 +3035,15 @@
                 'NT: Values Exploration', 'PD: Confrontation', 'PD: Exploration of Attachment Patterns', 'PD: Exploration of Themes and Patterns',
                 'PD: Exploration of Transference', 'PD: Explore Defense Mechanisms', 'PD: Insight & Emotional Integration', 'PD: Interpretation', 'PD: Reflection'
             ];
-            const getInitialData = () => ({ clients: [], archivedClients: [], interventionBank: [...DEFAULT_INTERVENTION_BANK] });
+            const getInitialData = () => ({
+                clients: [],
+                archivedClients: [],
+                interventionBank: [...DEFAULT_INTERVENTION_BANK],
+                aiInstructions: {
+                    soapSystemPrompt: DEFAULT_SOAP_SYSTEM_PROMPT,
+                    treatmentGoalsSystemPrompt: DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT
+                }
+            });
             const intakePromptFields = [
                 { key: 'presentingProblem', label: 'Presenting Problem' },
                 { key: 'riskAssessment', label: 'Risk Assessment' },
@@ -3096,6 +3154,18 @@
                 if (!Array.isArray(data.interventionBank) || data.interventionBank.length === 0) {
                     data.interventionBank = [...DEFAULT_INTERVENTION_BANK];
                 }
+
+                if (!data.aiInstructions || typeof data.aiInstructions !== 'object') {
+                    data.aiInstructions = {};
+                }
+                if (typeof data.aiInstructions.soapSystemPrompt !== 'string' || !data.aiInstructions.soapSystemPrompt.trim()) {
+                    data.aiInstructions.soapSystemPrompt = DEFAULT_SOAP_SYSTEM_PROMPT;
+                }
+                if (typeof data.aiInstructions.treatmentGoalsSystemPrompt !== 'string' || !data.aiInstructions.treatmentGoalsSystemPrompt.trim()) {
+                    data.aiInstructions.treatmentGoalsSystemPrompt = DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
+                }
+                systemPrompt = data.aiInstructions.soapSystemPrompt;
+                goalGenerationSystemPrompt = data.aiInstructions.treatmentGoalsSystemPrompt;
 
                 if (!deletedItems || typeof deletedItems !== 'object') {
                     deletedItems = { clients: [], appointments: [], notes: [] };
@@ -4031,7 +4101,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return actionTemplates[objectiveIndex % actionTemplates.length];
             };
 
-            const goalGenerationSystemPrompt = `You are assisting a mental health clinician with treatment-plan writing.
+            const DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT = `You are assisting a mental health clinician with treatment-plan writing.
 
 Return ONLY valid JSON in this exact shape:
 {
@@ -4062,6 +4132,8 @@ Requirements:
 - Use guiding modalities as conceptual framing when provided.
 - Do NOT reference or imply any modality that is not explicitly selected.
 - Do not include extra keys, commentary, markdown, or prose outside JSON.`;
+
+            let goalGenerationSystemPrompt = DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
 
             const MODALITY_TERM_MAP = {
                 'CBT (Cognitive Behavioral Therapy)': ['CBT', 'Cognitive Behavioral Therapy'],
@@ -6059,7 +6131,7 @@ Requirements:
             };
 
 
-            const systemPrompt = `You are a helpful assistant for a therapist or clinician. Your primary function is to accurately categorize user-provided session notes into a structured SOAP note format.
+            const DEFAULT_SOAP_SYSTEM_PROMPT = `You are a helpful assistant for a therapist or clinician. Your primary function is to accurately categorize user-provided session notes into a structured SOAP note format.
 
 **Your Task:**
 Analyze the "Session Information" text provided by the user. Categorize every piece of information into one of the four SOAP sections based on the strict definitions below.
@@ -6113,6 +6185,8 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
 - **Example of PERFECT Output (FOR FORMATTING ONLY):**
 {"s":"• Ct said they felt bad.","o":"• Writer talked about coping.","a":"• Ct displays affect congruent with mood.","p":"• Continue to explore themes of loss.","i":"• Psychoeducation\\n• Cognitive Restructuring","s_suggestion":[{"original":"• Ct said they felt bad.","suggested":"• Ct reported experiencing significant distress."}],"o_suggestion":[{"original":"• Writer talked about coping.","suggested":"• Writer provided psychoeducation on coping strategies."}],"a_suggestion":["Client appears to be making progress toward treatment goals related to anxiety."],"p_suggestion":["Continue to utilize CBT techniques to challenge cognitive distortions in the next session."]};
             `;
+
+            let systemPrompt = DEFAULT_SOAP_SYSTEM_PROMPT;
 
             const generateSoapNote = async () => {
                 if (selectedNoteId || selectedIntakeId) {
@@ -8016,6 +8090,8 @@ This error cannot be fixed within this application's code; it requires a configu
                 informedConsentBtn,
                 cssrsBtn,
                 soapAuditGuideBtn,
+                soapInstructionsBtn,
+                treatmentGoalsInstructionsBtn,
                 interventionBankBtn,
                 configureBackupBtn,
                 clearBackupBtn,
@@ -8198,6 +8274,72 @@ This error cannot be fixed within this application's code; it requires a configu
                 if (e.target.id === 'soapAuditGuideModal') {
                     soapAuditGuideModal.classList.add('hidden');
                 }
+            });
+            const applySoapInstructions = (value) => {
+                const next = (value || '').trim() || DEFAULT_SOAP_SYSTEM_PROMPT;
+                systemPrompt = next;
+                if (!data.aiInstructions || typeof data.aiInstructions !== 'object') {
+                    data.aiInstructions = {};
+                }
+                data.aiInstructions.soapSystemPrompt = next;
+                markDirty();
+            };
+            const applyTreatmentGoalsInstructions = (value) => {
+                const next = (value || '').trim() || DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
+                goalGenerationSystemPrompt = next;
+                if (!data.aiInstructions || typeof data.aiInstructions !== 'object') {
+                    data.aiInstructions = {};
+                }
+                data.aiInstructions.treatmentGoalsSystemPrompt = next;
+                markDirty();
+            };
+            soapInstructionsBtn?.addEventListener('click', () => {
+                if (soapInstructionsInput) {
+                    soapInstructionsInput.value = systemPrompt || DEFAULT_SOAP_SYSTEM_PROMPT;
+                    soapInstructionsInput.focus();
+                }
+                soapInstructionsModal?.classList.remove('hidden');
+            });
+            closeSoapInstructionsBtn?.addEventListener('click', () => soapInstructionsModal?.classList.add('hidden'));
+            soapInstructionsModal?.addEventListener('click', (e) => {
+                if (e.target.id === 'soapInstructionsModal') {
+                    soapInstructionsModal.classList.add('hidden');
+                }
+            });
+            saveSoapInstructionsBtn?.addEventListener('click', () => {
+                applySoapInstructions(soapInstructionsInput?.value || '');
+                soapInstructionsModal?.classList.add('hidden');
+            });
+            resetSoapInstructionsBtn?.addEventListener('click', () => {
+                if (soapInstructionsInput) {
+                    soapInstructionsInput.value = DEFAULT_SOAP_SYSTEM_PROMPT;
+                }
+                applySoapInstructions(DEFAULT_SOAP_SYSTEM_PROMPT);
+                soapInstructionsModal?.classList.add('hidden');
+            });
+            treatmentGoalsInstructionsBtn?.addEventListener('click', () => {
+                if (treatmentGoalsInstructionsInput) {
+                    treatmentGoalsInstructionsInput.value = goalGenerationSystemPrompt || DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
+                    treatmentGoalsInstructionsInput.focus();
+                }
+                treatmentGoalsInstructionsModal?.classList.remove('hidden');
+            });
+            closeTreatmentGoalsInstructionsBtn?.addEventListener('click', () => treatmentGoalsInstructionsModal?.classList.add('hidden'));
+            treatmentGoalsInstructionsModal?.addEventListener('click', (e) => {
+                if (e.target.id === 'treatmentGoalsInstructionsModal') {
+                    treatmentGoalsInstructionsModal.classList.add('hidden');
+                }
+            });
+            saveTreatmentGoalsInstructionsBtn?.addEventListener('click', () => {
+                applyTreatmentGoalsInstructions(treatmentGoalsInstructionsInput?.value || '');
+                treatmentGoalsInstructionsModal?.classList.add('hidden');
+            });
+            resetTreatmentGoalsInstructionsBtn?.addEventListener('click', () => {
+                if (treatmentGoalsInstructionsInput) {
+                    treatmentGoalsInstructionsInput.value = DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
+                }
+                applyTreatmentGoalsInstructions(DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT);
+                treatmentGoalsInstructionsModal?.classList.add('hidden');
             });
             customInstructionsBtn.addEventListener('click', () => {
                 const client = findClient(selectedClientId);

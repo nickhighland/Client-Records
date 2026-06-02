@@ -2130,12 +2130,12 @@
                              <button id="nextSessionTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 600;">Next Session</button>
                          </div>
                      </div>
-                     <div id="notesContent" class="panel-content collapsible-content">
-                         <div id="clientDetailsContent">
-                             <textarea id="persistentNotes" placeholder="Select a client to enter client details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                         <div id="notesContent" class="panel-content collapsible-content" style="display: flex; flex-direction: column; min-height: 160px;">
+                         <div id="clientDetailsContent" style="flex: 1; overflow: auto;">
+                             <textarea id="persistentNotes" placeholder="Select a client to enter client details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; height:100%; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:none;"></textarea>
                          </div>
-                         <div id="nextSessionContent" class="hidden">
-                             <textarea id="nextSessionNotes" placeholder="Select a client to enter next session notes..." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                         <div id="nextSessionContent" class="hidden" style="flex: 1; overflow: auto;">
+                             <textarea id="nextSessionNotes" placeholder="Select a client to enter next session notes..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; height:100%; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:none;"></textarea>
                          </div>
                      </div>
                  </div>
@@ -3011,10 +3011,10 @@
                 nextSessionTabBtn.classList.toggle('active', !showClientDetails);
                 clientDetailsContentEl.classList.toggle('hidden', !showClientDetails);
                 nextSessionContentEl.classList.toggle('hidden', showClientDetails);
-                clientDetailsTabBtn.style.background = showClientDetails ? 'var(--input-bg)' : 'transparent';
-                clientDetailsTabBtn.style.color = showClientDetails ? 'var(--text-color-primary)' : 'var(--text-color-secondary)';
-                nextSessionTabBtn.style.background = showClientDetails ? 'transparent' : 'var(--input-bg)';
-                nextSessionTabBtn.style.color = showClientDetails ? 'var(--text-color-secondary)' : 'var(--text-color-primary)';
+                clientDetailsTabBtn.style.background = showClientDetails ? 'var(--accent-color, #007aff)' : 'transparent';
+                clientDetailsTabBtn.style.color = showClientDetails ? '#ffffff' : 'var(--text-color-secondary)';
+                nextSessionTabBtn.style.background = showClientDetails ? 'transparent' : 'var(--accent-color, #007aff)';
+                nextSessionTabBtn.style.color = showClientDetails ? 'var(--text-color-secondary)' : '#ffffff';
             };
             let sessionInstructions = '';
             let preferredPronouns = '';
@@ -3412,7 +3412,7 @@
                         </div>
                         <div style="font-size: 0.84rem; margin-bottom: 6px; color: var(--text-color-secondary);">${resolvedAudit.summary}</div>
                         <ul class="audit-items">
-                            ${resolvedAudit.checks.map(check => `<li class="${check.pass ? 'audit-item-pass' : 'audit-item-fail'}"><div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;"><span>${check.pass ? '✓' : '✗'} ${check.label}${check.manualOverride ? ' (manual)' : ''}</span><label style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; white-space: nowrap;"><input type="checkbox" class="audit-manual-check" data-check-label="${check.label.replace(/\"/g, '&quot;')}" ${check.manualOverride ? 'checked' : ''}>Manual</label></div></li>`).join('')}
+                            ${resolvedAudit.checks.map(check => `<li class="${check.pass ? 'audit-item-pass' : 'audit-item-fail'}"><div style="display: flex; align-items: center; gap: 8px;"><label style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; white-space: nowrap;"><input type="checkbox" class="audit-manual-check" data-check-label="${check.label.replace(/\"/g, '&quot;')}" ${check.manualOverride ? 'checked' : ''}></label><span>${check.pass ? '✓' : '✗'} ${check.label}</span></div></li>`).join('')}
                         </ul>
                         ${resolvedAudit.opportunities && resolvedAudit.opportunities.length > 0 ? `
                             <div class="audit-remediation">

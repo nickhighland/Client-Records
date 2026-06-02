@@ -2021,10 +2021,10 @@
                          <label for="appointmentDateInput" style="font-weight: 600; color: var(--text-color-secondary); font-size: 0.875rem; margin-bottom: 4px; display: block;">Appointment Date</label>
                          <input type="date" id="appointmentDateInput" style="width: 100%; margin-bottom: 8px;">
                          <div style="display: flex; align-items: center; gap: 8px;">
-                             <button id="addAppointmentBtn" class="btn save-btn" style="flex: 1; padding: 8px;">+ Add Appointment</button>
-                             <button id="updateAppointmentDateBtn" class="btn" style="flex: 1; padding: 8px;">Update Appointment Date</button>
+                             <button id="addAppointmentBtn" class="btn save-btn" style="flex: 1; padding: 8px;">+ Add</button>
+                             <button id="updateAppointmentDateBtn" class="btn" style="flex: 1; padding: 8px;">Update Date</button>
                          </div>
-                         <button id="addIntakeBtn" class="btn" style="width: 100%; margin-top: 8px; padding: 8px; background: linear-gradient(135deg, #d35400 0%, #ba4a00 100%);">+ Add Intake Session</button>
+                         <button id="addIntakeBtn" class="btn" style="width: 100%; margin-top: 8px; padding: 8px; background: linear-gradient(135deg, #d35400 0%, #ba4a00 100%);">+ Intake</button>
                          <div style="margin-top: 12px; border-top: 1px solid var(--panel-border); padding-top: 10px;">
                              <label for="noteNameInput" style="font-weight: 600; color: var(--text-color-secondary); font-size: 0.875rem; margin-bottom: 4px; display: block;">Notes</label>
                              <input type="text" id="noteNameInput" placeholder="Enter note name" style="width: 100%; margin-bottom: 8px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text);">
@@ -2123,11 +2123,20 @@
                  </div>
                  <div class="resizer-y" id="resizer-session-notes"></div>
                  <div id="notesWrapper" class="session-section persistent-notes-section" style="flex-basis: 50%;">
-                     <div class="panel-header collapsible-header" data-target="notesContent">
-                         <span>Persistent Notes <span class="collapse-icon">▼</span></span>
+                     <div class="panel-header collapsible-header" data-target="notesContent" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                         <span>Client Details <span class="collapse-icon">▼</span></span>
+                         <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+                             <button id="clientDetailsTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-color-primary); font-size: 0.8rem; font-weight: 600;">Client Details</button>
+                             <button id="nextSessionTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 600;">Next Session</button>
+                         </div>
                      </div>
                      <div id="notesContent" class="panel-content collapsible-content">
-                         <textarea id="persistentNotes" placeholder="Select a client to enter persistent notes..." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                         <div id="clientDetailsContent">
+                             <textarea id="persistentNotes" placeholder="Select a client to enter client details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                         </div>
+                         <div id="nextSessionContent" class="hidden">
+                             <textarea id="nextSessionNotes" placeholder="Select a client to enter next session notes..." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                         </div>
                      </div>
                  </div>
             </div>
@@ -2822,6 +2831,11 @@
             const deletedAppointmentsListEl = document.getElementById('deletedAppointmentsList');
             const clearDeletedAppointmentsBtn = document.getElementById('clearDeletedAppointmentsBtn');
             const persistentNotesEl = document.getElementById('persistentNotes');
+            const nextSessionNotesEl = document.getElementById('nextSessionNotes');
+            const clientDetailsTabBtn = document.getElementById('clientDetailsTabBtn');
+            const nextSessionTabBtn = document.getElementById('nextSessionTabBtn');
+            const clientDetailsContentEl = document.getElementById('clientDetailsContent');
+            const nextSessionContentEl = document.getElementById('nextSessionContent');
             const clientDiagnosisEl = document.getElementById('clientDiagnosis');
             const sessionInfoEl = document.getElementById('sessionInfo');
             const auditProofSymptomsEl = document.getElementById('auditProofSymptoms');
@@ -2973,7 +2987,7 @@
 
             // App State
             let data = { clients: [], archivedClients: [] };
-            let deletedItems = { clients: [], appointments: [], notes: [] };
+            let deletedItems = { clients: [], appointments: [], notes: [], intakes: [] };
             let selectedClientId = null;
             let selectedAppointmentId = null;
             let selectedNoteId = null;
@@ -2989,6 +3003,19 @@
             let selectedModel = null;
             let sessionTimerInterval = null;
             let persistentInstructions = '';
+            let activeNotesTab = 'clientDetails';
+
+            const updateNotesTabUI = () => {
+                const showClientDetails = activeNotesTab !== 'nextSession';
+                clientDetailsTabBtn.classList.toggle('active', showClientDetails);
+                nextSessionTabBtn.classList.toggle('active', !showClientDetails);
+                clientDetailsContentEl.classList.toggle('hidden', !showClientDetails);
+                nextSessionContentEl.classList.toggle('hidden', showClientDetails);
+                clientDetailsTabBtn.style.background = showClientDetails ? 'var(--input-bg)' : 'transparent';
+                clientDetailsTabBtn.style.color = showClientDetails ? 'var(--text-color-primary)' : 'var(--text-color-secondary)';
+                nextSessionTabBtn.style.background = showClientDetails ? 'transparent' : 'var(--input-bg)';
+                nextSessionTabBtn.style.color = showClientDetails ? 'var(--text-color-secondary)' : 'var(--text-color-primary)';
+            };
             let sessionInstructions = '';
             let preferredPronouns = '';
             let customPronounSubject = '';
@@ -3107,6 +3134,7 @@
                     if (!Array.isArray(client.intakeSessions)) client.intakeSessions = [];
                     if (!Array.isArray(client.goals)) client.goals = [];
                     if (typeof client.persistentInstructions !== 'string') client.persistentInstructions = '';
+                    if (typeof client.nextSessionNotes !== 'string') client.nextSessionNotes = '';
                     if (!client.preferredPronouns || typeof client.preferredPronouns !== 'object') {
                         client.preferredPronouns = {
                             value: '',
@@ -3168,11 +3196,44 @@
                 goalGenerationSystemPrompt = data.aiInstructions.treatmentGoalsSystemPrompt;
 
                 if (!deletedItems || typeof deletedItems !== 'object') {
-                    deletedItems = { clients: [], appointments: [], notes: [] };
+                    deletedItems = { clients: [], appointments: [], notes: [], intakes: [] };
                 }
                 if (!Array.isArray(deletedItems.clients)) deletedItems.clients = [];
                 if (!Array.isArray(deletedItems.appointments)) deletedItems.appointments = [];
                 if (!Array.isArray(deletedItems.notes)) deletedItems.notes = [];
+                if (!Array.isArray(deletedItems.intakes)) deletedItems.intakes = [];
+            };
+
+            const getResolvedSoapAuditResult = (auditResult) => {
+                if (!auditResult) return null;
+                const manualOverrides = auditResult.manualOverrides && typeof auditResult.manualOverrides === 'object'
+                    ? auditResult.manualOverrides
+                    : {};
+                const checks = (auditResult.checks || []).map(check => ({
+                    ...check,
+                    manualOverride: !!manualOverrides[check.label],
+                    pass: !!check.pass || !!manualOverrides[check.label]
+                }));
+                const passedCount = checks.filter(check => check.pass).length;
+                const score = checks.length > 0 ? Math.round((passedCount / checks.length) * 100) : 0;
+                const criticalLabels = new Set([
+                    'All SOAP sections completed',
+                    'Assessment states medical necessity/progress',
+                    'Subjective includes functional impact'
+                ]);
+                const failedCritical = checks.filter(check => !check.pass && criticalLabels.has(check.label));
+                const likelyPass = score >= 80 && failedCritical.length === 0;
+
+                return {
+                    ...auditResult,
+                    checks,
+                    score,
+                    likelyPass,
+                    opportunities: checks.filter(check => !check.pass).map(check => check.remedy),
+                    summary: likelyPass
+                        ? 'Likely audit-ready based on configured SOAP criteria.'
+                        : 'This note can be strengthened for stronger audit support. Suggested refinements are listed below.'
+                };
             };
 
             const containsAny = (text, patterns) => patterns.some(pattern => pattern.test(text));
@@ -3321,26 +3382,14 @@
                     }
                 ];
 
-                const criticalLabels = new Set([
-                    'All SOAP sections completed',
-                    'Assessment states medical necessity/progress',
-                    'Subjective includes functional impact'
-                ]);
-
-                const passedCount = checks.filter(check => check.pass).length;
-                const score = Math.round((passedCount / checks.length) * 100);
-                const failedCritical = checks.filter(check => !check.pass && criticalLabels.has(check.label));
-                const likelyPass = score >= 80 && failedCritical.length === 0;
-
                 return {
-                    score,
-                    likelyPass,
+                    score: 0,
+                    likelyPass: false,
                     checks,
+                    manualOverrides: {},
                     opportunities: checks.filter(check => !check.pass).map(check => check.remedy),
                     timestamp: new Date().toISOString(),
-                    summary: likelyPass
-                        ? 'Likely audit-ready based on configured SOAP criteria.'
-                        : 'This note can be strengthened for stronger audit support. Suggested refinements are listed below.'
+                    summary: 'This note can be strengthened for stronger audit support. Suggested refinements are listed below.'
                 };
             };
 
@@ -3353,21 +3402,23 @@
                     `;
                 }
 
+                const resolvedAudit = getResolvedSoapAuditResult(auditResult);
+
                 return `
                     <div class="audit-box">
                         <div class="audit-summary">
-                            <span><strong>Audit Score:</strong> ${auditResult.score}%</span>
-                            <span class="audit-badge ${auditResult.likelyPass ? 'pass' : 'fail'}">${auditResult.likelyPass ? 'Likely Pass' : 'Needs Revision'}</span>
+                            <span><strong>Audit Score:</strong> ${resolvedAudit.score}%</span>
+                            <span class="audit-badge ${resolvedAudit.likelyPass ? 'pass' : 'fail'}">${resolvedAudit.likelyPass ? 'Likely Pass' : 'Needs Revision'}</span>
                         </div>
-                        <div style="font-size: 0.84rem; margin-bottom: 6px; color: var(--text-color-secondary);">${auditResult.summary}</div>
+                        <div style="font-size: 0.84rem; margin-bottom: 6px; color: var(--text-color-secondary);">${resolvedAudit.summary}</div>
                         <ul class="audit-items">
-                            ${auditResult.checks.map(check => `<li class="${check.pass ? 'audit-item-pass' : 'audit-item-fail'}">${check.pass ? '✓' : '✗'} ${check.label}</li>`).join('')}
+                            ${resolvedAudit.checks.map(check => `<li class="${check.pass ? 'audit-item-pass' : 'audit-item-fail'}"><div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;"><span>${check.pass ? '✓' : '✗'} ${check.label}${check.manualOverride ? ' (manual)' : ''}</span><label style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; white-space: nowrap;"><input type="checkbox" class="audit-manual-check" data-check-label="${check.label.replace(/\"/g, '&quot;')}" ${check.manualOverride ? 'checked' : ''}>Manual</label></div></li>`).join('')}
                         </ul>
-                        ${auditResult.opportunities && auditResult.opportunities.length > 0 ? `
+                        ${resolvedAudit.opportunities && resolvedAudit.opportunities.length > 0 ? `
                             <div class="audit-remediation">
                                 <strong>Ways to strengthen this note:</strong>
                                 <ul>
-                                    ${auditResult.opportunities.map(item => `<li>${item}</li>`).join('')}
+                                    ${resolvedAudit.opportunities.map(item => `<li>${item}</li>`).join('')}
                                 </ul>
                             </div>
                         ` : ''}
@@ -4631,6 +4682,10 @@ Requirements:
                 persistentNotesEl.disabled = !client;
                 persistentNotesEl.value = client ? client.persistentNotes || '' : '';
                 persistentNotesEl.placeholder = client ? "Enter persistent notes for this client..." : "Select a client to enter persistent notes...";
+                nextSessionNotesEl.disabled = !client;
+                nextSessionNotesEl.value = client ? client.nextSessionNotes || '' : '';
+                nextSessionNotesEl.placeholder = client ? "Enter next session notes for this client..." : "Select a client to enter next session notes...";
+                updateNotesTabUI();
 
                 clientDiagnosisEl.disabled = !client;
                 clientDiagnosisEl.value = client ? client.diagnosis || '' : '';
@@ -4912,12 +4967,20 @@ Requirements:
 
                 const deletedAppointmentsForClient = deletedItems.appointments.filter(appt => appt.clientId === selectedClientId);
                 const deletedNotesForClient = deletedItems.notes.filter(note => note.clientId === selectedClientId);
-                clearDeletedAppointmentsBtn.classList.toggle('hidden', (deletedAppointmentsForClient.length + deletedNotesForClient.length) === 0);
+                const deletedIntakesForClient = deletedItems.intakes.filter(intake => intake.clientId === selectedClientId);
+                clearDeletedAppointmentsBtn.classList.toggle('hidden', (deletedAppointmentsForClient.length + deletedNotesForClient.length + deletedIntakesForClient.length) === 0);
 
                 deletedAppointmentsForClient.forEach(appt => {
                     const div = document.createElement('div');
                     div.className = 'deleted-item';
                     div.innerHTML = `<span>Appt: ${new Date(appt.date).toLocaleDateString()}</span><button class="restore-btn" data-type="appointment" data-id="${appt.id}">Restore</button>`;
+                    deletedAppointmentsListEl.appendChild(div);
+                });
+
+                deletedIntakesForClient.forEach(intake => {
+                    const div = document.createElement('div');
+                    div.className = 'deleted-item';
+                    div.innerHTML = `<span>Intake: ${new Date(intake.createdAt).toLocaleDateString()}</span><button class="restore-btn" data-type="intake" data-id="${intake.id}">Restore</button>`;
                     deletedAppointmentsListEl.appendChild(div);
                 });
 
@@ -5170,6 +5233,7 @@ Requirements:
                     id: crypto.randomUUID(),
                     name: name.trim(),
                     persistentNotes: '',
+                    nextSessionNotes: '',
                     persistentInstructions: '',
                     appointments: [],
                     intakeSessions: [],
@@ -5306,9 +5370,12 @@ Requirements:
                         const clientIndex = data.clients.findIndex(c => c.id === clientId);
                         if (clientIndex === -1) return;
                         const [removedClient] = data.clients.splice(clientIndex, 1);
-                        if (removedClient.appointments) {
-                             deletedItems.appointments.push(...removedClient.appointments.map(a => ({...a, clientId})));
-                        }
+                            if (removedClient.appointments) {
+                                deletedItems.appointments.push(...removedClient.appointments.map(a => ({...a, clientId})));
+                            }
+                            if (removedClient.intakeSessions) {
+                                deletedItems.intakes.push(...removedClient.intakeSessions.map(intake => ({...intake, clientId})));
+                            }
                         deletedItems.clients.push(removedClient);
                         if (selectedClientId === clientId) {
                             selectedClientId = null;
@@ -5526,7 +5593,8 @@ Requirements:
                     if (e.target.closest('.delete-btn')) {
                         const intakeIndex = (client.intakeSessions || []).findIndex(i => i.id === intakeId);
                         if (intakeIndex > -1 && confirm('Delete this intake session?')) {
-                            client.intakeSessions.splice(intakeIndex, 1);
+                            const [removedIntake] = client.intakeSessions.splice(intakeIndex, 1);
+                            deletedItems.intakes.push({ ...removedIntake, clientId: client.id });
                             if (selectedIntakeId === intakeId) selectedIntakeId = null;
                             markDirty();
                             fullRender();
@@ -5661,6 +5729,22 @@ Requirements:
                         return;
                     }
 
+                    const intakeIndex = deletedItems.intakes.findIndex(intake => intake.id === id);
+                    if (intakeIndex > -1) {
+                        const [intake] = deletedItems.intakes.splice(intakeIndex, 1);
+                        const client = findClient(intake.clientId);
+                        if (client) {
+                            if (!Array.isArray(client.intakeSessions)) client.intakeSessions = [];
+                            client.intakeSessions.push(intake);
+                            markDirty();
+                            fullRender();
+                        } else {
+                            deletedItems.intakes.push(intake);
+                            alert('Cannot restore. Client not found.');
+                        }
+                        return;
+                    }
+
                     const apptIndex = deletedItems.appointments.findIndex(a => a.id === id);
                     if (apptIndex === -1) return;
 
@@ -5687,9 +5771,10 @@ Requirements:
             });
             clearDeletedAppointmentsBtn.addEventListener('click', () => {
                  if (!selectedClientId) return;
-                 if(confirm('Permanently delete all recently deleted appointments and notes for this client?')) {
+                 if(confirm('Permanently delete all recently deleted appointments, notes, and intake sessions for this client?')) {
                     deletedItems.appointments = deletedItems.appointments.filter(appt => appt.clientId !== selectedClientId);
                     deletedItems.notes = deletedItems.notes.filter(note => note.clientId !== selectedClientId);
+                    deletedItems.intakes = deletedItems.intakes.filter(intake => intake.clientId !== selectedClientId);
                     markDirty();
                     fullRender();
                 }
@@ -5701,6 +5786,23 @@ Requirements:
                      client.persistentNotes = persistentNotesEl.value;
                      markDirty();
                  }
+            });
+            nextSessionNotesEl.addEventListener('input', () => {
+                 const client = findClient(selectedClientId);
+                 if (client) {
+                     client.nextSessionNotes = nextSessionNotesEl.value;
+                     markDirty();
+                 }
+            });
+            clientDetailsTabBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                activeNotesTab = 'clientDetails';
+                updateNotesTabUI();
+            });
+            nextSessionTabBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                activeNotesTab = 'nextSession';
+                updateNotesTabUI();
             });
 
             clientDiagnosisEl.addEventListener('input', () => {
@@ -5996,6 +6098,18 @@ Requirements:
                         return;
                      }
                      appointment.auditCheck = runSoapAuditCheck(client, appointment);
+                     markDirty();
+                     renderSoap();
+                     return;
+                 }
+                 if (e.target.classList.contains('audit-manual-check')) {
+                     const client = findClient(selectedClientId);
+                     const appointment = findAppointment(client, selectedAppointmentId);
+                     if (!appointment || !appointment.auditCheck) return;
+                     if (!appointment.auditCheck.manualOverrides || typeof appointment.auditCheck.manualOverrides !== 'object') {
+                         appointment.auditCheck.manualOverrides = {};
+                     }
+                     appointment.auditCheck.manualOverrides[e.target.dataset.checkLabel] = e.target.checked;
                      markDirty();
                      renderSoap();
                      return;
@@ -7315,7 +7429,7 @@ This error cannot be fixed within this application's code; it requires a configu
                     if (state) {
                         data = state.data || getInitialData();
                         if (!data.archivedClients) data.archivedClients = [];
-                        deletedItems = state.deletedItems || { clients: [], appointments: [], notes: [] };
+                        deletedItems = state.deletedItems || { clients: [], appointments: [], notes: [], intakes: [] };
                         selectedClientId = null;
                         selectedAppointmentId = null;
                         selectedNoteId = null;
@@ -7347,7 +7461,7 @@ This error cannot be fixed within this application's code; it requires a configu
                     console.error("Failed to load data", e);
                     alert("Error loading data. Data might be corrupt or password incorrect. Starting fresh.");
                     data = getInitialData();
-                    deletedItems = { clients: [], appointments: [], notes: [] };
+                    deletedItems = { clients: [], appointments: [], notes: [], intakes: [] };
                 }
             };
 
@@ -7404,7 +7518,7 @@ This error cannot be fixed within this application's code; it requires a configu
 
             const applyImportedState = (state) => {
                 data = state.data || getInitialData();
-                deletedItems = state.deletedItems || { clients: [], appointments: [], notes: [] };
+                deletedItems = state.deletedItems || { clients: [], appointments: [], notes: [], intakes: [] };
                 selectedClientId = state.selectedClientId || null;
                 selectedAppointmentId = state.selectedAppointmentId || null;
                 selectedNoteId = state.selectedNoteId || null;
@@ -7507,7 +7621,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 const userInput = prompt(`This action will permanently erase all client data from this browser. This cannot be undone.\n\nTo confirm, please type "${confirmationText}" in the box below.`);
                 if (userInput === confirmationText) {
                     data = getInitialData();
-                    deletedItems = { clients: [], appointments: [], notes: [] };
+                    deletedItems = { clients: [], appointments: [], notes: [], intakes: [] };
                     selectedClientId = null;
                     selectedAppointmentId = null;
                     selectedNoteId = null;

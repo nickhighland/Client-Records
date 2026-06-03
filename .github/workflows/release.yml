@@ -42,3 +42,43 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: false
           prerelease: false
+
+      - name: Create signed updater bundle
+        id: updater_bundle
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          BUNDLE_DIR="$GITHUB_WORKSPACE/tauri-app/src-tauri/target/release/bundle/macos"
+          APP_NAME="Client Records.app"
+          TARGZ="Client.Records_${VERSION}_aarch64.app.tar.gz"
+          KEY_FILE="$RUNNER_TEMP/tauri-signing.key"
+
+          printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+
+          if [ ! -d "$BUNDLE_DIR" ]; then
+            echo "ERROR: Bundle directory not found at $BUNDLE_DIR"
+            exit 1
+          fi
+
+          (cd "$BUNDLE_DIR" && COPYFILE_DISABLE=1 tar czf "$TARGZ" "$APP_NAME")
+          (cd "$GITHUB_WORKSPACE/tauri-app" && npx tauri signer sign -f "$KEY_FILE" -p "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" "$BUNDLE_DIR/$TARGZ")
+
+          rm -f "$KEY_FILE"
+
+          RELATIVE_BUNDLE_DIR="${BUNDLE_DIR#${GITHUB_WORKSPACE}/}"
+          echo "targz_path=$RELATIVE_BUNDLE_DIR/$TARGZ" >> "$GITHUB_OUTPUT"
+          echo "sig_path=$RELATIVE_BUNDLE_DIR/$TARGZ.sig" >> "$GITHUB_OUTPUT"
+
+      - name: Upload updater bundle assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            ${{ steps.updater_bundle.outputs.targz_path }}
+            ${{ steps.updater_bundle.outputs.sig_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

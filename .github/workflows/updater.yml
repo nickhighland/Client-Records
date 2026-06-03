@@ -37,15 +37,21 @@ jobs:
           PUB_DATE=$(echo "$RELEASE_DATA" | jq -r .published_at)
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
           
-          # Find the .app.tar.gz and its .sig for macOS ARM
+          # Find the signed .app.tar.gz and its .sig for macOS ARM
           ASSETS_JSON=$(echo "$RELEASE_DATA" | jq -c '.assets')
-          
-          BUNDLE_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | endswith(".app.tar.gz")) | .browser_download_url' | head -1)
+
           SIG_NAME=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | endswith(".app.tar.gz.sig")) | .name' | head -1)
           SIG_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | endswith(".app.tar.gz.sig")) | .browser_download_url' | head -1)
-          
+
+          if [ -n "$SIG_NAME" ]; then
+            BUNDLE_NAME="${SIG_NAME%.sig}"
+            BUNDLE_URL=$(echo "$ASSETS_JSON" | jq -r --arg name "$BUNDLE_NAME" '.[] | select(.name == $name) | .browser_download_url' | head -1)
+          else
+            BUNDLE_URL=""
+          fi
+
           if [ -z "$BUNDLE_URL" ] || [ -z "$SIG_URL" ]; then
-            echo "ERROR: Could not find .app.tar.gz bundle or signature in release assets"
+            echo "ERROR: Could not find signed .app.tar.gz bundle or signature in release assets"
             echo "Assets found:"
             echo "$ASSETS_JSON" | jq -r '.[].name'
             exit 1

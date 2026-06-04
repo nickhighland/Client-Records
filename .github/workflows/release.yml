@@ -35,6 +35,12 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Validate release tag
+        if: ${{ github.event_name == 'workflow_dispatch' && !startsWith(inputs.release_tag || github.ref_name, 'v') }}
+        run: |
+          echo "ERROR: release_tag must be a v* tag (for example, v1.0.41)."
+          exit 1
+
       - name: Install frontend dependencies
         working-directory: ./tauri-app
         run: npm install
@@ -89,7 +95,7 @@ jobs:
       - name: Upload updater bundle assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
           files: |
             ${{ steps.updater_bundle.outputs.targz_path }}
             ${{ steps.updater_bundle.outputs.sig_path }}

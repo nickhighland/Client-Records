@@ -70,6 +70,8 @@ jobs:
           printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
 
+          unset TAURI_SIGNING_PRIVATE_KEY
+
           if [ ! -d "$BUNDLE_DIR" ]; then
             echo "ERROR: Bundle directory not found at $BUNDLE_DIR"
             exit 1

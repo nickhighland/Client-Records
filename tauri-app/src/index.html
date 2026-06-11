@@ -1924,7 +1924,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.41</span>
+                <span class="version-badge">v1.0.42</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -3455,9 +3455,7 @@
 
             const getInterventionContext = (appointment) => {
                 const bank = Array.isArray(data.interventionBank) ? data.interventionBank.filter(Boolean) : [];
-                const selected = Array.isArray(appointment?.selectedInterventions)
-                    ? appointment.selectedInterventions.filter(Boolean)
-                    : [];
+                const selected = getResolvedSoapInterventions(appointment);
                 let context = '';
                 if (bank.length > 0) {
                     context += `\n- **Intervention Bank (Allowed Interventions Only):**\n${bank.map(item => `  - ${item}`).join('\n')}`;
@@ -3861,22 +3859,40 @@
             };
 
             const extractInterventionsFromObjective = (objectiveText) => {
-                const normalizedObjective = normalizeInterventionText(objectiveText);
-                if (!normalizedObjective) return [];
-                const objectiveTokens = tokenizeForInterventionMatch(objectiveText);
-                const objectiveTokenSet = new Set(objectiveTokens);
-                if (objectiveTokenSet.size === 0) return [];
+                const objectiveItems = splitSoapBulletItems(objectiveText);
+                const searchTexts = objectiveItems.length > 0 ? objectiveItems : [objectiveText];
+                const objectiveTokenSets = searchTexts
+                    .map(item => new Set(tokenizeForInterventionMatch(item)))
+                    .filter(tokenSet => tokenSet.size > 0);
+                if (objectiveTokenSets.length === 0) return [];
 
                 return (Array.isArray(data.interventionBank) ? data.interventionBank : []).filter(item => {
                     const normalizedItem = normalizeInterventionText(item);
                     if (!normalizedItem) return false;
-                    if (` ${normalizedObjective} `.includes(` ${normalizedItem} `)) return true;
 
-                    const itemTokens = tokenizeForInterventionMatch(item);
-                    if (itemTokens.length === 0) return false;
-                    const overlap = itemTokens.filter(token => objectiveTokenSet.has(token)).length;
-                    const coverage = overlap / itemTokens.length;
-                    return overlap > 0 && (coverage >= 1 || coverage >= 0.66);
+                    return searchTexts.some(text => {
+                        const normalizedObjective = normalizeInterventionText(text);
+                        if (!normalizedObjective) return false;
+                        if (normalizedObjective.includes(normalizedItem) || normalizedItem.includes(normalizedObjective)) {
+                            return true;
+                        }
+
+                        const objectiveTokens = new Set(tokenizeForInterventionMatch(text));
+                        if (objectiveTokens.size === 0) return false;
+
+                        const itemTokens = tokenizeForInterventionMatch(item);
+                        if (itemTokens.length === 0) return false;
+
+                        const overlap = itemTokens.filter(token => objectiveTokens.has(token)).length;
+                        if (overlap === 0) return false;
+
+                        const coverage = overlap / itemTokens.length;
+                        if (itemTokens.length <= 2) {
+                            return coverage >= 0.5 || overlap >= 1;
+                        }
+
+                        return coverage >= 0.5 || overlap >= 2;
+                    });
                 });
             };
 
@@ -3894,6 +3910,34 @@
                     }
                     return [];
                 });
+            };
+
+            const getResolvedSoapInterventions = (appointment) => {
+                const manualSelections = Array.isArray(appointment?.selectedInterventions)
+                    ? appointment.selectedInterventions.filter(Boolean)
+                    : [];
+                const objectiveMatches = Array.isArray(appointment?.soap?.objectiveInterventionMatches)
+                    ? appointment.soap.objectiveInterventionMatches.filter(Boolean)
+                    : [];
+                return mergeInterventions(manualSelections, objectiveMatches);
+            };
+
+            const syncObjectiveInterventionsFromObjectiveText = (appointment, objectiveText) => {
+                if (!appointment) return [];
+                if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
+
+                const objectiveMatches = extractInterventionsFromObjective(objectiveText ?? appointment.soap.o ?? '');
+                appointment.soap.objectiveInterventionMatches = objectiveMatches;
+
+                const resolvedInterventions = getResolvedSoapInterventions(appointment);
+                appointment.soap.interventions = resolvedInterventions.length > 0
+                    ? resolvedInterventions.map(item => `• ${item}`).join('\n')
+                    : 'No interventions identified directly in Objective section.';
+
+                const interventionsTextarea = document.getElementById('interventions');
+                if (interventionsTextarea) interventionsTextarea.value = appointment.soap.interventions;
+
+                return objectiveMatches;
             };
 
             const getClientPreferredPronouns = (client) => {
@@ -4014,7 +4058,7 @@
 
                 const explicitInterventionSignals = [
                     (appointment?.sessionInfo || '').trim(),
-                    ...((appointment?.selectedInterventions || []).map(item => item && item.trim()).filter(Boolean))
+                    ...(getResolvedSoapInterventions(appointment).map(item => item && item.trim()).filter(Boolean))
                 ].filter(Boolean);
 
                 return `
@@ -4874,9 +4918,11 @@ Requirements:
 
                 const soapData = appointment.soap || { s: '', o: '', a: '', p: '' };
                 if (!Array.isArray(appointment.selectedInterventions)) appointment.selectedInterventions = [];
-                const interventions = appointment.selectedInterventions.length > 0
-                    ? appointment.selectedInterventions.map(item => `• ${item}`).join('\n')
+                const resolvedInterventions = getResolvedSoapInterventions(appointment);
+                const interventions = resolvedInterventions.length > 0
+                    ? resolvedInterventions.map(item => `• ${item}`).join('\n')
                     : (soapData.interventions || 'No interventions selected from the bank.');
+                appointment.soap.interventions = interventions;
                 const auditResult = appointment.auditCheck || null;
                 soapContentEl.innerHTML = `
                     <div class="soap-section">
@@ -5982,20 +6028,11 @@ Requirements:
                         if (SOAP_SORT_SECTION_KEYS.includes(key) && isManualEdit) {
                             setSoapSectionOrderOverride(appointment.soap, key, true);
                         }
-                        // NEW: If the Objective text (manual or AI) directly names any intervention
-                        // from the intervention bank, add those to the interventions list.
                         if (key === 'o') {
-                            const matchedInterventions = extractInterventionsFromObjective(textarea.value);
-                            if (matchedInterventions.length > 0) {
-                                const mergedInterventions = mergeInterventions(appointment.selectedInterventions, matchedInterventions);
-                                appointment.selectedInterventions = mergedInterventions;
-                                appointment.soap.interventions = mergedInterventions.map(item => `• ${item}`).join('\n');
-                                const interventionsTextarea = document.getElementById('interventions');
-                                if (interventionsTextarea) interventionsTextarea.value = appointment.soap.interventions;
-                                }
-                            }
+                            syncObjectiveInterventionsFromObjectiveText(appointment, textarea.value);
                         }
-                        delete appointment.auditCheck;
+                    }
+                    delete appointment.auditCheck;
                     markDirty();
                 }
             };
@@ -6210,22 +6247,8 @@ Requirements:
                     
                     // Manually update the data model since we're not dispatching the 'input' event before re-rendering
                     appointment.soap[sectionKey] = textarea.value;
-                    // If this was an Objective suggestion that was accepted, extract matching
-                    // interventions from the Objective text and populate the interventions field.
-                    if (sectionKey === 'o' && isAccepted && !skipAppend) {
-                        const suggestionMatches = Array.isArray(appointment.soap.o_suggestion_intervention_matches)
-                            ? (appointment.soap.o_suggestion_intervention_matches[index] || [])
-                            : [];
-                        const matchedInterventions = suggestionMatches.length > 0
-                            ? suggestionMatches
-                            : extractInterventionsFromObjective(textToAdd);
-                        const mergedInterventions = mergeInterventions(appointment.selectedInterventions, matchedInterventions);
-                        appointment.selectedInterventions = mergedInterventions;
-                        appointment.soap.interventions = mergedInterventions.length > 0
-                            ? mergedInterventions.map(item => `• ${item}`).join('\n')
-                            : appointment.soap.interventions || 'No interventions identified directly in Objective section.';
-                        const interventionsTextarea = document.getElementById('interventions');
-                        if (interventionsTextarea) interventionsTextarea.value = appointment.soap.interventions;
+                    if (sectionKey === 'o' && !skipAppend) {
+                        syncObjectiveInterventionsFromObjectiveText(appointment, textarea.value);
                     }
                 }
 
@@ -6396,13 +6419,7 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                  alignSoapSectionsByObjectiveOrder(appointment.soap);
 
                  refreshObjectiveSuggestionInterventionMatches(appointment);
-
-                      const selectedFromObjective = extractInterventionsFromObjective(generatedObjectiveText);
-                      const mergedInterventions = mergeInterventions(appointment.selectedInterventions, selectedFromObjective);
-                      appointment.selectedInterventions = mergedInterventions;
-                      appointment.soap.interventions = mergedInterventions.length > 0
-                          ? mergedInterventions.map(item => `• ${item}`).join('\n')
-                          : 'No interventions identified directly in Objective section.';
+                 syncObjectiveInterventionsFromObjectiveText(appointment, generatedObjectiveText);
              };
 
             const generateSoapNoteWithOpenAI = async () => {
@@ -8028,9 +8045,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 const selected = Array.from(interventionPickerList.querySelectorAll('.picker-intervention:checked')).map(input => input.value);
                 appointment.selectedInterventions = selected;
                 if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
-                appointment.soap.interventions = selected.length > 0
-                    ? selected.map(item => `• ${item}`).join('\n')
-                    : 'No interventions selected from the bank.';
+                syncObjectiveInterventionsFromObjectiveText(appointment, appointment.soap.o || '');
                 delete appointment.auditCheck;
                 markDirty();
                 interventionPickerModal.classList.add('hidden');

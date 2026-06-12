@@ -1975,7 +1975,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.44</span>
+                <span class="version-badge">v1.0.45</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2489,7 +2489,14 @@
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(180px,1fr) auto;gap:8px;margin-bottom:10px;align-items:end;">
                 <input id="newInterventionInput" class="setting-input" type="text" placeholder="Add intervention...">
-                <input id="newInterventionModalityInput" class="setting-input" type="text" placeholder="Modality (for example Narrative Therapy)">
+                <div>
+                    <select id="newInterventionModalitySelect" class="setting-input">
+                        <option value="" selected disabled>Choose modality...</option>
+                    </select>
+                    <div id="newInterventionModalityOtherWrap" class="hidden" style="margin-top:8px;">
+                        <input id="newInterventionModalityOther" class="setting-input" type="text" placeholder="Or enter a new modality..." disabled>
+                    </div>
+                </div>
                 <button id="addInterventionBtn" class="btn save-btn" style="width:auto;padding:0 14px;">Add</button>
             </div>
             <div style="font-size:0.78rem;color:var(--text-color-secondary);margin-bottom:10px;">Drag interventions onto another row to reorder them, or into a modality section to move them.</div>
@@ -2971,7 +2978,9 @@
             const interventionBankModal = document.getElementById('interventionBankModal');
             const closeInterventionBankBtn = document.getElementById('closeInterventionBankBtn');
             const newInterventionInput = document.getElementById('newInterventionInput');
-            const newInterventionModalityInput = document.getElementById('newInterventionModalityInput');
+            const newInterventionModalitySelect = document.getElementById('newInterventionModalitySelect');
+            const newInterventionModalityOtherWrap = document.getElementById('newInterventionModalityOtherWrap');
+            const newInterventionModalityOther = document.getElementById('newInterventionModalityOther');
             const addInterventionBtn = document.getElementById('addInterventionBtn');
             const interventionBankList = document.getElementById('interventionBankList');
             const interventionPickerModal = document.getElementById('interventionPickerModal');
@@ -3562,7 +3571,6 @@
                         const modalityCompare = left.modality.localeCompare(right.modality);
                         if (modalityCompare !== 0) return modalityCompare;
                         if (left.isHeader !== right.isHeader) return left.isHeader ? -1 : 1;
-                        if (left.order !== right.order) return left.order - right.order;
                         return left.name.localeCompare(right.name);
                     })
                     .map((entry, index) => ({ ...entry, order: index }));
@@ -3571,6 +3579,10 @@
             const getInterventionBankEntries = () => {
                 normalizeInterventionBank();
                 return data.interventionBank;
+            };
+
+            const getInterventionBankModalities = () => {
+                return [...new Set(getInterventionBankEntries().map(entry => normalizeInterventionModality(entry.modality)))];
             };
 
             const getInterventionBankNames = () => getInterventionBankEntries().filter(entry => !entry.isHeader).map(entry => entry.name);
@@ -4227,6 +4239,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const entries = getInterventionBankEntries();
                 if (entries.length === 0) {
                     interventionBankList.innerHTML = '<div class="no-selection">Add interventions and assign them to a modality.</div>';
+                    renderInterventionModalityOptions();
                     return;
                 }
                 const groups = entries.reduce((map, entry) => {
@@ -4244,7 +4257,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     <div class="intervention-group">
                         <div class="intervention-group-header">
                             <span>${modality}</span>
-                            <span class="intervention-group-count">${group.items.length} item${group.items.length === 1 ? '' : 's'}</span>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span class="intervention-group-count">${group.items.length} item${group.items.length === 1 ? '' : 's'}</span>
+                                ${group.header && group.items.length === 0 ? `<button class="action-btn delete-btn" data-bank-id="${group.header.id}" title="Delete empty modality bank" style="width:20px;height:20px;">×</button>` : ''}
+                            </div>
                         </div>
                         <div class="intervention-group-body" data-drop-modality="${modality.replace(/"/g, '&quot;')}">
                             ${group.items.length > 0 ? group.items.map(entry => `
@@ -4256,6 +4272,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         </div>
                     </div>
                 `).join('');
+                renderInterventionModalityOptions();
             };
 
             const renderInterventionPicker = () => {
@@ -4325,6 +4342,35 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 renderInterventionBank();
                 renderInterventionPicker();
                 renderSoap();
+            };
+
+            const renderInterventionModalityOptions = () => {
+                if (!newInterventionModalitySelect || !newInterventionModalityOtherWrap || !newInterventionModalityOther) return;
+                const currentValue = newInterventionModalitySelect.value;
+                const modalities = getInterventionBankModalities();
+                const modalityOptions = modalities.map(modality => `<option value="${modality.replace(/"/g, '&quot;')}" ${modality === currentValue ? 'selected' : ''}>${modality}</option>`).join('');
+                const hasCustomValue = currentValue && currentValue !== '__new__' && !modalities.includes(currentValue);
+                newInterventionModalitySelect.innerHTML = `
+                    <option value="" ${!currentValue ? 'selected' : ''}>Choose modality...</option>
+                    ${modalityOptions}
+                    <option value="__new__" ${currentValue === '__new__' || hasCustomValue ? 'selected' : ''}>Other (new modality)</option>
+                `;
+                const showOther = newInterventionModalitySelect.value === '__new__' || hasCustomValue;
+                newInterventionModalityOtherWrap.classList.toggle('hidden', !showOther);
+                newInterventionModalityOther.disabled = !showOther;
+                if (showOther && hasCustomValue) {
+                    newInterventionModalityOther.value = currentValue;
+                }
+            };
+
+            const syncInterventionModalityInputs = () => {
+                if (!newInterventionModalitySelect || !newInterventionModalityOtherWrap || !newInterventionModalityOther) return;
+                const showOther = newInterventionModalitySelect.value === '__new__';
+                newInterventionModalityOtherWrap.classList.toggle('hidden', !showOther);
+                newInterventionModalityOther.disabled = !showOther;
+                if (!showOther) {
+                    newInterventionModalityOther.value = '';
+                }
             };
 
             const renderGuidingModalities = () => {
@@ -8442,11 +8488,18 @@ This error cannot be fixed within this application's code; it requires a configu
                     interventionBankModal.classList.add('hidden');
                 }
             });
+            if (newInterventionModalitySelect) {
+                newInterventionModalitySelect.addEventListener('change', syncInterventionModalityInputs);
+            }
             addInterventionBtn.addEventListener('click', () => {
                 const text = (newInterventionInput.value || '').trim();
-                const rawModality = (newInterventionModalityInput.value || '').trim();
-                const modality = normalizeInterventionModality(rawModality);
+                const selectedModality = newInterventionModalitySelect?.value || '';
+                const rawModality = selectedModality === '__new__'
+                    ? (newInterventionModalityOther?.value || '').trim()
+                    : selectedModality;
                 if (!text && !rawModality) return;
+                if (!text && selectedModality !== '__new__') return;
+                const modality = normalizeInterventionModality(rawModality);
                 if (!Array.isArray(data.interventionBank)) data.interventionBank = [];
                 const entries = getInterventionBankEntries();
                 const hasHeader = entries.some(entry => entry.isHeader && entry.modality === modality);
@@ -8473,7 +8526,10 @@ This error cannot be fixed within this application's code; it requires a configu
                 }
 
                 newInterventionInput.value = '';
-                newInterventionModalityInput.value = '';
+                if (newInterventionModalitySelect) newInterventionModalitySelect.value = '';
+                if (newInterventionModalityOther) newInterventionModalityOther.value = '';
+                syncInterventionModalityInputs();
+                renderInterventionModalityOptions();
                 markDirty();
                 renderInterventionBank();
                 renderInterventionPicker();
@@ -8549,6 +8605,8 @@ This error cannot be fixed within this application's code; it requires a configu
                 moveInterventionBankEntry(draggedInterventionBankId, targetId, targetModality);
                 draggedInterventionBankId = null;
             });
+
+            renderInterventionModalityOptions();
 
             closeInterventionPickerBtn.addEventListener('click', () => interventionPickerModal.classList.add('hidden'));
             interventionPickerModal.addEventListener('click', (e) => {

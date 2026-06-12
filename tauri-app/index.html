@@ -1975,7 +1975,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.45</span>
+                <span class="version-badge">v1.0.46</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -8497,13 +8497,11 @@ This error cannot be fixed within this application's code; it requires a configu
                 const rawModality = selectedModality === '__new__'
                     ? (newInterventionModalityOther?.value || '').trim()
                     : selectedModality;
-                if (!text && !rawModality) return;
-                if (!text && selectedModality !== '__new__') return;
-                const modality = normalizeInterventionModality(rawModality);
+                const modality = normalizeInterventionModality(rawModality || DEFAULT_INTERVENTION_MODALITY);
+                if (!text) return;
                 if (!Array.isArray(data.interventionBank)) data.interventionBank = [];
                 const entries = getInterventionBankEntries();
                 const hasHeader = entries.some(entry => entry.isHeader && entry.modality === modality);
-                const hasIntervention = text && entries.some(entry => !entry.isHeader && normalizeInterventionText(entry.name) === normalizeInterventionText(text));
 
                 if (!hasHeader && rawModality) {
                     data.interventionBank.push({
@@ -8515,15 +8513,13 @@ This error cannot be fixed within this application's code; it requires a configu
                     });
                 }
 
-                if (text && !hasIntervention) {
-                    data.interventionBank.push({
-                        id: crypto.randomUUID(),
-                        name: text,
-                        modality,
-                        isHeader: false,
-                        order: getInterventionBankEntries().length
-                    });
-                }
+                data.interventionBank.push({
+                    id: crypto.randomUUID(),
+                    name: text,
+                    modality,
+                    isHeader: false,
+                    order: getInterventionBankEntries().length
+                });
 
                 newInterventionInput.value = '';
                 if (newInterventionModalitySelect) newInterventionModalitySelect.value = '';

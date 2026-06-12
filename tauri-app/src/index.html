@@ -787,6 +787,57 @@
         .intervention-row:last-child {
             border-bottom: none;
         }
+
+        .intervention-group {
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--input-bg);
+            margin-bottom: 10px;
+        }
+
+        .intervention-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-color-primary);
+            background: color-mix(in srgb, var(--input-bg) 72%, var(--panel-border) 28%);
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .intervention-group-count {
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--text-color-secondary);
+        }
+
+        .intervention-group-body {
+            min-height: 18px;
+        }
+
+        .intervention-bank-row {
+            cursor: grab;
+        }
+
+        .intervention-bank-row.dragging {
+            opacity: 0.45;
+        }
+
+        .intervention-drop-target {
+            outline: 2px dashed var(--button-primary-bg, #3498db);
+            outline-offset: -2px;
+            background: color-mix(in srgb, var(--input-bg) 78%, var(--button-primary-bg, #3498db) 22%);
+        }
+
+        .intervention-group-empty {
+            padding: 10px 12px;
+            font-size: 0.82rem;
+            color: var(--text-color-secondary);
+        }
         .goal-generator-modal {
             width: 99.5vw;
             max-width: 1760px;
@@ -1924,7 +1975,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.42</span>
+                <span class="version-badge">v1.0.43</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2131,9 +2182,9 @@
                  <div id="notesWrapper" class="session-section persistent-notes-section" style="flex-basis: 50%;">
                      <div class="panel-header collapsible-header" data-target="notesContent" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
                          <span>Client Details <span class="collapse-icon">▼</span></span>
-                         <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
-                             <button id="clientDetailsTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-color-primary); font-size: 0.8rem; font-weight: 600;">Client Details</button>
-                             <button id="nextSessionTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 600;">Next Session</button>
+                        <div id="clientDetailsTabGroup" style="display: flex; gap: 8px; flex-wrap: nowrap; justify-content: flex-end; min-width: 0;">
+                            <button id="clientDetailsTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-color-primary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Client Details</button>
+                            <button id="nextSessionTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Next Session</button>
                          </div>
                      </div>
                          <div id="notesContent" class="panel-content collapsible-content" style="display: flex; flex-direction: column; min-height: 160px;">
@@ -2436,10 +2487,12 @@
                 <h2 style="font-size: 1.5rem; font-weight: bold;">Intervention Bank</h2>
                 <button id="closeInterventionBankBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
             </div>
-            <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(180px,1fr) auto;gap:8px;margin-bottom:10px;align-items:end;">
                 <input id="newInterventionInput" class="setting-input" type="text" placeholder="Add intervention...">
+                <input id="newInterventionModalityInput" class="setting-input" type="text" placeholder="Modality (for example Narrative Therapy)">
                 <button id="addInterventionBtn" class="btn save-btn" style="width:auto;padding:0 14px;">Add</button>
             </div>
+            <div style="font-size:0.78rem;color:var(--text-color-secondary);margin-bottom:10px;">Drag interventions onto another row to reorder them, or into a modality section to move them.</div>
             <div id="interventionBankList" class="intervention-list"></div>
         </div>
     </div>
@@ -2863,6 +2916,18 @@
             const startTimerBtn = document.getElementById('startTimerBtn');
             const stopTimerBtn = document.getElementById('stopTimerBtn');
             const sessionDurationEl = document.getElementById('sessionDuration');
+            const clientDetailsTabGroup = document.getElementById('clientDetailsTabGroup');
+            const updateClientDetailsTabLabels = () => {
+                if (!clientDetailsTabBtn || !nextSessionTabBtn || !clientDetailsTabGroup) return;
+                const compactLabels = clientDetailsTabGroup.clientWidth > 0 && clientDetailsTabGroup.clientWidth < 260;
+                clientDetailsTabBtn.textContent = compactLabels ? 'Details' : 'Client Details';
+                nextSessionTabBtn.textContent = compactLabels ? 'Next' : 'Next Session';
+            };
+            if (clientDetailsTabGroup && typeof ResizeObserver !== 'undefined') {
+                const clientDetailsTabResizeObserver = new ResizeObserver(() => updateClientDetailsTabLabels());
+                clientDetailsTabResizeObserver.observe(clientDetailsTabGroup);
+                window.addEventListener('resize', updateClientDetailsTabLabels);
+            }
             // Settings and Modal Elements
             const settingsBtn = document.getElementById('settingsBtn');
             const checkForUpdatesBtn = document.getElementById('checkForUpdatesBtn');
@@ -2906,6 +2971,7 @@
             const interventionBankModal = document.getElementById('interventionBankModal');
             const closeInterventionBankBtn = document.getElementById('closeInterventionBankBtn');
             const newInterventionInput = document.getElementById('newInterventionInput');
+            const newInterventionModalityInput = document.getElementById('newInterventionModalityInput');
             const addInterventionBtn = document.getElementById('addInterventionBtn');
             const interventionBankList = document.getElementById('interventionBankList');
             const interventionPickerModal = document.getElementById('interventionPickerModal');
@@ -3453,9 +3519,93 @@
                 return `\n- **Priority Objectives:**\n${objectives.map(obj => `  - ${obj}`).join('\n')}`;
             };
 
+            const DEFAULT_INTERVENTION_MODALITY = 'General';
+
+            const normalizeInterventionModality = (value) => {
+                const text = String(value || '').trim();
+                return text || DEFAULT_INTERVENTION_MODALITY;
+            };
+
+            const createInterventionBankEntry = (entry, index = 0) => {
+                if (typeof entry === 'string') {
+                    return {
+                        id: crypto.randomUUID(),
+                        name: entry.trim(),
+                        modality: DEFAULT_INTERVENTION_MODALITY,
+                        order: index
+                    };
+                }
+
+                return {
+                    id: entry?.id || crypto.randomUUID(),
+                    name: String(entry?.name || entry?.text || '').trim(),
+                    modality: normalizeInterventionModality(entry?.modality || entry?.category),
+                    order: Number.isFinite(entry?.order) ? entry.order : index
+                };
+            };
+
+            const normalizeInterventionBank = () => {
+                if (!Array.isArray(data.interventionBank)) {
+                    data.interventionBank = [];
+                    return;
+                }
+
+                data.interventionBank = data.interventionBank
+                    .map((entry, index) => createInterventionBankEntry(entry, index))
+                    .filter(entry => entry.name)
+                    .sort((left, right) => {
+                        const modalityCompare = left.modality.localeCompare(right.modality);
+                        if (modalityCompare !== 0) return modalityCompare;
+                        if (left.order !== right.order) return left.order - right.order;
+                        return left.name.localeCompare(right.name);
+                    })
+                    .map((entry, index) => ({ ...entry, order: index }));
+            };
+
+            const getInterventionBankEntries = () => {
+                normalizeInterventionBank();
+                return data.interventionBank;
+            };
+
+            const getInterventionBankNames = () => getInterventionBankEntries().map(entry => entry.name);
+
+            const getInterventionBankEntryByName = (name) => {
+                const normalizedName = String(name || '').trim();
+                return getInterventionBankEntries().find(entry => entry.name === normalizedName) || null;
+            };
+
+            const groupInterventionNamesByModality = (names) => {
+                const groups = new Map();
+
+                (names || []).filter(Boolean).forEach(name => {
+                    const entry = getInterventionBankEntryByName(name);
+                    const modality = normalizeInterventionModality(entry?.modality);
+                    if (!groups.has(modality)) groups.set(modality, []);
+                    groups.get(modality).push(String(name).trim());
+                });
+
+                return [...groups.entries()].map(([modality, items]) => ({ modality, items }));
+            };
+
+            const formatInterventionsByModality = (names) => {
+                const groups = groupInterventionNamesByModality(names);
+                if (groups.length === 0) return 'No interventions identified directly in Objective section.';
+
+                return groups.map(group => {
+                    const interventionLines = group.items.map(item => `• ${item}`).join('\n');
+                    return `${group.modality}:\n${interventionLines}`;
+                }).join('\n\n');
+            };
+
+            const getObjectiveDerivedInterventions = (appointment) => {
+                return Array.isArray(appointment?.soap?.objectiveInterventionMatches)
+                    ? appointment.soap.objectiveInterventionMatches.filter(Boolean)
+                    : [];
+            };
+
             const getInterventionContext = (appointment) => {
-                const bank = Array.isArray(data.interventionBank) ? data.interventionBank.filter(Boolean) : [];
-                const selected = getResolvedSoapInterventions(appointment);
+                const bank = getInterventionBankNames();
+                const selected = getObjectiveDerivedInterventions(appointment);
                 let context = '';
                 if (bank.length > 0) {
                     context += `\n- **Intervention Bank (Allowed Interventions Only):**\n${bank.map(item => `  - ${item}`).join('\n')}`;
@@ -3866,7 +4016,7 @@
                     .filter(tokenSet => tokenSet.size > 0);
                 if (objectiveTokenSets.length === 0) return [];
 
-                return (Array.isArray(data.interventionBank) ? data.interventionBank : []).filter(item => {
+                return getInterventionBankNames().filter(item => {
                     const normalizedItem = normalizeInterventionText(item);
                     if (!normalizedItem) return false;
 
@@ -3929,10 +4079,7 @@
                 const objectiveMatches = extractInterventionsFromObjective(objectiveText ?? appointment.soap.o ?? '');
                 appointment.soap.objectiveInterventionMatches = objectiveMatches;
 
-                const resolvedInterventions = getResolvedSoapInterventions(appointment);
-                appointment.soap.interventions = resolvedInterventions.length > 0
-                    ? resolvedInterventions.map(item => `• ${item}`).join('\n')
-                    : 'No interventions identified directly in Objective section.';
+                appointment.soap.interventions = formatInterventionsByModality(objectiveMatches);
 
                 const interventionsTextarea = document.getElementById('interventions');
                 if (interventionsTextarea) interventionsTextarea.value = appointment.soap.interventions;
@@ -4071,10 +4218,35 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             const renderInterventionBank = () => {
                 if (!interventionBankList) return;
-                interventionBankList.innerHTML = (data.interventionBank || []).map((item, index) => `
-                    <div class="intervention-row">
-                        <span>${item}</span>
-                        <button class="action-btn delete-btn" data-bank-index="${index}" title="Remove intervention" style="width:20px;height:20px;">×</button>
+                const entries = getInterventionBankEntries();
+                if (entries.length === 0) {
+                    interventionBankList.innerHTML = '<div class="no-selection">Add interventions and assign them to a modality.</div>';
+                    return;
+                }
+                const groups = entries.reduce((map, entry) => {
+                    const modality = normalizeInterventionModality(entry.modality);
+                    if (!map.has(modality)) map.set(modality, []);
+                    map.get(modality).push(entry);
+                    return map;
+                }, new Map());
+
+                interventionBankList.innerHTML = [...groups.entries()].map(([modality, groupEntries]) => `
+                    <div class="intervention-group">
+                        <div class="intervention-group-header">
+                            <span>${modality}</span>
+                            <span class="intervention-group-count">${groupEntries.length} item${groupEntries.length === 1 ? '' : 's'}</span>
+                        </div>
+                        <div class="intervention-group-body" data-drop-modality="${modality.replace(/"/g, '&quot;')}">
+                            ${groupEntries.map(entry => `
+                                <div class="intervention-row intervention-bank-row" draggable="true" data-bank-id="${entry.id}" data-bank-modality="${entry.modality.replace(/"/g, '&quot;')}">
+                                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+                                        <span>${entry.name}</span>
+                                        <span style="font-size:0.72rem;color:var(--text-color-secondary);">${entry.modality}</span>
+                                    </div>
+                                    <button class="action-btn delete-btn" data-bank-id="${entry.id}" title="Remove intervention" style="width:20px;height:20px;">×</button>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 `).join('');
             };
@@ -4084,12 +4256,70 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const appointment = findAppointment(client, selectedAppointmentId);
                 if (!appointment || !interventionPickerList) return;
                 const selected = new Set(appointment.selectedInterventions || []);
-                interventionPickerList.innerHTML = (data.interventionBank || []).map(item => `
-                    <label class="intervention-row" style="cursor:pointer;">
-                        <span>${item}</span>
-                        <input type="checkbox" class="picker-intervention" value="${item.replace(/"/g, '&quot;')}" ${selected.has(item) ? 'checked' : ''}>
-                    </label>
+                const entries = getInterventionBankEntries();
+                const groups = entries.reduce((map, entry) => {
+                    const modality = normalizeInterventionModality(entry.modality);
+                    if (!map.has(modality)) map.set(modality, []);
+                    map.get(modality).push(entry);
+                    return map;
+                }, new Map());
+
+                interventionPickerList.innerHTML = [...groups.entries()].map(([modality, groupEntries]) => `
+                    <div class="intervention-group">
+                        <div class="intervention-group-header">
+                            <span>${modality}</span>
+                            <span class="intervention-group-count">${groupEntries.length} item${groupEntries.length === 1 ? '' : 's'}</span>
+                        </div>
+                        <div class="intervention-group-body">
+                            ${groupEntries.map(entry => `
+                                <label class="intervention-row" style="cursor:pointer;">
+                                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+                                        <span>${entry.name}</span>
+                                        <span style="font-size:0.72rem;color:var(--text-color-secondary);">${entry.modality}</span>
+                                    </div>
+                                    <input type="checkbox" class="picker-intervention" value="${entry.name.replace(/"/g, '&quot;')}" ${selected.has(entry.name) ? 'checked' : ''}>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
                 `).join('');
+            };
+
+            let draggedInterventionBankId = null;
+
+            const clearInterventionDropTargets = () => {
+                if (!interventionBankList) return;
+                interventionBankList.querySelectorAll('.intervention-drop-target').forEach(el => el.classList.remove('intervention-drop-target'));
+            };
+
+            const moveInterventionBankEntry = (draggedId, targetId = null, targetModality = '') => {
+                const entries = [...getInterventionBankEntries()];
+                const sourceIndex = entries.findIndex(entry => entry.id === draggedId);
+                if (sourceIndex === -1) return;
+
+                const [movedEntry] = entries.splice(sourceIndex, 1);
+                const resolvedTargetModality = normalizeInterventionModality(
+                    targetModality || entries.find(entry => entry.id === targetId)?.modality || movedEntry.modality
+                );
+                movedEntry.modality = resolvedTargetModality;
+
+                let insertIndex = entries.length;
+                if (targetId) {
+                    const targetIndex = entries.findIndex(entry => entry.id === targetId);
+                    insertIndex = targetIndex === -1 ? entries.length : targetIndex;
+                } else {
+                    const lastIndexInModality = entries.reduce((lastIndex, entry, index) => {
+                        return entry.modality === resolvedTargetModality ? index : lastIndex;
+                    }, -1);
+                    insertIndex = lastIndexInModality === -1 ? entries.length : lastIndexInModality + 1;
+                }
+
+                entries.splice(insertIndex, 0, movedEntry);
+                data.interventionBank = entries.map((entry, index) => ({ ...entry, order: index }));
+                markDirty();
+                renderInterventionBank();
+                renderInterventionPicker();
+                renderSoap();
             };
 
             const renderGuidingModalities = () => {
@@ -4491,6 +4721,167 @@ Requirements:
                 throw new Error('Invalid API provider selected.');
             };
 
+            const fetchObjectiveInterventionsFromAI = async (objectiveText, bank) => {
+                if (!selectedModel) {
+                    throw new Error('Please connect to a provider and select a model in Settings.');
+                }
+
+                const allowedBank = Array.isArray(bank) ? bank.filter(Boolean) : [];
+                const bankContext = allowedBank.length > 0
+                    ? allowedBank.map(item => `- ${item}`).join('\n')
+                    : '- None';
+                const userPrompt = `Objective Section:\n${objectiveText || '- None'}\n\nAllowed Intervention Bank:\n${bankContext}\n\nReturn only JSON in the form {"interventions":["..."]}.`;
+                const systemPrompt = 'You identify interventions directly named in a SOAP Objective section. Only return interventions that are explicitly supported by the objective text and present in the allowed intervention bank. Do not infer or include items awaiting approval.';
+
+                const normalizeResponse = (aiPayload) => {
+                    const aiInterventions = Array.isArray(aiPayload?.interventions)
+                        ? aiPayload.interventions
+                        : Array.isArray(aiPayload?.matches)
+                            ? aiPayload.matches
+                            : [];
+                    return selectInterventionsFromBank(allowedBank, aiInterventions, objectiveText);
+                };
+
+                if (apiProvider === 'vertex') {
+                    if (!vertexServiceAccount || !vertexLocation) throw new Error('Please connect Vertex in Settings first.');
+
+                    const accessToken = await getGoogleAccessToken(vertexServiceAccount);
+                    const credentials = JSON.parse(vertexServiceAccount);
+                    const projectId = credentials.project_id;
+
+                    const payload = {
+                        contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+                        generationConfig: { responseMimeType: 'application/json' }
+                    };
+
+                    const normalizedLocation = (vertexLocation || '').toLowerCase();
+                    const vertexHost = normalizedLocation === 'global'
+                        ? 'aiplatform.googleapis.com'
+                        : `${normalizedLocation}-aiplatform.googleapis.com`;
+
+                    const callVertexDirect = async (modelId) => {
+                        const url = `https://${vertexHost}/v1/projects/${projectId}/locations/${normalizedLocation}/publishers/google/models/${modelId}:generateContent`;
+                        const response = await tauriFetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${accessToken}`
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`Vertex API error: ${response.status} - ${errorText}`);
+                        }
+                        const result = await response.json();
+                        const content = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        return normalizeResponse(extractJsonObject(content));
+                    };
+
+                    const primaryModel = selectedModel;
+                    const modelsToTry = primaryModel === 'gemini-2.5-pro'
+                        ? ['gemini-2.5-pro', 'gemini-1.5-pro']
+                        : [primaryModel];
+
+                    let lastError;
+                    for (const modelId of modelsToTry) {
+                        try {
+                            return await callVertexDirect(modelId);
+                        } catch (err) {
+                            lastError = err;
+                            console.warn(`Vertex intervention generation failed for model ${modelId}`, err);
+                        }
+                    }
+
+                    throw lastError;
+                }
+
+                if (apiProvider === 'openai') {
+                    if (!openaiApiKey) throw new Error('Please connect OpenAI in Settings first.');
+                    const payload = {
+                        model: selectedModel,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        response_format: { type: 'json_object' }
+                    };
+                    const response = await tauriFetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${openaiApiKey}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`OpenAI API error: ${response.status} - ${errorData?.error?.message || 'Unknown error'}`);
+                    }
+                    const result = await response.json();
+                    const content = result?.choices?.[0]?.message?.content;
+                    return normalizeResponse(extractJsonObject(content));
+                }
+
+                if (apiProvider === 'openwebui') {
+                    if (!serverAddress) throw new Error('Please connect Open WebUI in Settings first.');
+                    const payload = {
+                        model: selectedModel,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        response_format: { type: 'json_object' },
+                        stream: false
+                    };
+                    const headers = new Headers({ 'Content-Type': 'application/json' });
+                    if (apiKey) headers.append('Authorization', `Bearer ${apiKey}`);
+                    const response = await tauriFetch(`${serverAddress}/api/v1/chat/completions`, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify(payload),
+                        mode: 'cors'
+                    });
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Open WebUI API error: ${response.status} - ${errorText}`);
+                    }
+                    const result = await response.json();
+                    const content = result?.choices?.[0]?.message?.content;
+                    return normalizeResponse(extractJsonObject(content));
+                }
+
+                if (apiProvider === 'ollama') {
+                    const address = (ollamaAddressInput.value || '').trim();
+                    if (!address) throw new Error('Please connect Ollama in Settings first.');
+                    const base = address.endsWith('/') ? address.slice(0, -1) : address;
+                    const payload = {
+                        model: selectedModel,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        response_format: { type: 'json_object' },
+                        stream: false
+                    };
+
+                    const response = await tauriFetch(`${base}/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
+                    }
+                    const result = await response.json();
+                    const content = result?.choices?.[0]?.message?.content;
+                    return normalizeResponse(extractJsonObject(content));
+                }
+
+                throw new Error('Invalid API provider selected.');
+            };
+
             const generateGoalDrafts = async () => {
                 const problem = (goalProblemInput.value || '').trim();
                 const goalCount = Math.max(1, Math.min(8, parseInt(goalCountInput.value, 10) || 1));
@@ -4736,6 +5127,7 @@ Requirements:
                 nextSessionNotesEl.value = client ? client.nextSessionNotes || '' : '';
                 nextSessionNotesEl.placeholder = client ? "Enter next session notes for this client..." : "Select a client to enter next session notes...";
                 updateNotesTabUI();
+                updateClientDetailsTabLabels();
 
                 clientDiagnosisEl.disabled = !client;
                 clientDiagnosisEl.value = client ? client.diagnosis || '' : '';
@@ -4918,10 +5310,8 @@ Requirements:
 
                 const soapData = appointment.soap || { s: '', o: '', a: '', p: '' };
                 if (!Array.isArray(appointment.selectedInterventions)) appointment.selectedInterventions = [];
-                const resolvedInterventions = getResolvedSoapInterventions(appointment);
-                const interventions = resolvedInterventions.length > 0
-                    ? resolvedInterventions.map(item => `• ${item}`).join('\n')
-                    : (soapData.interventions || 'No interventions selected from the bank.');
+                const objectiveDerivedInterventions = getObjectiveDerivedInterventions(appointment);
+                const interventions = formatInterventionsByModality(objectiveDerivedInterventions);
                 appointment.soap.interventions = interventions;
                 const auditResult = appointment.auditCheck || null;
                 soapContentEl.innerHTML = `
@@ -4947,6 +5337,10 @@ Requirements:
                     </div>
                     <div class="soap-section">
                         <div class="soap-header"><span>Interventions</span><div><button id="selectInterventionsBtn" class="copy-btn" style="margin-right:6px;">Bank</button><button class="copy-btn" data-target="interventions">Copy</button></div></div>
+                        <div style="margin: 6px 0 8px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <button id="generateInterventionsBtn" class="copy-btn" style="padding: 4px 10px;">Generate from Objective</button>
+                            <span style="font-size: 0.78rem; color: var(--text-color-secondary);">AI reviews the Objective section and fills only direct matches.</span>
+                        </div>
                         <textarea id="interventions" class="soap-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${interventions}</textarea>
                     </div>
                     <div class="soap-section">
@@ -4960,6 +5354,14 @@ Requirements:
                         autoResizeTextarea(el);
                     }
                 });
+
+                const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
+                if (generateInterventionsBtn) {
+                    generateInterventionsBtn.disabled = !(soapData.o || '').trim();
+                    generateInterventionsBtn.addEventListener('click', () => {
+                        void generateObjectiveInterventions();
+                    });
+                }
             };
 
             const renderSuggestionBox = (type, suggestion, index) => {
@@ -6028,9 +6430,6 @@ Requirements:
                         if (SOAP_SORT_SECTION_KEYS.includes(key) && isManualEdit) {
                             setSoapSectionOrderOverride(appointment.soap, key, true);
                         }
-                        if (key === 'o') {
-                            syncObjectiveInterventionsFromObjectiveText(appointment, textarea.value);
-                        }
                     }
                     delete appointment.auditCheck;
                     markDirty();
@@ -6247,9 +6646,6 @@ Requirements:
                     
                     // Manually update the data model since we're not dispatching the 'input' event before re-rendering
                     appointment.soap[sectionKey] = textarea.value;
-                    if (sectionKey === 'o' && !skipAppend) {
-                        syncObjectiveInterventionsFromObjectiveText(appointment, textarea.value);
-                    }
                 }
 
                 // Remove the suggestion that was just handled.
@@ -6265,7 +6661,6 @@ Requirements:
                     }
                 }
                 refreshObjectiveSuggestionInterventionMatches(appointment);
-                
                 markDirty();
                 renderSoap(); 
 
@@ -6419,8 +6814,50 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                  alignSoapSectionsByObjectiveOrder(appointment.soap);
 
                  refreshObjectiveSuggestionInterventionMatches(appointment);
-                 syncObjectiveInterventionsFromObjectiveText(appointment, generatedObjectiveText);
              };
+
+            const generateObjectiveInterventions = async () => {
+                const client = findClient(selectedClientId);
+                const appointment = findAppointment(client, selectedAppointmentId);
+                if (!appointment) return;
+
+                const objectiveText = (appointment.soap?.o || '').trim();
+                if (!objectiveText) {
+                    alert('Please enter Objective content before generating interventions.');
+                    return;
+                }
+
+                const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
+                if (generateInterventionsBtn) {
+                    generateInterventionsBtn.disabled = true;
+                    generateInterventionsBtn.textContent = 'Generating...';
+                }
+
+                const bank = getInterventionBankNames();
+
+                try {
+                    let interventions = [];
+                    try {
+                        interventions = await fetchObjectiveInterventionsFromAI(objectiveText, bank);
+                    } catch (error) {
+                        console.warn('Objective intervention AI generation failed; falling back to direct matching.', error);
+                        interventions = extractInterventionsFromObjective(objectiveText);
+                    }
+
+                    appointment.soap.objectiveInterventionMatches = interventions;
+                    appointment.soap.interventions = formatInterventionsByModality(interventions);
+                    markDirty();
+                    renderSoap();
+                } catch (error) {
+                    console.error('Objective intervention generation error:', error);
+                    alert(`Failed to generate interventions from Objective text. ${error.message}`);
+                } finally {
+                    if (generateInterventionsBtn) {
+                        generateInterventionsBtn.disabled = false;
+                        generateInterventionsBtn.textContent = 'Generate from Objective';
+                    }
+                }
+            };
 
             const generateSoapNoteWithOpenAI = async () => {
                 if (!selectedModel || !openaiApiKey) {
@@ -8002,22 +8439,32 @@ This error cannot be fixed within this application's code; it requires a configu
             });
             addInterventionBtn.addEventListener('click', () => {
                 const text = (newInterventionInput.value || '').trim();
+                const modality = normalizeInterventionModality(newInterventionModalityInput.value || '');
                 if (!text) return;
                 if (!Array.isArray(data.interventionBank)) data.interventionBank = [];
-                if (!data.interventionBank.includes(text)) {
-                    data.interventionBank.push(text);
-                    data.interventionBank.sort((a, b) => a.localeCompare(b));
+                const exists = getInterventionBankEntries().some(entry => normalizeInterventionText(entry.name) === normalizeInterventionText(text));
+                if (!exists) {
+                    data.interventionBank.push({
+                        id: crypto.randomUUID(),
+                        name: text,
+                        modality,
+                        order: getInterventionBankEntries().length
+                    });
                     newInterventionInput.value = '';
+                    newInterventionModalityInput.value = '';
                     markDirty();
                     renderInterventionBank();
+                    renderInterventionPicker();
                 }
             });
             interventionBankList.addEventListener('click', (e) => {
-                const btn = e.target.closest('[data-bank-index]');
+                const btn = e.target.closest('button[data-bank-id]');
                 if (!btn) return;
-                const index = parseInt(btn.dataset.bankIndex, 10);
-                if (Number.isNaN(index)) return;
-                const [removed] = data.interventionBank.splice(index, 1);
+                const bankId = btn.dataset.bankId;
+                const entryIndex = getInterventionBankEntries().findIndex(entry => entry.id === bankId);
+                if (entryIndex === -1) return;
+                const [removedEntry] = data.interventionBank.splice(entryIndex, 1);
+                const removed = removedEntry?.name;
                 if (removed) {
                     [...(data.clients || []), ...(data.archivedClients || [])].forEach(client => {
                         (client.appointments || []).forEach(appt => {
@@ -8028,8 +8475,55 @@ This error cannot be fixed within this application's code; it requires a configu
                     });
                     markDirty();
                     renderInterventionBank();
+                    renderInterventionPicker();
                     renderSoap();
                 }
+            });
+            interventionBankList.addEventListener('dragstart', (e) => {
+                const row = e.target.closest('.intervention-bank-row[data-bank-id]');
+                if (!row) return;
+                draggedInterventionBankId = row.dataset.bankId;
+                row.classList.add('dragging');
+                if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', draggedInterventionBankId);
+                }
+            });
+            interventionBankList.addEventListener('dragend', (e) => {
+                const row = e.target.closest('.intervention-bank-row[data-bank-id]');
+                if (row) row.classList.remove('dragging');
+                draggedInterventionBankId = null;
+                clearInterventionDropTargets();
+            });
+            interventionBankList.addEventListener('dragover', (e) => {
+                if (!draggedInterventionBankId) return;
+                const targetRow = e.target.closest('.intervention-bank-row[data-bank-id]');
+                const targetGroup = e.target.closest('.intervention-group-body[data-drop-modality]');
+                if (!targetRow && !targetGroup) return;
+                e.preventDefault();
+                clearInterventionDropTargets();
+                if (targetRow && targetRow.dataset.bankId !== draggedInterventionBankId) {
+                    targetRow.classList.add('intervention-drop-target');
+                    return;
+                }
+                if (targetGroup) {
+                    targetGroup.classList.add('intervention-drop-target');
+                }
+            });
+            interventionBankList.addEventListener('drop', (e) => {
+                if (!draggedInterventionBankId) return;
+                const targetRow = e.target.closest('.intervention-bank-row[data-bank-id]');
+                const targetGroup = e.target.closest('.intervention-group-body[data-drop-modality]');
+                if (!targetRow && !targetGroup) return;
+                e.preventDefault();
+
+                const targetId = targetRow && targetRow.dataset.bankId !== draggedInterventionBankId
+                    ? targetRow.dataset.bankId
+                    : null;
+                const targetModality = targetGroup?.dataset.dropModality || targetRow?.dataset.bankModality || '';
+                clearInterventionDropTargets();
+                moveInterventionBankEntry(draggedInterventionBankId, targetId, targetModality);
+                draggedInterventionBankId = null;
             });
 
             closeInterventionPickerBtn.addEventListener('click', () => interventionPickerModal.classList.add('hidden'));
@@ -8045,7 +8539,6 @@ This error cannot be fixed within this application's code; it requires a configu
                 const selected = Array.from(interventionPickerList.querySelectorAll('.picker-intervention:checked')).map(input => input.value);
                 appointment.selectedInterventions = selected;
                 if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
-                syncObjectiveInterventionsFromObjectiveText(appointment, appointment.soap.o || '');
                 delete appointment.auditCheck;
                 markDirty();
                 interventionPickerModal.classList.add('hidden');

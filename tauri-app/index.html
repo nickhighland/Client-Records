@@ -1975,7 +1975,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.47</span>
+                <span class="version-badge">v1.0.48</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -3997,105 +3997,89 @@
             };
 
             const interventionStopWords = new Set(['and', 'or', 'the', 'with', 'for', 'to', 'of', 'in', 'on', 'a', 'an', 'by']);
+            const interventionWeakAnchorTokens = new Set([
+                'skill', 'skills', 'support', 'treatment', 'therapeutic', 'therapy',
+                'practice', 'practic', 'development', 'processing', 'reflection',
+                'training', 'train', 'exploration', 'explore', 'management', 'manage'
+            ]);
+
+            const getInterventionMatchTokens = (value) => tokenizeForInterventionMatch(value)
+                .filter(token => token.length > 2 && !interventionStopWords.has(token));
+
+            const buildInterventionBankMeta = (bank) => (Array.isArray(bank) ? bank : [])
+                .filter(Boolean)
+                .map(item => {
+                    const normalized = normalizeInterventionText(item);
+                    const tokens = getInterventionMatchTokens(item);
+                    const strongTokens = tokens.filter(token => !interventionWeakAnchorTokens.has(token));
+                    return { item, normalized, tokens, strongTokens };
+                })
+                .filter(entry => entry.normalized.length > 0);
+
+            const hasStrictInterventionTokenCoverage = (entry, textTokens) => {
+                if (!entry || !Array.isArray(entry.tokens) || entry.tokens.length === 0 || !(textTokens instanceof Set) || textTokens.size === 0) {
+                    return false;
+                }
+
+                const overlapAll = entry.tokens.filter(token => textTokens.has(token)).length;
+                if (overlapAll === 0) return false;
+                if (entry.tokens.length === 1) return overlapAll === 1;
+
+                const requiredTokens = entry.strongTokens.length > 0 ? entry.strongTokens : entry.tokens;
+                const requiredMatched = requiredTokens.filter(token => textTokens.has(token)).length;
+                if (requiredMatched !== requiredTokens.length) return false;
+
+                if (entry.tokens.length === 2) return overlapAll === 2;
+
+                const allowedMisses = entry.strongTokens.length < entry.tokens.length ? 1 : 0;
+                return overlapAll >= entry.tokens.length - allowedMisses;
+            };
+
+            const doesTextDirectlySupportIntervention = (text, entry) => {
+                if (!entry?.normalized) return false;
+                const normalizedText = normalizeInterventionText(text);
+                if (!normalizedText) return false;
+                if (normalizedText.includes(entry.normalized)) return true;
+                return hasStrictInterventionTokenCoverage(entry, new Set(getInterventionMatchTokens(text)));
+            };
 
             const selectInterventionsFromBank = (bank, aiInterventionsText, corpusText) => {
                 if (!Array.isArray(bank) || bank.length === 0) return [];
 
-                const normalizedCorpus = normalizeInterventionText(corpusText);
                 let aiLines = [];
                 if (typeof aiInterventionsText === 'string') {
-                    aiLines = aiInterventionsText.split(/\n+/)
-                        .map(line => normalizeInterventionText(line.replace(/^•\s*/, '')))
-                        .filter(Boolean);
+                    aiLines = aiInterventionsText.split(/\n+/).map(line => line.replace(/^•\s*/, '').trim()).filter(Boolean);
                 } else if (Array.isArray(aiInterventionsText)) {
-                    aiLines = aiInterventionsText.map(line => normalizeInterventionText(String(line).replace(/^•\s*/, ''))).filter(Boolean);
-                } else if (aiInterventionsText && typeof aiInterventionsText === 'object') {
-                    aiLines = [normalizeInterventionText(JSON.stringify(aiInterventionsText))];
+                    aiLines = aiInterventionsText.map(line => String(line).replace(/^•\s*/, '').trim()).filter(Boolean);
                 }
 
-                // Only select interventions that are present in the bank (including user-added)
+                if (aiLines.length === 0) return [];
+
+                const objectiveItems = splitSoapBulletItems(corpusText);
+                const searchTexts = objectiveItems.length > 0 ? objectiveItems : [corpusText];
                 const selected = new Set();
-                const bankMeta = bank
-                    .filter(Boolean)
-                    .map(item => {
-                        const normalized = normalizeInterventionText(item);
-                        const tokens = normalized
-                            .split(' ')
-                            .map(token => token.trim())
-                            .filter(token => token.length > 2 && !interventionStopWords.has(token));
-                        return { item, normalized, tokens };
-                    })
-                    .filter(entry => entry.normalized.length > 0);
+                const bankMeta = buildInterventionBankMeta(bank);
 
                 aiLines.forEach(line => {
                     bankMeta.forEach(entry => {
-                        if (line === entry.normalized || line.includes(entry.normalized) || entry.normalized.includes(line)) {
-                            selected.add(entry.item);
-                        }
+                        if (!doesTextDirectlySupportIntervention(line, entry)) return;
+                        if (!searchTexts.some(text => doesTextDirectlySupportIntervention(text, entry))) return;
+                        selected.add(entry.item);
                     });
                 });
 
-                bankMeta.forEach(entry => {
-                    if (!normalizedCorpus) return;
-                    if (normalizedCorpus.includes(entry.normalized)) {
-                        selected.add(entry.item);
-                        return;
-                    }
-
-                    if (entry.tokens.length === 0) return;
-                    if (entry.tokens.length === 1) {
-                        if (normalizedCorpus.includes(entry.tokens[0])) {
-                            selected.add(entry.item);
-                        }
-                        return;
-                    }
-
-                    const matchedCount = entry.tokens.filter(token => normalizedCorpus.includes(token)).length;
-                    if (matchedCount >= Math.min(2, entry.tokens.length)) {
-                        selected.add(entry.item);
-                    }
-                });
-
-                // Filter strictly: only return interventions that are in the bank
                 return bank.filter(item => selected.has(item));
             };
 
             const extractInterventionsFromObjective = (objectiveText) => {
                 const objectiveItems = splitSoapBulletItems(objectiveText);
                 const searchTexts = objectiveItems.length > 0 ? objectiveItems : [objectiveText];
-                const objectiveTokenSets = searchTexts
-                    .map(item => new Set(tokenizeForInterventionMatch(item)))
-                    .filter(tokenSet => tokenSet.size > 0);
-                if (objectiveTokenSets.length === 0) return [];
+                if (searchTexts.every(text => !String(text || '').trim())) return [];
 
-                return getInterventionBankNames().filter(item => {
-                    const normalizedItem = normalizeInterventionText(item);
-                    if (!normalizedItem) return false;
-
-                    return searchTexts.some(text => {
-                        const normalizedObjective = normalizeInterventionText(text);
-                        if (!normalizedObjective) return false;
-                        if (normalizedObjective.includes(normalizedItem) || normalizedItem.includes(normalizedObjective)) {
-                            return true;
-                        }
-
-                        const objectiveTokens = new Set(tokenizeForInterventionMatch(text));
-                        if (objectiveTokens.size === 0) return false;
-
-                        const itemTokens = tokenizeForInterventionMatch(item);
-                        if (itemTokens.length === 0) return false;
-
-                        const overlap = itemTokens.filter(token => objectiveTokens.has(token)).length;
-                        if (overlap === 0) return false;
-
-                        const coverage = overlap / itemTokens.length;
-                        if (itemTokens.length <= 2) {
-                            return coverage >= 0.5 || overlap >= 1;
-                        }
-
-                        return coverage >= 0.5 || overlap >= 2;
-                    });
-                });
+                const bankMeta = buildInterventionBankMeta(getInterventionBankNames());
+                return bankMeta
+                    .filter(entry => searchTexts.some(text => doesTextDirectlySupportIntervention(text, entry)))
+                    .map(entry => entry.item);
             };
 
             const refreshObjectiveSuggestionInterventionMatches = (appointment) => {
@@ -4134,7 +4118,11 @@
                 appointment.soap.interventions = formatInterventionsByModality(objectiveMatches);
 
                 const interventionsTextarea = document.getElementById('interventions');
-                if (interventionsTextarea) interventionsTextarea.value = appointment.soap.interventions;
+                if (interventionsTextarea) {
+                    interventionsTextarea.value = appointment.soap.interventions;
+                    interventionsTextarea.style.height = 'auto';
+                    autoResizeTextarea(interventionsTextarea);
+                }
 
                 return objectiveMatches;
             };
@@ -4791,26 +4779,10 @@ Requirements:
                 throw new Error('Invalid API provider selected.');
             };
 
-            const fetchObjectiveInterventionsFromAI = async (objectiveText, bank) => {
+            const requestJsonObjectFromCurrentProvider = async (systemPrompt, userPrompt) => {
                 if (!selectedModel) {
                     throw new Error('Please connect to a provider and select a model in Settings.');
                 }
-
-                const allowedBank = Array.isArray(bank) ? bank.filter(Boolean) : [];
-                const bankContext = allowedBank.length > 0
-                    ? allowedBank.map(item => `- ${item}`).join('\n')
-                    : '- None';
-                const userPrompt = `Objective Section:\n${objectiveText || '- None'}\n\nAllowed Intervention Bank:\n${bankContext}\n\nReturn only JSON in the form {"interventions":["..."]}.`;
-                const systemPrompt = 'You identify interventions directly named in a SOAP Objective section. Only return interventions that are explicitly supported by the objective text and present in the allowed intervention bank. Do not infer or include items awaiting approval.';
-
-                const normalizeResponse = (aiPayload) => {
-                    const aiInterventions = Array.isArray(aiPayload?.interventions)
-                        ? aiPayload.interventions
-                        : Array.isArray(aiPayload?.matches)
-                            ? aiPayload.matches
-                            : [];
-                    return selectInterventionsFromBank(allowedBank, aiInterventions, objectiveText);
-                };
 
                 if (apiProvider === 'vertex') {
                     if (!vertexServiceAccount || !vertexLocation) throw new Error('Please connect Vertex in Settings first.');
@@ -4845,7 +4817,7 @@ Requirements:
                         }
                         const result = await response.json();
                         const content = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                        return normalizeResponse(extractJsonObject(content));
+                        return extractJsonObject(content);
                     };
 
                     const primaryModel = selectedModel;
@@ -4859,7 +4831,7 @@ Requirements:
                             return await callVertexDirect(modelId);
                         } catch (err) {
                             lastError = err;
-                            console.warn(`Vertex intervention generation failed for model ${modelId}`, err);
+                            console.warn(`Vertex JSON request failed for model ${modelId}`, err);
                         }
                     }
 
@@ -4890,7 +4862,7 @@ Requirements:
                     }
                     const result = await response.json();
                     const content = result?.choices?.[0]?.message?.content;
-                    return normalizeResponse(extractJsonObject(content));
+                    return extractJsonObject(content);
                 }
 
                 if (apiProvider === 'openwebui') {
@@ -4918,7 +4890,7 @@ Requirements:
                     }
                     const result = await response.json();
                     const content = result?.choices?.[0]?.message?.content;
-                    return normalizeResponse(extractJsonObject(content));
+                    return extractJsonObject(content);
                 }
 
                 if (apiProvider === 'ollama') {
@@ -4946,10 +4918,88 @@ Requirements:
                     }
                     const result = await response.json();
                     const content = result?.choices?.[0]?.message?.content;
-                    return normalizeResponse(extractJsonObject(content));
+                    return extractJsonObject(content);
                 }
 
                 throw new Error('Invalid API provider selected.');
+            };
+
+            const normalizeObjectiveOrderingItem = (value) => normalizeInterventionText(String(value || '').replace(/^•\s*/, '').trim());
+
+            const organizeObjectiveContentLocally = (objectiveText) => {
+                const objectiveItems = splitSoapBulletItems(objectiveText);
+                if (objectiveItems.length < 2) return joinSoapBulletItems(objectiveItems);
+                const { assignments } = buildObjectiveTopicClusters(objectiveItems);
+                const organizedItems = sortByExplicitTopicRanksStable(objectiveItems, assignments);
+                return joinSoapBulletItems(organizedItems);
+            };
+
+            const normalizeObjectiveOrderFromAiPayload = (objectiveItems, aiPayload) => {
+                const aiItems = Array.isArray(aiPayload?.ordered_items)
+                    ? aiPayload.ordered_items
+                    : Array.isArray(aiPayload?.orderedItems)
+                        ? aiPayload.orderedItems
+                        : Array.isArray(aiPayload?.items)
+                            ? aiPayload.items
+                            : [];
+                if (aiItems.length !== objectiveItems.length) return [];
+
+                const originalBuckets = new Map();
+                objectiveItems.forEach(item => {
+                    const key = normalizeObjectiveOrderingItem(item);
+                    if (!originalBuckets.has(key)) {
+                        originalBuckets.set(key, []);
+                    }
+                    originalBuckets.get(key).push(item);
+                });
+
+                const orderedItems = [];
+                for (const aiItem of aiItems) {
+                    const key = normalizeObjectiveOrderingItem(aiItem);
+                    const bucket = originalBuckets.get(key);
+                    if (!bucket || bucket.length === 0) return [];
+                    orderedItems.push(bucket.shift());
+                }
+
+                if ([...originalBuckets.values()].some(bucket => bucket.length > 0)) return [];
+                return orderedItems;
+            };
+
+            const fetchOrganizedObjectiveFromAI = async (objectiveText) => {
+                const objectiveItems = splitSoapBulletItems(objectiveText);
+                if (objectiveItems.length < 2) return joinSoapBulletItems(objectiveItems);
+
+                const userPrompt = `Objective bullet points:\n${objectiveItems.map(item => `- ${item}`).join('\n')}\n\nReturn only JSON in the form {"ordered_items":["exact original bullet 1","exact original bullet 2"]}.`;
+                const systemPrompt = 'Reorder the provided Objective bullet points into a more logical grouped order. Return every original bullet exactly once. Keep each bullet text exactly as provided aside from optional leading bullet characters. Do not rewrite, summarize, merge, split, or add headings.';
+
+                const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
+                const orderedItems = normalizeObjectiveOrderFromAiPayload(objectiveItems, aiPayload);
+                if (orderedItems.length !== objectiveItems.length) {
+                    throw new Error('AI response did not preserve the original Objective bullets exactly.');
+                }
+
+                return joinSoapBulletItems(orderedItems);
+            };
+
+            const fetchObjectiveInterventionsFromAI = async (objectiveText, bank) => {
+                if (!selectedModel) {
+                    throw new Error('Please connect to a provider and select a model in Settings.');
+                }
+
+                const allowedBank = Array.isArray(bank) ? bank.filter(Boolean) : [];
+                const bankContext = allowedBank.length > 0
+                    ? allowedBank.map(item => `- ${item}`).join('\n')
+                    : '- None';
+                const userPrompt = `Objective Section:\n${objectiveText || '- None'}\n\nAllowed Intervention Bank:\n${bankContext}\n\nReturn only JSON in the form {"interventions":["..."]}.`;
+                const systemPrompt = 'You identify interventions directly named in a SOAP Objective section. Only return interventions that are explicitly supported by the objective text and present in the allowed intervention bank. Do not infer or include items awaiting approval.';
+
+                const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
+                const aiInterventions = Array.isArray(aiPayload?.interventions)
+                    ? aiPayload.interventions
+                    : Array.isArray(aiPayload?.matches)
+                        ? aiPayload.matches
+                        : [];
+                return selectInterventionsFromBank(allowedBank, aiInterventions, objectiveText);
             };
 
             const generateGoalDrafts = async () => {
@@ -5393,6 +5443,10 @@ Requirements:
                     <div class="soap-section">
                         <div class="soap-header"><span>Objective</span><button class="copy-btn" data-target="soapO">Copy</button></div>
                         <textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.o || ''}</textarea>
+                        <div style="margin: 6px 0 8px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <button id="organizeObjectiveBtn" class="copy-btn" style="padding: 4px 10px;">Organize</button>
+                            <span style="font-size: 0.78rem; color: var(--text-color-secondary);">AI groups related Objective bullets together without adding new content.</span>
+                        </div>
                         ${(soapData.o_suggestion || []).map((s, i) => renderSuggestionBox('o', s, i)).join('')}
                     </div>
                     <div class="soap-section">
@@ -5425,11 +5479,25 @@ Requirements:
                     }
                 });
 
+                const interventionsTextarea = document.getElementById('interventions');
+                if (interventionsTextarea) {
+                    interventionsTextarea.style.height = 'auto';
+                    autoResizeTextarea(interventionsTextarea);
+                }
+
                 const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
                 if (generateInterventionsBtn) {
                     generateInterventionsBtn.disabled = !(soapData.o || '').trim();
                     generateInterventionsBtn.addEventListener('click', () => {
                         void generateObjectiveInterventions();
+                    });
+                }
+
+                const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
+                if (organizeObjectiveBtn) {
+                    organizeObjectiveBtn.disabled = splitSoapBulletItems(soapData.o || '').length < 2;
+                    organizeObjectiveBtn.addEventListener('click', () => {
+                        void organizeObjectiveContent();
                     });
                 }
             };
@@ -6585,6 +6653,16 @@ Requirements:
             soapContentEl.addEventListener('input', (e) => {
                 if (e.target.matches('.soap-textarea')) {
                     handleBulletedInput(e, saveSoapNote);
+                    if (e.target.id === 'soapO') {
+                        const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
+                        if (generateInterventionsBtn) {
+                            generateInterventionsBtn.disabled = !e.target.value.trim();
+                        }
+                        const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
+                        if (organizeObjectiveBtn) {
+                            organizeObjectiveBtn.disabled = splitSoapBulletItems(e.target.value).length < 2;
+                        }
+                    }
                 }
             });
             soapContentEl.addEventListener('keydown', (e) => {
@@ -6885,6 +6963,50 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
 
                  refreshObjectiveSuggestionInterventionMatches(appointment);
              };
+
+            const organizeObjectiveContent = async () => {
+                const client = findClient(selectedClientId);
+                const appointment = findAppointment(client, selectedAppointmentId);
+                if (!appointment) return;
+
+                const objectiveText = (appointment.soap?.o || '').trim();
+                const objectiveItems = splitSoapBulletItems(objectiveText);
+                if (objectiveItems.length < 2) {
+                    alert('Please enter at least two Objective bullet points before organizing.');
+                    return;
+                }
+
+                const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
+                if (organizeObjectiveBtn) {
+                    organizeObjectiveBtn.disabled = true;
+                    organizeObjectiveBtn.textContent = 'Organizing...';
+                }
+
+                try {
+                    let organizedObjective;
+                    try {
+                        organizedObjective = await fetchOrganizedObjectiveFromAI(objectiveText);
+                    } catch (error) {
+                        console.warn('Objective organization AI failed; falling back to local topic grouping.', error);
+                        organizedObjective = organizeObjectiveContentLocally(objectiveText);
+                    }
+
+                    appointment.soap.o = organizedObjective || objectiveText;
+                    setSoapSectionOrderOverride(appointment.soap, 'o', true);
+                    syncObjectiveInterventionsFromObjectiveText(appointment, appointment.soap.o);
+                    delete appointment.auditCheck;
+                    markDirty();
+                    renderSoap();
+                } catch (error) {
+                    console.error('Objective organization error:', error);
+                    alert(`Failed to organize Objective content. ${error.message}`);
+                } finally {
+                    if (organizeObjectiveBtn) {
+                        organizeObjectiveBtn.disabled = false;
+                        organizeObjectiveBtn.textContent = 'Organize';
+                    }
+                }
+            };
 
             const generateObjectiveInterventions = async () => {
                 const client = findClient(selectedClientId);

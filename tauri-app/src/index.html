@@ -1975,7 +1975,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.46</span>
+                <span class="version-badge">v1.0.47</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2499,7 +2499,7 @@
                 </div>
                 <button id="addInterventionBtn" class="btn save-btn" style="width:auto;padding:0 14px;">Add</button>
             </div>
-            <div style="font-size:0.78rem;color:var(--text-color-secondary);margin-bottom:10px;">Drag interventions onto another row to reorder them, or into a modality section to move them.</div>
+            <div style="font-size:0.78rem;color:var(--text-color-secondary);margin-bottom:10px;">Leave the intervention blank to create a modality only. Drag interventions into another modality to move them; the bank stays alphabetized automatically.</div>
             <div id="interventionBankList" class="intervention-list"></div>
         </div>
     </div>
@@ -3529,10 +3529,21 @@
             };
 
             const DEFAULT_INTERVENTION_MODALITY = 'General';
+            const interventionBankCollator = new Intl.Collator(undefined, {
+                sensitivity: 'base',
+                numeric: true
+            });
 
             const normalizeInterventionModality = (value) => {
                 const text = String(value || '').trim();
                 return text || DEFAULT_INTERVENTION_MODALITY;
+            };
+
+            const compareInterventionBankEntries = (left, right) => {
+                const modalityCompare = interventionBankCollator.compare(left.modality, right.modality);
+                if (modalityCompare !== 0) return modalityCompare;
+                if (left.isHeader !== right.isHeader) return left.isHeader ? -1 : 1;
+                return interventionBankCollator.compare(left.name, right.name);
             };
 
             const createInterventionBankEntry = (entry, index = 0) => {
@@ -3564,14 +3575,16 @@
                     return;
                 }
 
+                const seenHeaderModalities = new Set();
                 data.interventionBank = data.interventionBank
                     .map((entry, index) => createInterventionBankEntry(entry, index))
                     .filter(entry => entry.isHeader || entry.name)
-                    .sort((left, right) => {
-                        const modalityCompare = left.modality.localeCompare(right.modality);
-                        if (modalityCompare !== 0) return modalityCompare;
-                        if (left.isHeader !== right.isHeader) return left.isHeader ? -1 : 1;
-                        return left.name.localeCompare(right.name);
+                    .sort(compareInterventionBankEntries)
+                    .filter(entry => {
+                        if (!entry.isHeader) return true;
+                        if (seenHeaderModalities.has(entry.modality)) return false;
+                        seenHeaderModalities.add(entry.modality);
+                        return true;
                     })
                     .map((entry, index) => ({ ...entry, order: index }));
             };
@@ -3583,6 +3596,27 @@
 
             const getInterventionBankModalities = () => {
                 return [...new Set(getInterventionBankEntries().map(entry => normalizeInterventionModality(entry.modality)))];
+            };
+
+            const ensureInterventionBankHeader = (entries, modality) => {
+                const normalizedModality = normalizeInterventionModality(modality);
+                if (entries.some(entry => entry.isHeader && entry.modality === normalizedModality)) return;
+                entries.push({
+                    id: crypto.randomUUID(),
+                    name: '',
+                    modality: normalizedModality,
+                    isHeader: true,
+                    order: entries.length
+                });
+            };
+
+            const commitInterventionBankEntries = (entries) => {
+                data.interventionBank = entries.map((entry, index) => ({ ...entry, order: index }));
+                normalizeInterventionBank();
+                markDirty();
+                renderInterventionBank();
+                renderInterventionPicker();
+                renderSoap();
             };
 
             const getInterventionBankNames = () => getInterventionBankEntries().filter(entry => !entry.isHeader).map(entry => entry.name);
@@ -4315,33 +4349,18 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const moveInterventionBankEntry = (draggedId, targetId = null, targetModality = '') => {
-                const entries = [...getInterventionBankEntries()];
-                const sourceIndex = entries.findIndex(entry => entry.id === draggedId);
-                if (sourceIndex === -1) return;
+                const entries = getInterventionBankEntries().map(entry => ({ ...entry }));
+                const movedEntry = entries.find(entry => entry.id === draggedId && !entry.isHeader);
+                if (!movedEntry) return;
 
-                const [movedEntry] = entries.splice(sourceIndex, 1);
                 const resolvedTargetModality = normalizeInterventionModality(
                     targetModality || entries.find(entry => entry.id === targetId)?.modality || movedEntry.modality
                 );
+                if (movedEntry.modality === resolvedTargetModality) return;
+
                 movedEntry.modality = resolvedTargetModality;
-
-                let insertIndex = entries.length;
-                if (targetId) {
-                    const targetIndex = entries.findIndex(entry => entry.id === targetId);
-                    insertIndex = targetIndex === -1 ? entries.length : targetIndex;
-                } else {
-                    const lastIndexInModality = entries.reduce((lastIndex, entry, index) => {
-                        return entry.modality === resolvedTargetModality ? index : lastIndex;
-                    }, -1);
-                    insertIndex = lastIndexInModality === -1 ? entries.length : lastIndexInModality + 1;
-                }
-
-                entries.splice(insertIndex, 0, movedEntry);
-                data.interventionBank = entries.map((entry, index) => ({ ...entry, order: index }));
-                markDirty();
-                renderInterventionBank();
-                renderInterventionPicker();
-                renderSoap();
+                ensureInterventionBankHeader(entries, resolvedTargetModality);
+                commitInterventionBankEntries(entries);
             };
 
             const renderInterventionModalityOptions = () => {
@@ -8491,52 +8510,58 @@ This error cannot be fixed within this application's code; it requires a configu
             if (newInterventionModalitySelect) {
                 newInterventionModalitySelect.addEventListener('change', syncInterventionModalityInputs);
             }
-            addInterventionBtn.addEventListener('click', () => {
+            const submitInterventionBankEntry = () => {
                 const text = (newInterventionInput.value || '').trim();
                 const selectedModality = newInterventionModalitySelect?.value || '';
                 const rawModality = selectedModality === '__new__'
                     ? (newInterventionModalityOther?.value || '').trim()
                     : selectedModality;
-                const modality = normalizeInterventionModality(rawModality || DEFAULT_INTERVENTION_MODALITY);
-                if (!text) return;
+                if (selectedModality === '__new__' && !rawModality) {
+                    alert('Enter a modality name first.');
+                    newInterventionModalityOther?.focus();
+                    return;
+                }
+                if (!text && !rawModality) return;
                 if (!Array.isArray(data.interventionBank)) data.interventionBank = [];
-                const entries = getInterventionBankEntries();
-                const hasHeader = entries.some(entry => entry.isHeader && entry.modality === modality);
+                const entries = getInterventionBankEntries().map(entry => ({ ...entry }));
+                const modality = normalizeInterventionModality(rawModality || DEFAULT_INTERVENTION_MODALITY);
 
-                if (!hasHeader && rawModality) {
-                    data.interventionBank.push({
+                ensureInterventionBankHeader(entries, modality);
+                if (text) {
+                    entries.push({
                         id: crypto.randomUUID(),
-                        name: '',
+                        name: text,
                         modality,
-                        isHeader: true,
+                        isHeader: false,
                         order: entries.length
                     });
                 }
 
-                data.interventionBank.push({
-                    id: crypto.randomUUID(),
-                    name: text,
-                    modality,
-                    isHeader: false,
-                    order: getInterventionBankEntries().length
-                });
+                commitInterventionBankEntries(entries);
 
                 newInterventionInput.value = '';
                 if (newInterventionModalitySelect) newInterventionModalitySelect.value = '';
                 if (newInterventionModalityOther) newInterventionModalityOther.value = '';
                 syncInterventionModalityInputs();
-                renderInterventionModalityOptions();
-                markDirty();
-                renderInterventionBank();
-                renderInterventionPicker();
+            };
+
+            addInterventionBtn.addEventListener('click', submitInterventionBankEntry);
+            [newInterventionInput, newInterventionModalityOther].forEach(input => {
+                if (!input) return;
+                input.addEventListener('keydown', (e) => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    submitInterventionBankEntry();
+                });
             });
             interventionBankList.addEventListener('click', (e) => {
                 const btn = e.target.closest('button[data-bank-id]');
                 if (!btn) return;
                 const bankId = btn.dataset.bankId;
-                const entryIndex = getInterventionBankEntries().findIndex(entry => entry.id === bankId);
+                const entries = getInterventionBankEntries().map(entry => ({ ...entry }));
+                const entryIndex = entries.findIndex(entry => entry.id === bankId);
                 if (entryIndex === -1) return;
-                const [removedEntry] = data.interventionBank.splice(entryIndex, 1);
+                const [removedEntry] = entries.splice(entryIndex, 1);
                 const removed = removedEntry?.name;
                 if (removed) {
                     [...(data.clients || []), ...(data.archivedClients || [])].forEach(client => {
@@ -8546,14 +8571,8 @@ This error cannot be fixed within this application's code; it requires a configu
                             }
                         });
                     });
-                    markDirty();
-                    renderInterventionBank();
-                    renderInterventionPicker();
                 }
-                markDirty();
-                renderInterventionBank();
-                renderInterventionPicker();
-                renderSoap();
+                commitInterventionBankEntries(entries);
             });
             interventionBankList.addEventListener('dragstart', (e) => {
                 const row = e.target.closest('.intervention-bank-row[data-bank-id]');

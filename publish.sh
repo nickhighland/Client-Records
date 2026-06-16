@@ -78,8 +78,30 @@ DMG="Client Records_${VERSION}_aarch64.dmg"
 
 # --- Create updater bundle ---
 echo "==> Creating updater tar.gz..."
-cd "$BUNDLE_DIR"
-COPYFILE_DISABLE=1 tar czf "$TARGZ" "$APP_NAME"
+python3 - <<'PY' "$TAURI_DIR/$BUNDLE_DIR/$TARGZ" "$TAURI_DIR/$BUNDLE_DIR/$APP_NAME"
+import os
+import sys
+import tarfile
+
+out_path = sys.argv[1]
+app_path = sys.argv[2]
+app_name = os.path.basename(app_path.rstrip('/'))
+
+with tarfile.open(out_path, "w:gz", format=tarfile.PAX_FORMAT) as tar:
+    tar.add(app_path, arcname=app_name, recursive=True)
+PY
+
+python3 - <<'PY' "$TAURI_DIR/$BUNDLE_DIR/$TARGZ"
+import sys
+import tarfile
+
+archive_path = sys.argv[1]
+with tarfile.open(archive_path, "r:gz") as tar:
+    invalid = [name for name in tar.getnames() if name.startswith("._") or "/._" in name]
+
+if invalid:
+    raise SystemExit(f"Updater archive contains AppleDouble entries: {invalid}")
+PY
 
 # --- Sign ---
 echo "==> Signing bundle..."
@@ -95,7 +117,8 @@ cd "$SCRIPT_DIR"
 git add -A
 git diff --cached --quiet || git commit -m "Release $TAG"
 git tag -f "$TAG"
-git push origin main --tags
+git push origin refs/heads/main:refs/heads/main
+git push origin "refs/tags/$TAG:refs/tags/$TAG"
 
 # --- Create GitHub release ---
 echo "==> Creating GitHub release $TAG..."

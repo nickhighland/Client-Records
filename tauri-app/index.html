@@ -2328,7 +2328,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.55</span>
+                <span class="version-badge">v1.0.56</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2563,7 +2563,7 @@
                      <div class="panel-header collapsible-header" data-target="notesContent" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
                          <span>Client Details <span class="collapse-icon">▼</span></span>
                         <div id="clientDetailsTabGroup" style="display: flex; gap: 8px; flex-wrap: nowrap; justify-content: flex-end; min-width: 0;">
-                            <button id="clientDetailsTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-color-primary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Client Details</button>
+                            <button id="clientDetailsTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-color-primary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Details</button>
                             <button id="nextSessionTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Next Session</button>
                          </div>
                      </div>
@@ -3333,7 +3333,7 @@
             const updateClientDetailsTabLabels = () => {
                 if (!clientDetailsTabBtn || !nextSessionTabBtn || !clientDetailsTabGroup) return;
                 const compactLabels = clientDetailsTabGroup.clientWidth > 0 && clientDetailsTabGroup.clientWidth < 260;
-                clientDetailsTabBtn.textContent = compactLabels ? 'Details' : 'Client Details';
+                clientDetailsTabBtn.textContent = 'Details';
                 nextSessionTabBtn.textContent = compactLabels ? 'Next' : 'Next Session';
             };
             if (clientDetailsTabGroup && typeof ResizeObserver !== 'undefined') {

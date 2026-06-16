@@ -512,7 +512,7 @@ dependencies = [
 
 [[package]]
 name = "client-records"
-version = "1.0.57"
+version = "1.0.58"
 dependencies = [
  "chrono",
  "jsonwebtoken",

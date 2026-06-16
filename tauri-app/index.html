@@ -2071,7 +2071,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.50</span>
+                <span class="version-badge">v1.0.51</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -4250,8 +4250,10 @@
                 if (!appointment) {
                     return {
                         objectiveRevision: 0,
+                        interventionsRevision: 0,
                         organizedRevision: null,
-                        readRevision: null
+                        readObjectiveRevision: null,
+                        readInterventionsRevision: null
                     };
                 }
                 if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
@@ -4260,8 +4262,10 @@
                 }
                 const state = appointment.soap.objectiveActionState;
                 if (!Number.isInteger(state.objectiveRevision) || state.objectiveRevision < 0) state.objectiveRevision = 0;
+                if (!Number.isInteger(state.interventionsRevision) || state.interventionsRevision < 0) state.interventionsRevision = 0;
                 if (!Number.isInteger(state.organizedRevision)) state.organizedRevision = null;
-                if (!Number.isInteger(state.readRevision)) state.readRevision = null;
+                if (!Number.isInteger(state.readObjectiveRevision)) state.readObjectiveRevision = null;
+                if (!Number.isInteger(state.readInterventionsRevision)) state.readInterventionsRevision = null;
                 return state;
             };
 
@@ -4279,6 +4283,18 @@
                 return true;
             };
 
+            const updateSoapInterventionsValue = (appointment, nextValue) => {
+                if (!appointment) return false;
+                if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
+                const next = String(nextValue ?? '');
+                const current = String(appointment.soap.interventions ?? '');
+                if (current === next) return false;
+                appointment.soap.interventions = next;
+                const actionState = ensureSoapObjectiveActionState(appointment);
+                actionState.interventionsRevision += 1;
+                return true;
+            };
+
             const markObjectiveOrganizeCompleted = (appointment) => {
                 const actionState = ensureSoapObjectiveActionState(appointment);
                 actionState.organizedRevision = actionState.objectiveRevision;
@@ -4286,7 +4302,8 @@
 
             const markObjectiveReadCompleted = (appointment) => {
                 const actionState = ensureSoapObjectiveActionState(appointment);
-                actionState.readRevision = actionState.objectiveRevision;
+                actionState.readObjectiveRevision = actionState.objectiveRevision;
+                actionState.readInterventionsRevision = actionState.interventionsRevision;
             };
 
             const isObjectiveOrganizeCompleted = (appointment) => {
@@ -4296,7 +4313,10 @@
 
             const isObjectiveReadCompleted = (appointment) => {
                 const actionState = ensureSoapObjectiveActionState(appointment);
-                return Number.isInteger(actionState.readRevision) && actionState.readRevision === actionState.objectiveRevision;
+                return Number.isInteger(actionState.readObjectiveRevision)
+                    && Number.isInteger(actionState.readInterventionsRevision)
+                    && actionState.readObjectiveRevision === actionState.objectiveRevision
+                    && actionState.readInterventionsRevision === actionState.interventionsRevision;
             };
 
             const setSoapActionButtonContent = (button, label, isComplete) => {
@@ -4326,7 +4346,7 @@
                 const objectiveMatches = extractInterventionsFromObjective(objectiveText ?? appointment.soap.o ?? '');
                 appointment.soap.objectiveInterventionMatches = objectiveMatches;
 
-                appointment.soap.interventions = formatInterventionsByModality(objectiveMatches);
+                updateSoapInterventionsValue(appointment, formatInterventionsByModality(objectiveMatches));
 
                 const interventionsTextarea = document.getElementById('interventions');
                 if (interventionsTextarea) {
@@ -5611,7 +5631,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (!Array.isArray(appointment.selectedInterventions)) appointment.selectedInterventions = [];
                 const objectiveDerivedInterventions = getObjectiveDerivedInterventions(appointment);
                 const interventions = formatInterventionsByModality(objectiveDerivedInterventions);
-                appointment.soap.interventions = interventions;
+                updateSoapInterventionsValue(appointment, interventions);
                 const auditResult = appointment.auditCheck || null;
                 soapContentEl.innerHTML = `
                     <div class="soap-section">
@@ -6744,7 +6764,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     if (!appointment.soap) appointment.soap = {s:'', o:'', a:'', p:''};
                     
                     if (textarea.id === 'interventions') {
-                        appointment.soap.interventions = textarea.value;
+                        updateSoapInterventionsValue(appointment, textarea.value);
                     } else {
                         const key = textarea.id.slice(-1).toLowerCase();
                         if (key === 'o') {
@@ -7411,7 +7431,7 @@ Requirements:
                     }
 
                     appointment.soap.objectiveInterventionMatches = interventions;
-                    appointment.soap.interventions = formatInterventionsByModality(interventions);
+                    updateSoapInterventionsValue(appointment, formatInterventionsByModality(interventions));
                     markObjectiveReadCompleted(appointment);
                     delete appointment.auditCheck;
                     markDirty();
@@ -10914,4 +10934,3 @@ This error cannot be fixed within this application's code; it requires a configu
     </div> <!-- Close container -->
 </body>
 </html>
-

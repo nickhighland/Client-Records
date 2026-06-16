@@ -1,6 +1,6 @@
 [package]
 name = "client-records"
-version = "1.0.50"
+version = "1.0.51"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -34,4 +34,3 @@ tauri-plugin-opener = "2.0.0-beta"
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "native-tls", "hostname"] }
 tauri-plugin-updater = "2.10.0"
 tauri-plugin-process = "2.3.1"
-

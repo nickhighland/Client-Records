@@ -214,6 +214,14 @@
             text-shadow: 0 0 6px rgba(241, 196, 15, 0.45);
         }
 
+        .menu-alert-indicator {
+            color: #ef4444;
+            font-weight: 800;
+            margin-left: 4px;
+            line-height: 1;
+            text-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+        }
+
         .header-menu-dropdown {
             position: absolute;
             right: 0;
@@ -1247,6 +1255,87 @@
             font-size: 1.15rem;
         }
 
+        .instructions-modal-content {
+            max-width: min(860px, 92vw);
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .instructions-modal-scroll {
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .instructions-modal-intro {
+            margin-bottom: 0.9rem;
+            color: var(--text-color-secondary);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
+        .instructions-lock-card {
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            background: color-mix(in srgb, var(--modal-bg) 90%, var(--button-primary-bg, #3498db) 10%);
+            padding: 12px 14px;
+            margin-bottom: 1rem;
+        }
+
+        .instructions-lock-card strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .instructions-lock-card ul {
+            margin: 0;
+            padding-left: 1.1rem;
+            color: var(--text-color-secondary);
+            line-height: 1.45;
+        }
+
+        .instructions-editor {
+            display: grid;
+            gap: 12px;
+        }
+
+        .instructions-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .instructions-field label {
+            font-weight: 700;
+        }
+
+        .instructions-help {
+            color: var(--text-color-secondary);
+            font-size: 0.83rem;
+            line-height: 1.4;
+        }
+
+        .instructions-section-input {
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            padding: 12px;
+            width: 100%;
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            font-family: inherit;
+            font-size: 14px;
+            min-height: 96px;
+            resize: vertical;
+        }
+
+        .instructions-modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--modal-header-border);
+        }
+
         .guide-scroll h4 {
             margin: 0.75rem 0 0.4rem;
             font-size: 1rem;
@@ -1975,7 +2064,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.48</span>
+                <span class="version-badge">v1.0.49</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2002,7 +2091,7 @@
             </div>
 
             <div class="header-menu" id="headerMenu">
-                <button id="headerMenuBtn" class="btn header-menu-btn" title="Open menu"><span class="menu-label-wrap">Menu<span id="menuUpdateAsterisk" class="update-asterisk hidden" aria-hidden="true">*</span></span> ▾</button>
+                <button id="headerMenuBtn" class="btn header-menu-btn" title="Open menu"><span class="menu-label-wrap">Menu<span id="menuBackupWarning" class="menu-alert-indicator hidden" aria-hidden="true">!</span><span id="menuUpdateAsterisk" class="update-asterisk hidden" aria-hidden="true">*</span></span> ▾</button>
                 <div id="headerMenuDropdown" class="header-menu-dropdown hidden">
                     <button id="informedConsentBtn" class="menu-item-btn">Informed Consent</button>
                     <button id="cssrsBtn" class="menu-item-btn">CSSRS</button>
@@ -2279,16 +2368,26 @@
 
     <!-- SOAP Instructions Modal -->
     <div id="soapInstructionsModal" class="modal-overlay hidden">
-        <div class="modal-content">
+        <div class="modal-content instructions-modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
                 <h2 style="font-size: 1.5rem; font-weight: bold;">SOAP Instructions</h2>
                 <button id="closeSoapInstructionsBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
             </div>
-            <div style="margin-bottom: 0.75rem; color: var(--text-color-secondary); font-size: 0.9rem;">
-                These instructions are sent to the AI when generating SOAP notes. Edit with care.
+            <div class="instructions-modal-scroll">
+                <div class="instructions-modal-intro">
+                    Adjust how SOAP generation behaves clinically and stylistically. The app keeps the response keys, suggestion arrays, field mapping, and other output-contract rules locked.
+                </div>
+                <div class="instructions-lock-card">
+                    <strong>Locked Format Rules</strong>
+                    <ul>
+                        <li>The app still requires the fixed SOAP response keys: <code>s</code>, <code>o</code>, <code>a</code>, <code>p</code>, <code>i</code>, plus the suggestion arrays.</li>
+                        <li>Audit-proofing field mapping, intervention-bank restrictions, and the app’s response shape remain enforced.</li>
+                        <li>Your edits below shape the AI’s clinical priorities, section emphasis, and writing behavior.</li>
+                    </ul>
+                </div>
+                <div id="soapInstructionsSections" class="instructions-editor"></div>
             </div>
-            <textarea id="soapInstructionsInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 12px; width: 100%; background-color: var(--input-bg); color: var(--input-text); font-family: inherit; font-size: 14px; min-height: 260px; resize: vertical;"></textarea>
-            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+            <div class="instructions-modal-actions">
                 <button id="saveSoapInstructionsBtn" class="btn save-btn" style="flex-grow: 1;">Save Instructions</button>
                 <button id="resetSoapInstructionsBtn" class="btn" style="flex-grow: 1; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Reset to Default</button>
             </div>
@@ -2297,16 +2396,26 @@
 
     <!-- Treatment Goals Instructions Modal -->
     <div id="treatmentGoalsInstructionsModal" class="modal-overlay hidden">
-        <div class="modal-content">
+        <div class="modal-content instructions-modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
                 <h2 style="font-size: 1.5rem; font-weight: bold;">Treatment Goals Instructions</h2>
                 <button id="closeTreatmentGoalsInstructionsBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
             </div>
-            <div style="margin-bottom: 0.75rem; color: var(--text-color-secondary); font-size: 0.9rem;">
-                These instructions are sent to the AI when generating treatment goals and objectives.
+            <div class="instructions-modal-scroll">
+                <div class="instructions-modal-intro">
+                    Adjust the clinical style and emphasis used when generating treatment goals and objectives. The JSON structure and other output-contract rules stay fixed.
+                </div>
+                <div class="instructions-lock-card">
+                    <strong>Locked Format Rules</strong>
+                    <ul>
+                        <li>The app still requires valid JSON in the fixed <code>goals</code> / <code>objectives</code> schema.</li>
+                        <li>Requested counts, supported objective formats, and “JSON only” output remain enforced.</li>
+                        <li>Your edits below shape the writing style, clinical emphasis, and modality use inside that locked structure.</li>
+                    </ul>
+                </div>
+                <div id="treatmentGoalsInstructionsSections" class="instructions-editor"></div>
             </div>
-            <textarea id="treatmentGoalsInstructionsInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 12px; width: 100%; background-color: var(--input-bg); color: var(--input-text); font-family: inherit; font-size: 14px; min-height: 240px; resize: vertical;"></textarea>
-            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+            <div class="instructions-modal-actions">
                 <button id="saveTreatmentGoalsInstructionsBtn" class="btn save-btn" style="flex-grow: 1;">Save Instructions</button>
                 <button id="resetTreatmentGoalsInstructionsBtn" class="btn" style="flex-grow: 1; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Reset to Default</button>
             </div>
@@ -2938,6 +3047,7 @@
             // Settings and Modal Elements
             const settingsBtn = document.getElementById('settingsBtn');
             const checkForUpdatesBtn = document.getElementById('checkForUpdatesBtn');
+            const menuBackupWarning = document.getElementById('menuBackupWarning');
             const menuUpdateAsterisk = document.getElementById('menuUpdateAsterisk');
             const checkForUpdatesAsterisk = document.getElementById('checkForUpdatesAsterisk');
             const settingsModal = document.getElementById('settingsModal');
@@ -3014,12 +3124,12 @@
             const customInstructionsModalityOtherEl = document.getElementById('customInstructionsModalityOther');
             const soapInstructionsModal = document.getElementById('soapInstructionsModal');
             const closeSoapInstructionsBtn = document.getElementById('closeSoapInstructionsBtn');
-            const soapInstructionsInput = document.getElementById('soapInstructionsInput');
+            const soapInstructionsSectionsEl = document.getElementById('soapInstructionsSections');
             const saveSoapInstructionsBtn = document.getElementById('saveSoapInstructionsBtn');
             const resetSoapInstructionsBtn = document.getElementById('resetSoapInstructionsBtn');
             const treatmentGoalsInstructionsModal = document.getElementById('treatmentGoalsInstructionsModal');
             const closeTreatmentGoalsInstructionsBtn = document.getElementById('closeTreatmentGoalsInstructionsBtn');
-            const treatmentGoalsInstructionsInput = document.getElementById('treatmentGoalsInstructionsInput');
+            const treatmentGoalsInstructionsSectionsEl = document.getElementById('treatmentGoalsInstructionsSections');
             const saveTreatmentGoalsInstructionsBtn = document.getElementById('saveTreatmentGoalsInstructionsBtn');
             const resetTreatmentGoalsInstructionsBtn = document.getElementById('resetTreatmentGoalsInstructionsBtn');
             // AI Integration Elements
@@ -3148,6 +3258,8 @@
                 archivedClients: [],
                 interventionBank: [...DEFAULT_INTERVENTION_BANK],
                 aiInstructions: {
+                    soapPromptSections: getDefaultSoapInstructionSections(),
+                    treatmentGoalsPromptSections: getDefaultTreatmentGoalInstructionSections(),
                     soapSystemPrompt: DEFAULT_SOAP_SYSTEM_PROMPT,
                     treatmentGoalsSystemPrompt: DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT
                 }
@@ -3267,12 +3379,30 @@
                 if (!data.aiInstructions || typeof data.aiInstructions !== 'object') {
                     data.aiInstructions = {};
                 }
-                if (typeof data.aiInstructions.soapSystemPrompt !== 'string' || !data.aiInstructions.soapSystemPrompt.trim()) {
-                    data.aiInstructions.soapSystemPrompt = DEFAULT_SOAP_SYSTEM_PROMPT;
+                if (!data.aiInstructions.soapPromptSections || typeof data.aiInstructions.soapPromptSections !== 'object') {
+                    data.aiInstructions.soapPromptSections = migrateLegacyInstructionSections(
+                        data.aiInstructions.soapSystemPrompt,
+                        DEFAULT_SOAP_SYSTEM_PROMPT,
+                        SOAP_INSTRUCTION_SECTION_DEFS
+                    );
                 }
-                if (typeof data.aiInstructions.treatmentGoalsSystemPrompt !== 'string' || !data.aiInstructions.treatmentGoalsSystemPrompt.trim()) {
-                    data.aiInstructions.treatmentGoalsSystemPrompt = DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
+                if (!data.aiInstructions.treatmentGoalsPromptSections || typeof data.aiInstructions.treatmentGoalsPromptSections !== 'object') {
+                    data.aiInstructions.treatmentGoalsPromptSections = migrateLegacyInstructionSections(
+                        data.aiInstructions.treatmentGoalsSystemPrompt,
+                        DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT,
+                        TREATMENT_GOAL_INSTRUCTION_SECTION_DEFS
+                    );
                 }
+                data.aiInstructions.soapPromptSections = normalizeInstructionSections(
+                    data.aiInstructions.soapPromptSections,
+                    SOAP_INSTRUCTION_SECTION_DEFS
+                );
+                data.aiInstructions.treatmentGoalsPromptSections = normalizeInstructionSections(
+                    data.aiInstructions.treatmentGoalsPromptSections,
+                    TREATMENT_GOAL_INSTRUCTION_SECTION_DEFS
+                );
+                data.aiInstructions.soapSystemPrompt = buildSoapSystemPrompt(data.aiInstructions.soapPromptSections);
+                data.aiInstructions.treatmentGoalsSystemPrompt = buildTreatmentGoalSystemPrompt(data.aiInstructions.treatmentGoalsPromptSections);
                 systemPrompt = data.aiInstructions.soapSystemPrompt;
                 goalGenerationSystemPrompt = data.aiInstructions.treatmentGoalsSystemPrompt;
 
@@ -4490,39 +4620,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return actionTemplates[objectiveIndex % actionTemplates.length];
             };
 
-            const DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT = `You are assisting a mental health clinician with treatment-plan writing.
-
-Return ONLY valid JSON in this exact shape:
-{
-  "goals": [
-    {
-      "title": "...",
-      "timelineMonths": 12,
-      "objectives": [
-        {
-          "text": "...",
-          "timelineMonths": 3,
-          "format": "action"
-        }
-      ]
-    }
-  ]
-}
-
-Requirements:
-- Generate exactly the requested number of goals.
-- Generate exactly the requested number of objectives per goal.
-- Goal language: concise and outcome-focused, written as "Client will ... resulting in ...".
-- Goals use 12-month timeline unless explicitly requested otherwise.
-- Objectives use staggered timeline anchors across 3, 6, 9, 12 months.
-- Objective text must be client-action focused.
-- If objective format is "action", use action-oriented statements (for example: "Client will identify...").
-- If objective format is "smart", produce SMART-style objective language.
-- Use guiding modalities as conceptual framing when provided.
-- Do NOT reference or imply any modality that is not explicitly selected.
-- Do not include extra keys, commentary, markdown, or prose outside JSON.`;
-
-            let goalGenerationSystemPrompt = DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
+            let goalGenerationSystemPrompt = '';
 
             const MODALITY_TERM_MAP = {
                 'CBT (Cognitive Behavioral Therapy)': ['CBT', 'Cognitive Behavioral Therapy'],
@@ -5441,13 +5539,25 @@ Requirements:
                         ${(soapData.s_suggestion || []).map((s, i) => renderSuggestionBox('s', s, i)).join('')}
                     </div>
                     <div class="soap-section">
-                        <div class="soap-header"><span>Objective</span><button class="copy-btn" data-target="soapO">Copy</button></div>
-                        <textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.o || ''}</textarea>
-                        <div style="margin: 6px 0 8px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                            <button id="organizeObjectiveBtn" class="copy-btn" style="padding: 4px 10px;">Organize</button>
-                            <span style="font-size: 0.78rem; color: var(--text-color-secondary);">AI groups related Objective bullets together without adding new content.</span>
+                        <div class="soap-header">
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <span>Objective</span>
+                                <button id="organizeObjectiveBtn" class="copy-btn" style="padding: 4px 10px;">Organize</button>
+                            </div>
+                            <button class="copy-btn" data-target="soapO">Copy</button>
                         </div>
+                        <textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.o || ''}</textarea>
                         ${(soapData.o_suggestion || []).map((s, i) => renderSuggestionBox('o', s, i)).join('')}
+                    </div>
+                    <div class="soap-section">
+                        <div class="soap-header">
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <span>Interventions</span>
+                                <button id="generateInterventionsBtn" class="copy-btn" style="padding: 4px 10px;">Read</button>
+                            </div>
+                            <div><button id="selectInterventionsBtn" class="copy-btn" style="margin-right:6px;">Bank</button><button class="copy-btn" data-target="interventions">Copy</button></div>
+                        </div>
+                        <textarea id="interventions" class="soap-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${interventions}</textarea>
                     </div>
                     <div class="soap-section">
                         <div class="soap-header"><span>Assessment</span><button class="copy-btn" data-target="soapA">Copy</button></div>
@@ -5458,14 +5568,6 @@ Requirements:
                         <div class="soap-header"><span>Plan</span><button class="copy-btn" data-target="soapP">Copy</button></div>
                         <textarea id="soapP" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.p || ''}</textarea>
                         ${(soapData.p_suggestion || []).map((s, i) => renderSuggestionBox('p', s, i)).join('')}
-                    </div>
-                    <div class="soap-section">
-                        <div class="soap-header"><span>Interventions</span><div><button id="selectInterventionsBtn" class="copy-btn" style="margin-right:6px;">Bank</button><button class="copy-btn" data-target="interventions">Copy</button></div></div>
-                        <div style="margin: 6px 0 8px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                            <button id="generateInterventionsBtn" class="copy-btn" style="padding: 4px 10px;">Generate from Objective</button>
-                            <span style="font-size: 0.78rem; color: var(--text-color-secondary);">AI reviews the Objective section and fills only direct matches.</span>
-                        </div>
-                        <textarea id="interventions" class="soap-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${interventions}</textarea>
                     </div>
                     <div class="soap-section">
                         <div class="soap-header"><span>Audit Check</span><button id="runSoapAuditBtn" class="copy-btn">Audit</button></div>
@@ -6817,15 +6919,142 @@ Requirements:
             };
 
 
-            const DEFAULT_SOAP_SYSTEM_PROMPT = `You are a helpful assistant for a therapist or clinician. Your primary function is to accurately categorize user-provided session notes into a structured SOAP note format.
+            const SOAP_INSTRUCTION_SECTION_DEFS = [
+                {
+                    key: 'clinicalFocus',
+                    label: 'Clinical Focus',
+                    description: 'What the SOAP note should prioritize clinically.',
+                    defaultValue: 'Keep the note audit-ready, clinically grounded, and tied closely to the session information provided.'
+                },
+                {
+                    key: 'sectionPriorities',
+                    label: 'Section Priorities',
+                    description: 'How the AI should balance Subjective, Objective, Assessment, and Plan content.',
+                    defaultValue: "Keep Subjective in the client's reported experience, make Objective action-based, keep Assessment interpretive and progress-aware, and make Plan concrete for next steps."
+                },
+                {
+                    key: 'objectiveAndInterventions',
+                    label: 'Objective / Interventions',
+                    description: 'How intervention language, Writer/Ct phrasing, and treatment-goal linkage should read.',
+                    defaultValue: 'Use explicit Writer/Ct phrasing in Objective bullets and connect interventions to active treatment goals or objectives when the session material clearly supports it.'
+                },
+                {
+                    key: 'suggestionsTone',
+                    label: 'Suggestions Tone',
+                    description: 'How the clinical language suggestions should sound.',
+                    defaultValue: 'Make suggestions clinically precise, concise, and useful for strengthening chart language without adding new facts.'
+                },
+                {
+                    key: 'additionalPreferences',
+                    label: 'Additional Preferences',
+                    description: 'Optional extra SOAP-specific behavior you want the AI to follow.',
+                    defaultValue: ''
+                },
+                {
+                    key: 'legacyImportedPrompt',
+                    label: 'Imported Legacy Instructions',
+                    description: 'Older full-prompt text from previous versions appears here so nothing is lost. Locked app rules still override if there is a conflict.',
+                    defaultValue: '',
+                    hideWhenEmpty: true,
+                    isLegacy: true,
+                    rows: 8
+                }
+            ];
 
-**Your Task:**
+            const TREATMENT_GOAL_INSTRUCTION_SECTION_DEFS = [
+                {
+                    key: 'clinicalFocus',
+                    label: 'Clinical Focus',
+                    description: 'What the generated treatment plan should emphasize clinically.',
+                    defaultValue: 'Write clinically appropriate treatment goals and objectives that match the presenting problem and support medical necessity.'
+                },
+                {
+                    key: 'goalStyle',
+                    label: 'Goal Style',
+                    description: 'How overall treatment goals should read.',
+                    defaultValue: 'Keep goals concise and outcome-focused, written as "Client will ... resulting in ..." unless the clinician clearly asks for a different style.'
+                },
+                {
+                    key: 'objectiveStyle',
+                    label: 'Objective Style',
+                    description: 'How objectives should be phrased and structured.',
+                    defaultValue: 'Make objectives client-action focused, measurable when possible, and aligned with the requested objective format.'
+                },
+                {
+                    key: 'modalityGuidance',
+                    label: 'Modality Guidance',
+                    description: 'How the AI should use the selected modality lens.',
+                    defaultValue: 'Use selected guiding modalities only as conceptual framing and do not imply or reference unselected modalities.'
+                },
+                {
+                    key: 'additionalPreferences',
+                    label: 'Additional Preferences',
+                    description: 'Optional extra treatment-plan guidance you want the AI to follow.',
+                    defaultValue: ''
+                },
+                {
+                    key: 'legacyImportedPrompt',
+                    label: 'Imported Legacy Instructions',
+                    description: 'Older full-prompt text from previous versions appears here so nothing is lost. Locked app rules still override if there is a conflict.',
+                    defaultValue: '',
+                    hideWhenEmpty: true,
+                    isLegacy: true,
+                    rows: 8
+                }
+            ];
+
+            const getDefaultInstructionSections = (defs) => defs.reduce((acc, def) => {
+                acc[def.key] = def.defaultValue || '';
+                return acc;
+            }, {});
+
+            const normalizeInstructionSections = (raw, defs) => {
+                const defaults = getDefaultInstructionSections(defs);
+                const source = raw && typeof raw === 'object' ? raw : {};
+                return defs.reduce((acc, def) => {
+                    acc[def.key] = typeof source[def.key] === 'string' ? source[def.key] : defaults[def.key];
+                    return acc;
+                }, {});
+            };
+
+            const migrateLegacyInstructionSections = (existingPrompt, defaultPrompt, defs) => {
+                const migrated = getDefaultInstructionSections(defs);
+                const legacyKey = defs.find(def => def.isLegacy)?.key;
+                const trimmedPrompt = typeof existingPrompt === 'string' ? existingPrompt.trim() : '';
+                if (legacyKey && trimmedPrompt && trimmedPrompt !== defaultPrompt.trim()) {
+                    migrated[legacyKey] = `Imported from an older full-prompt editor. You can trim or rewrite this text in the new section layout.\n\n${trimmedPrompt}`;
+                }
+                return migrated;
+            };
+
+            const buildInstructionGuidanceBlock = (sections, defs) => {
+                const content = defs
+                    .map(def => {
+                        const value = (sections?.[def.key] || '').trim();
+                        if (!value) return '';
+                        return `### ${def.label}\n${value}`;
+                    })
+                    .filter(Boolean)
+                    .join('\n\n');
+
+                if (!content) return '';
+                return `**User-Configurable Guidance (editable):**\nFollow these preferences unless they conflict with the locked system rules later in this prompt.\n\n${content}\n\n`;
+            };
+
+            const getDefaultSoapInstructionSections = () => getDefaultInstructionSections(SOAP_INSTRUCTION_SECTION_DEFS);
+            const getDefaultTreatmentGoalInstructionSections = () => getDefaultInstructionSections(TREATMENT_GOAL_INSTRUCTION_SECTION_DEFS);
+
+            const buildSoapSystemPrompt = (sections) => {
+                const guidanceBlock = buildInstructionGuidanceBlock(sections, SOAP_INSTRUCTION_SECTION_DEFS);
+                return `You are a helpful assistant for a therapist or clinician. Your primary function is to accurately categorize user-provided session notes into a structured SOAP note format.
+
+${guidanceBlock}**Your Task:**
 Analyze the "Session Information" text provided by the user. Categorize every piece of information into one of the four SOAP sections based on the strict definitions below.
 
 - **Subjective (S):** Information reported by the client (e.g., feelings, goals, history). This is for the client's voice and perspective.
   - **CRITICAL:** Each bullet point should be self-sufficient, without relying on other bullet points for context. It should convey a complete thought.
   
-- **Objective (O):** Everything that *happens* in the therapy session. This includes all therapeutic interventions, actions taken, connections made, and reflections or psychoeducation provided by the writer. **Any sentence that describes the writer's actions or speech belongs here.** 
+- **Objective (O):** Everything that *happens* in the therapy session. This includes all therapeutic interventions, actions taken, connections made, and reflections or psychoeducation provided by the writer. **Any sentence that describes the writer's actions or speech belongs here.**
   - **CRITICAL:** Each bullet point should be self-sufficient, without relying on other bullet points for context. It should convey a complete thought.
   - **CRITICAL:** Objective content must contain an intervention connected to session content. Do not include observations without corresponding actions or therapeutic moves.
     - **CRITICAL COLLABORATION RULE:** Every Objective bullet MUST explicitly include both "Writer" and "Ct" in the same bullet. Writer should be implementing the intervention with Ct participation (not Writer acting alone and not Ct acting alone).
@@ -6869,10 +7098,50 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
 - **PRESERVE SHORTHAND:** Do not expand abbreviations or shorthand. Keep "Ct" as "Ct" (not "Client"), "IBS" as "IBS" (not "Irritable Bowel Syndrome"), etc. Do not add expanded forms in parentheses.
 - **CLINICIAN REFERENCE:** Always refer to the clinician as "Writer" (not "the Writer", "the clinician", "therapist", or any other variation).
 - **Example of PERFECT Output (FOR FORMATTING ONLY):**
-{"s":"• Ct said they felt bad.","o":"• Writer talked about coping.","a":"• Ct displays affect congruent with mood.","p":"• Continue to explore themes of loss.","i":"• Psychoeducation\\n• Cognitive Restructuring","s_suggestion":[{"original":"• Ct said they felt bad.","suggested":"• Ct reported experiencing significant distress."}],"o_suggestion":[{"original":"• Writer talked about coping.","suggested":"• Writer provided psychoeducation on coping strategies."}],"a_suggestion":["Client appears to be making progress toward treatment goals related to anxiety."],"p_suggestion":["Continue to utilize CBT techniques to challenge cognitive distortions in the next session."]};
-            `;
+{"s":"• Ct said they felt bad.","o":"• Writer talked about coping.","a":"• Ct displays affect congruent with mood.","p":"• Continue to explore themes of loss.","i":"• Psychoeducation\\n• Cognitive Restructuring","s_suggestion":[{"original":"• Ct said they felt bad.","suggested":"• Ct reported experiencing significant distress."}],"o_suggestion":[{"original":"• Writer talked about coping.","suggested":"• Writer provided psychoeducation on coping strategies."}],"a_suggestion":["Client appears to be making progress toward treatment goals related to anxiety."],"p_suggestion":["Continue to utilize CBT techniques to challenge cognitive distortions in the next session."]};`;
+            };
+
+            const DEFAULT_SOAP_SYSTEM_PROMPT = buildSoapSystemPrompt(getDefaultSoapInstructionSections());
+
+            const buildTreatmentGoalSystemPrompt = (sections) => {
+                const guidanceBlock = buildInstructionGuidanceBlock(sections, TREATMENT_GOAL_INSTRUCTION_SECTION_DEFS);
+                return `You are assisting a mental health clinician with treatment-plan writing.
+
+${guidanceBlock}Return ONLY valid JSON in this exact shape:
+{
+  "goals": [
+    {
+      "title": "...",
+      "timelineMonths": 12,
+      "objectives": [
+        {
+          "text": "...",
+          "timelineMonths": 3,
+          "format": "action"
+        }
+      ]
+    }
+  ]
+}
+
+Requirements:
+- Generate exactly the requested number of goals.
+- Generate exactly the requested number of objectives per goal.
+- Goal language: concise and outcome-focused, written as "Client will ... resulting in ...".
+- Goals use 12-month timeline unless explicitly requested otherwise.
+- Objectives use staggered timeline anchors across 3, 6, 9, 12 months.
+- Objective text must be client-action focused.
+- If objective format is "action", use action-oriented statements (for example: "Client will identify...").
+- If objective format is "smart", produce SMART-style objective language.
+- Use guiding modalities as conceptual framing when provided.
+- Do NOT reference or imply any modality that is not explicitly selected.
+- Do not include extra keys, commentary, markdown, or prose outside JSON.`;
+            };
+
+            const DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT = buildTreatmentGoalSystemPrompt(getDefaultTreatmentGoalInstructionSections());
 
             let systemPrompt = DEFAULT_SOAP_SYSTEM_PROMPT;
+            goalGenerationSystemPrompt = DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
 
             const generateSoapNote = async () => {
                 if (selectedNoteId || selectedIntakeId) {
@@ -7022,7 +7291,7 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                 const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
                 if (generateInterventionsBtn) {
                     generateInterventionsBtn.disabled = true;
-                    generateInterventionsBtn.textContent = 'Generating...';
+                    generateInterventionsBtn.textContent = 'Reading...';
                 }
 
                 const bank = getInterventionBankNames();
@@ -7046,7 +7315,7 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
                 } finally {
                     if (generateInterventionsBtn) {
                         generateInterventionsBtn.disabled = false;
-                        generateInterventionsBtn.textContent = 'Generate from Objective';
+                        generateInterventionsBtn.textContent = 'Read';
                     }
                 }
             };
@@ -8109,11 +8378,14 @@ This error cannot be fixed within this application's code; it requires a configu
                         vertexLocationInput.value = localStorage.getItem('vertexLocation') || 'us-central1';
                         openaiApiKeyInput.value = localStorage.getItem('openaiApiKey') || '';
                     }
+
+                    loadAutoBackupPathFromStorage();
                 } catch (e) {
                     console.error("Failed to load data", e);
                     alert("Error loading data. Data might be corrupt or password incorrect. Starting fresh.");
                     data = getInitialData();
                     deletedItems = { clients: [], appointments: [], notes: [], intakes: [] };
+                    loadAutoBackupPathFromStorage();
                 }
             };
 
@@ -8326,6 +8598,15 @@ This error cannot be fixed within this application's code; it requires a configu
 
             const isTauriRuntime = () => typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
 
+            const setBackupWarningVisibility = (isVisible) => {
+                menuBackupWarning?.classList.toggle('hidden', !isVisible);
+                if (headerMenuBtn) {
+                    headerMenuBtn.title = isVisible
+                        ? 'Open menu - secondary backup location required'
+                        : 'Open menu';
+                }
+            };
+
             const updateBackupMenuState = () => {
                 if (configureBackupBtn) {
                     configureBackupBtn.textContent = autoBackupPath
@@ -8337,6 +8618,12 @@ This error cannot be fixed within this application's code; it requires a configu
                     clearBackupBtn.style.opacity = autoBackupPath ? '1' : '0.6';
                     clearBackupBtn.style.cursor = autoBackupPath ? 'pointer' : 'not-allowed';
                 }
+                setBackupWarningVisibility(!autoBackupPath);
+            };
+
+            const loadAutoBackupPathFromStorage = () => {
+                autoBackupPath = localStorage.getItem('autoBackupPath') || '';
+                updateBackupMenuState();
             };
 
             const persistEncryptedAutoBackup = async () => {
@@ -8437,8 +8724,7 @@ This error cannot be fixed within this application's code; it requires a configu
                         });
 
                         if (!selectedPath) {
-                        autoBackupPath = localStorage.getItem('autoBackupPath') || '';
-                        updateBackupMenuState();
+                            loadAutoBackupPathFromStorage();
                             return;
                         }
 
@@ -9075,6 +9361,7 @@ This error cannot be fixed within this application's code; it requires a configu
             };
 
             setUpdateAsteriskVisibility(false);
+            loadAutoBackupPathFromStorage();
 
             checkForUpdatesBtn?.addEventListener('click', async () => {
                 await checkForAvailableUpdate({
@@ -9122,30 +9409,85 @@ This error cannot be fixed within this application's code; it requires a configu
                     soapAuditGuideModal.classList.add('hidden');
                 }
             });
-            const applySoapInstructions = (value) => {
-                const next = (value || '').trim() || DEFAULT_SOAP_SYSTEM_PROMPT;
-                systemPrompt = next;
+            const renderInstructionSections = (container, defs, values) => {
+                if (!container) return;
+                const normalizedValues = normalizeInstructionSections(values, defs);
+                container.innerHTML = '';
+
+                defs.forEach(def => {
+                    const value = normalizedValues[def.key] || '';
+                    if (def.hideWhenEmpty && !value.trim()) return;
+
+                    const field = document.createElement('div');
+                    field.className = 'instructions-field';
+
+                    const label = document.createElement('label');
+                    label.htmlFor = `${container.id}-${def.key}`;
+                    label.textContent = def.label;
+
+                    const help = document.createElement('div');
+                    help.className = 'instructions-help';
+                    help.textContent = def.description;
+
+                    const textarea = document.createElement('textarea');
+                    textarea.id = `${container.id}-${def.key}`;
+                    textarea.className = 'instructions-section-input';
+                    textarea.dataset.instructionKey = def.key;
+                    textarea.rows = def.rows || 4;
+                    textarea.value = value;
+
+                    field.appendChild(label);
+                    field.appendChild(help);
+                    field.appendChild(textarea);
+                    container.appendChild(field);
+                });
+            };
+
+            const readInstructionSections = (container, defs) => normalizeInstructionSections(
+                defs.reduce((acc, def) => {
+                    const input = container?.querySelector(`[data-instruction-key="${def.key}"]`);
+                    acc[def.key] = input ? input.value.trim() : '';
+                    return acc;
+                }, {}),
+                defs
+            );
+
+            const openInstructionEditorModal = (modal, container, defs, values) => {
+                renderInstructionSections(container, defs, values);
+                modal?.classList.remove('hidden');
+                const firstInput = container?.querySelector('textarea');
+                firstInput?.focus();
+            };
+
+            const applySoapInstructions = (sections) => {
+                const nextSections = normalizeInstructionSections(sections, SOAP_INSTRUCTION_SECTION_DEFS);
+                const nextPrompt = buildSoapSystemPrompt(nextSections);
+                systemPrompt = nextPrompt;
                 if (!data.aiInstructions || typeof data.aiInstructions !== 'object') {
                     data.aiInstructions = {};
                 }
-                data.aiInstructions.soapSystemPrompt = next;
+                data.aiInstructions.soapPromptSections = nextSections;
+                data.aiInstructions.soapSystemPrompt = nextPrompt;
                 markDirty();
             };
-            const applyTreatmentGoalsInstructions = (value) => {
-                const next = (value || '').trim() || DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
-                goalGenerationSystemPrompt = next;
+            const applyTreatmentGoalsInstructions = (sections) => {
+                const nextSections = normalizeInstructionSections(sections, TREATMENT_GOAL_INSTRUCTION_SECTION_DEFS);
+                const nextPrompt = buildTreatmentGoalSystemPrompt(nextSections);
+                goalGenerationSystemPrompt = nextPrompt;
                 if (!data.aiInstructions || typeof data.aiInstructions !== 'object') {
                     data.aiInstructions = {};
                 }
-                data.aiInstructions.treatmentGoalsSystemPrompt = next;
+                data.aiInstructions.treatmentGoalsPromptSections = nextSections;
+                data.aiInstructions.treatmentGoalsSystemPrompt = nextPrompt;
                 markDirty();
             };
             soapInstructionsBtn?.addEventListener('click', () => {
-                if (soapInstructionsInput) {
-                    soapInstructionsInput.value = systemPrompt || DEFAULT_SOAP_SYSTEM_PROMPT;
-                    soapInstructionsInput.focus();
-                }
-                soapInstructionsModal?.classList.remove('hidden');
+                openInstructionEditorModal(
+                    soapInstructionsModal,
+                    soapInstructionsSectionsEl,
+                    SOAP_INSTRUCTION_SECTION_DEFS,
+                    data.aiInstructions?.soapPromptSections || getDefaultSoapInstructionSections()
+                );
             });
             closeSoapInstructionsBtn?.addEventListener('click', () => soapInstructionsModal?.classList.add('hidden'));
             soapInstructionsModal?.addEventListener('click', (e) => {
@@ -9154,22 +9496,20 @@ This error cannot be fixed within this application's code; it requires a configu
                 }
             });
             saveSoapInstructionsBtn?.addEventListener('click', () => {
-                applySoapInstructions(soapInstructionsInput?.value || '');
+                applySoapInstructions(readInstructionSections(soapInstructionsSectionsEl, SOAP_INSTRUCTION_SECTION_DEFS));
                 soapInstructionsModal?.classList.add('hidden');
             });
             resetSoapInstructionsBtn?.addEventListener('click', () => {
-                if (soapInstructionsInput) {
-                    soapInstructionsInput.value = DEFAULT_SOAP_SYSTEM_PROMPT;
-                }
-                applySoapInstructions(DEFAULT_SOAP_SYSTEM_PROMPT);
+                applySoapInstructions(getDefaultSoapInstructionSections());
                 soapInstructionsModal?.classList.add('hidden');
             });
             treatmentGoalsInstructionsBtn?.addEventListener('click', () => {
-                if (treatmentGoalsInstructionsInput) {
-                    treatmentGoalsInstructionsInput.value = goalGenerationSystemPrompt || DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
-                    treatmentGoalsInstructionsInput.focus();
-                }
-                treatmentGoalsInstructionsModal?.classList.remove('hidden');
+                openInstructionEditorModal(
+                    treatmentGoalsInstructionsModal,
+                    treatmentGoalsInstructionsSectionsEl,
+                    TREATMENT_GOAL_INSTRUCTION_SECTION_DEFS,
+                    data.aiInstructions?.treatmentGoalsPromptSections || getDefaultTreatmentGoalInstructionSections()
+                );
             });
             closeTreatmentGoalsInstructionsBtn?.addEventListener('click', () => treatmentGoalsInstructionsModal?.classList.add('hidden'));
             treatmentGoalsInstructionsModal?.addEventListener('click', (e) => {
@@ -9178,14 +9518,11 @@ This error cannot be fixed within this application's code; it requires a configu
                 }
             });
             saveTreatmentGoalsInstructionsBtn?.addEventListener('click', () => {
-                applyTreatmentGoalsInstructions(treatmentGoalsInstructionsInput?.value || '');
+                applyTreatmentGoalsInstructions(readInstructionSections(treatmentGoalsInstructionsSectionsEl, TREATMENT_GOAL_INSTRUCTION_SECTION_DEFS));
                 treatmentGoalsInstructionsModal?.classList.add('hidden');
             });
             resetTreatmentGoalsInstructionsBtn?.addEventListener('click', () => {
-                if (treatmentGoalsInstructionsInput) {
-                    treatmentGoalsInstructionsInput.value = DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT;
-                }
-                applyTreatmentGoalsInstructions(DEFAULT_GOAL_GENERATION_SYSTEM_PROMPT);
+                applyTreatmentGoalsInstructions(getDefaultTreatmentGoalInstructionSections());
                 treatmentGoalsInstructionsModal?.classList.add('hidden');
             });
             customInstructionsBtn.addEventListener('click', () => {

@@ -2071,7 +2071,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.51</span>
+                <span class="version-badge">v1.0.52</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -4141,16 +4141,76 @@
                 'training', 'train', 'exploration', 'explore', 'management', 'manage'
             ]);
 
+            const stripInterventionMatchPrefix = (value) => String(value || '').replace(/^[A-Za-z][A-Za-z\s/&-]{0,12}:\s*/, '').trim();
+
+            const normalizeInterventionMatchKey = (value) => normalizeInterventionText(stripInterventionMatchPrefix(value));
+
             const getInterventionMatchTokens = (value) => tokenizeForInterventionMatch(value)
                 .filter(token => token.length > 2 && !interventionStopWords.has(token));
+
+            const getInterventionSupportPhrases = (value) => {
+                const canonical = normalizeInterventionMatchKey(value);
+                const phrases = new Set();
+
+                if (canonical.includes('socratic question')) {
+                    phrases.add('socratic questioning');
+                    phrases.add('socratic question');
+                }
+                if (canonical.includes('deconstruction') || canonical.includes('deconstruct')) {
+                    phrases.add('deconstruct');
+                    phrases.add('deconstructed');
+                    phrases.add('deconstructing');
+                }
+                if (canonical.includes('preferred narrative')) {
+                    phrases.add('preferred narrative');
+                    phrases.add('narrative of agency');
+                    phrases.add('narrative of choice');
+                    phrases.add('agency and choice');
+                }
+                if (canonical.includes('problem saturated narrative')) {
+                    phrases.add('problem saturated narrative');
+                }
+                if ((canonical.includes('relational') || canonical.includes('relationship')) && canonical.includes('template')) {
+                    phrases.add('relational template');
+                    phrases.add('relational templates');
+                    phrases.add('relationship template');
+                    phrases.add('relationship templates');
+                    phrases.add('relational history');
+                    phrases.add('unresolved relational templates');
+                }
+
+                return [...phrases]
+                    .map(phrase => normalizeInterventionText(phrase))
+                    .filter(Boolean);
+            };
+
+            const interventionTokensLooselyMatch = (left, right) => {
+                const a = String(left || '').trim();
+                const b = String(right || '').trim();
+                if (!a || !b) return false;
+                if (a === b) return true;
+                return Math.min(a.length, b.length) >= 5 && (a.startsWith(b) || b.startsWith(a));
+            };
+
+            const countLooselyMatchedInterventionTokens = (sourceTokens, targetTokens) => {
+                const targetList = targetTokens instanceof Set
+                    ? [...targetTokens]
+                    : Array.isArray(targetTokens)
+                        ? targetTokens
+                        : [];
+                if (!Array.isArray(sourceTokens) || sourceTokens.length === 0 || targetList.length === 0) return 0;
+                return sourceTokens.filter(token => targetList.some(target => interventionTokensLooselyMatch(token, target))).length;
+            };
 
             const buildInterventionBankMeta = (bank) => (Array.isArray(bank) ? bank : [])
                 .filter(Boolean)
                 .map(item => {
-                    const normalized = normalizeInterventionText(item);
-                    const tokens = getInterventionMatchTokens(item);
+                    const matchSource = stripInterventionMatchPrefix(item);
+                    const normalized = normalizeInterventionText(matchSource);
+                    const tokens = getInterventionMatchTokens(matchSource);
                     const strongTokens = tokens.filter(token => !interventionWeakAnchorTokens.has(token));
-                    return { item, normalized, tokens, strongTokens };
+                    const supportPhrases = getInterventionSupportPhrases(item);
+                    return { item, normalized, tokens, strongTokens, supportPhrases };
                 })
                 .filter(entry => entry.normalized.length > 0);
 
@@ -4159,12 +4219,12 @@
                     return false;
                 }
 
-                const overlapAll = entry.tokens.filter(token => textTokens.has(token)).length;
+                const overlapAll = countLooselyMatchedInterventionTokens(entry.tokens, textTokens);
                 if (overlapAll === 0) return false;
                 if (entry.tokens.length === 1) return overlapAll === 1;
 
                 const requiredTokens = entry.strongTokens.length > 0 ? entry.strongTokens : entry.tokens;
-                const requiredMatched = requiredTokens.filter(token => textTokens.has(token)).length;
+                const requiredMatched = countLooselyMatchedInterventionTokens(requiredTokens, textTokens);
                 if (requiredMatched !== requiredTokens.length) return false;
 
                 if (entry.tokens.length === 2) return overlapAll === 2;
@@ -4178,6 +4238,9 @@
                 const normalizedText = normalizeInterventionText(text);
                 if (!normalizedText) return false;
                 if (normalizedText.includes(entry.normalized)) return true;
+                if (Array.isArray(entry.supportPhrases) && entry.supportPhrases.some(phrase => phrase && normalizedText.includes(phrase))) {
+                    return true;
+                }
                 return hasStrictInterventionTokenCoverage(entry, new Set(getInterventionMatchTokens(text)));
             };
 
@@ -5198,7 +5261,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     : Array.isArray(aiPayload?.matches)
                         ? aiPayload.matches
                         : [];
-                return selectInterventionsFromBank(allowedBank, aiInterventions, objectiveText);
+                const aiSelected = selectInterventionsFromBank(allowedBank, aiInterventions, objectiveText);
+                const directSelected = extractInterventionsFromObjective(objectiveText).filter(item => allowedBank.includes(item));
+                const selected = new Set([...aiSelected, ...directSelected]);
+                return allowedBank.filter(item => selected.has(item));
             };
 
             const generateGoalDrafts = async () => {

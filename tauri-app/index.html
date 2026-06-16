@@ -624,7 +624,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding-right: 64px;
+            padding-right: 40px;
         }
 
         .client-item-leading {
@@ -655,14 +655,6 @@
             font-weight: 700;
         }
 
-        .client-drag-handle {
-            color: var(--text-color-secondary);
-            font-size: 0.92rem;
-            font-weight: 700;
-            letter-spacing: 0.12em;
-            flex-shrink: 0;
-        }
-        
         .client-item.dragging {
             opacity: 0.4;
             cursor: grabbing;
@@ -709,12 +701,43 @@
         .client-item:hover .action-buttons, .appointment-item:hover .action-buttons, .note-item:hover .action-buttons, .intake-item:hover .action-buttons {
             opacity: 1;
         }
+        .client-action-buttons {
+            top: 50%;
+            right: 42px;
+            transform: translateY(-50%);
+        }
         .action-btn {
             border: none; color: white;
             width: 20px; height: 20px;
             border-radius: 50%;
             cursor: pointer; font-size: 12px;
             display: flex; align-items: center; justify-content: center;
+        }
+        .today-session-btn {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 22px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffffff;
+            background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+            transition: filter 0.15s ease, transform 0.15s ease;
+        }
+        .today-session-btn:hover {
+            filter: brightness(1.06);
+        }
+        .today-session-btn:active {
+            transform: translateY(-50%) scale(0.97);
         }
         .archive-btn { background: #f39c12; }
         .delete-btn { background: #e74c3c; }
@@ -2305,7 +2328,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.54</span>
+                <span class="version-badge">v1.0.55</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2370,10 +2393,6 @@
                             </div>
                             <button id="clearTodaySessionsBtn" class="client-section-clear-btn" type="button">Clear</button>
                         </div>
-                        <div class="client-section-subheader">
-                            <span>Drag clients here to set today's order.</span>
-                            <span class="client-section-pill">Order only</span>
-                        </div>
                         <div id="todaySessionsList" class="client-list-section" data-list-type="today">
                             <div class="client-empty-state">Drag clients from Main Bank here to build today's queue.</div>
                         </div>
@@ -2390,7 +2409,6 @@
                             <input id="mainBankSearchInput" class="client-search-input" type="text" placeholder="Search Main Bank..." autocomplete="off">
                             <button id="clearMainBankSearchBtn" class="client-search-clear-btn hidden" type="button" aria-label="Clear main bank search">x</button>
                         </div>
-                        <div class="client-search-hint">Instantly narrows names below.</div>
                         <div class="client-list-section client-bank-list" id="clientList" data-list-type="main">
                             <div class="no-selection">Click + to add a client</div>
                         </div>
@@ -3724,6 +3742,15 @@
             const getMainBankClients = () => {
                 const todaySessionIds = new Set(data.todaySessionClientIds || []);
                 return (data.clients || []).filter(client => !todaySessionIds.has(client.id));
+            };
+
+            const moveClientToTodaySessionsEnd = (clientId) => {
+                if (!clientId) return;
+                removeClientFromTodaySessions(clientId);
+                if (!Array.isArray(data.todaySessionClientIds)) {
+                    data.todaySessionClientIds = [];
+                }
+                data.todaySessionClientIds.push(clientId);
             };
 
             const reorderVisibleClientSlots = (orderedVisibleIds) => {
@@ -5760,13 +5787,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 ${listType === 'today' ? `<span class="today-session-rank">${todayIndex + 1}</span>` : ''}
                                 <span class="client-name-label">${client.name || 'Untitled Client'}</span>
                             </div>
-                            <span class="client-drag-handle" aria-hidden="true">::</span>
                         </div>
-                        <div class="action-buttons">
+                        <div class="action-buttons client-action-buttons">
                             <button class="action-btn edit-btn" title="Edit Name">✏️</button>
                             <button class="action-btn archive-btn" title="Archive Client">A</button>
                             <button class="action-btn delete-btn" title="Delete Client">×</button>
                         </div>
+                        <button class="today-session-btn" type="button" title="Move to bottom of Today's Sessions">T</button>
                     </div>
                 `;
 
@@ -6598,7 +6625,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 const clientId = clientItem.dataset.clientId;
 
-                if (e.target.closest('.delete-btn')) {
+                if (e.target.closest('.today-session-btn')) {
+                    moveClientToTodaySessionsEnd(clientId);
+                    markDirty();
+                    renderClients();
+                } else if (e.target.closest('.delete-btn')) {
                      const client = findClient(clientId);
                      if (confirm(`Are you sure you want to delete ${client.name}?`)) {
                         const clientIndex = data.clients.findIndex(c => c.id === clientId);
@@ -6816,8 +6847,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             const handleClientDragStart = (e) => {
                 const clientItem = e.target.closest('.client-item');
-                // Don't initiate drag on action buttons
-                if (!clientItem || e.target.closest('.action-buttons')) return;
+                // Don't initiate drag on row buttons
+                if (!clientItem || e.target.closest('button')) return;
                 dragState = {
                     clientId: clientItem.dataset.clientId,
                     sourceListType: clientItem.dataset.listType,

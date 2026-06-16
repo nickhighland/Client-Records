@@ -214,6 +214,13 @@
             text-shadow: 0 0 6px rgba(241, 196, 15, 0.45);
         }
 
+        .soap-action-complete {
+            color: #dc2626;
+            font-weight: 800;
+            margin-left: 6px;
+            line-height: 1;
+        }
+
         .menu-alert-indicator {
             color: #ef4444;
             font-weight: 800;
@@ -2064,7 +2071,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.49</span>
+                <span class="version-badge">v1.0.50</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -3356,6 +3363,7 @@
                         if (appt.customInstructions !== undefined) {
                             delete appt.customInstructions;
                         }
+                        ensureSoapObjectiveActionState(appt);
                     });
 
                     if (!client.goalGenerationLens || typeof client.goalGenerationLens !== 'object') {
@@ -4236,6 +4244,79 @@
                     ? appointment.soap.objectiveInterventionMatches.filter(Boolean)
                     : [];
                 return mergeInterventions(manualSelections, objectiveMatches);
+            };
+
+            const ensureSoapObjectiveActionState = (appointment) => {
+                if (!appointment) {
+                    return {
+                        objectiveRevision: 0,
+                        organizedRevision: null,
+                        readRevision: null
+                    };
+                }
+                if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
+                if (!appointment.soap.objectiveActionState || typeof appointment.soap.objectiveActionState !== 'object') {
+                    appointment.soap.objectiveActionState = {};
+                }
+                const state = appointment.soap.objectiveActionState;
+                if (!Number.isInteger(state.objectiveRevision) || state.objectiveRevision < 0) state.objectiveRevision = 0;
+                if (!Number.isInteger(state.organizedRevision)) state.organizedRevision = null;
+                if (!Number.isInteger(state.readRevision)) state.readRevision = null;
+                return state;
+            };
+
+            const updateSoapFieldValue = (appointment, fieldKey, nextValue) => {
+                if (!appointment) return false;
+                if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
+                const next = String(nextValue ?? '');
+                const current = String(appointment.soap[fieldKey] ?? '');
+                if (current === next) return false;
+                appointment.soap[fieldKey] = next;
+                if (fieldKey === 'o') {
+                    const actionState = ensureSoapObjectiveActionState(appointment);
+                    actionState.objectiveRevision += 1;
+                }
+                return true;
+            };
+
+            const markObjectiveOrganizeCompleted = (appointment) => {
+                const actionState = ensureSoapObjectiveActionState(appointment);
+                actionState.organizedRevision = actionState.objectiveRevision;
+            };
+
+            const markObjectiveReadCompleted = (appointment) => {
+                const actionState = ensureSoapObjectiveActionState(appointment);
+                actionState.readRevision = actionState.objectiveRevision;
+            };
+
+            const isObjectiveOrganizeCompleted = (appointment) => {
+                const actionState = ensureSoapObjectiveActionState(appointment);
+                return Number.isInteger(actionState.organizedRevision) && actionState.organizedRevision === actionState.objectiveRevision;
+            };
+
+            const isObjectiveReadCompleted = (appointment) => {
+                const actionState = ensureSoapObjectiveActionState(appointment);
+                return Number.isInteger(actionState.readRevision) && actionState.readRevision === actionState.objectiveRevision;
+            };
+
+            const setSoapActionButtonContent = (button, label, isComplete) => {
+                if (!button) return;
+                button.innerHTML = `${label}${isComplete ? '<span class="soap-action-complete" aria-hidden="true">✓</span>' : ''}`;
+            };
+
+            const refreshObjectiveActionButtons = (appointment) => {
+                const objectiveText = (appointment?.soap?.o || '').trim();
+                const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
+                if (organizeObjectiveBtn) {
+                    organizeObjectiveBtn.disabled = splitSoapBulletItems(objectiveText).length < 2;
+                    setSoapActionButtonContent(organizeObjectiveBtn, 'Organize', isObjectiveOrganizeCompleted(appointment));
+                }
+
+                const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
+                if (generateInterventionsBtn) {
+                    generateInterventionsBtn.disabled = !objectiveText;
+                    setSoapActionButtonContent(generateInterventionsBtn, 'Read', isObjectiveReadCompleted(appointment));
+                }
             };
 
             const syncObjectiveInterventionsFromObjectiveText = (appointment, objectiveText) => {
@@ -5589,7 +5670,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
                 if (generateInterventionsBtn) {
-                    generateInterventionsBtn.disabled = !(soapData.o || '').trim();
                     generateInterventionsBtn.addEventListener('click', () => {
                         void generateObjectiveInterventions();
                     });
@@ -5597,11 +5677,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
                 if (organizeObjectiveBtn) {
-                    organizeObjectiveBtn.disabled = splitSoapBulletItems(soapData.o || '').length < 2;
                     organizeObjectiveBtn.addEventListener('click', () => {
                         void organizeObjectiveContent();
                     });
                 }
+
+                refreshObjectiveActionButtons(appointment);
             };
 
             const renderSuggestionBox = (type, suggestion, index) => {
@@ -6666,7 +6747,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         appointment.soap.interventions = textarea.value;
                     } else {
                         const key = textarea.id.slice(-1).toLowerCase();
-                        appointment.soap[key] = textarea.value;
+                        if (key === 'o') {
+                            updateSoapFieldValue(appointment, key, textarea.value);
+                        } else {
+                            appointment.soap[key] = textarea.value;
+                        }
                         if (SOAP_SORT_SECTION_KEYS.includes(key) && isManualEdit) {
                             setSoapSectionOrderOverride(appointment.soap, key, true);
                         }
@@ -6764,6 +6849,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         if (organizeObjectiveBtn) {
                             organizeObjectiveBtn.disabled = splitSoapBulletItems(e.target.value).length < 2;
                         }
+                        refreshObjectiveActionButtons(appointment);
                     }
                 }
             });
@@ -6895,7 +6981,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     }
                     
                     // Manually update the data model since we're not dispatching the 'input' event before re-rendering
-                    appointment.soap[sectionKey] = textarea.value;
+                    if (sectionKey === 'o') {
+                        updateSoapFieldValue(appointment, sectionKey, textarea.value);
+                    } else {
+                        appointment.soap[sectionKey] = textarea.value;
+                    }
                 }
 
                 // Remove the suggestion that was just handled.
@@ -7169,6 +7259,7 @@ Requirements:
                  if (!appointment.soap) appointment.soap = {};
                   delete appointment.auditCheck;
                   const auditProofing = getAuditProofingData(appointment);
+                const previousObjectiveText = String(appointment.soap.o || '');
                 const generatedObjectiveText = soapData.o ? enforceObjectiveSectionCollaboration(formatBulletPoints(soapData.o)) : '';
 
                   ensureSoapSectionOrderOverrides(appointment.soap);
@@ -7231,6 +7322,10 @@ Requirements:
                  alignSoapSectionsByObjectiveOrder(appointment.soap);
 
                  refreshObjectiveSuggestionInterventionMatches(appointment);
+                if (previousObjectiveText !== String(appointment.soap.o || '')) {
+                    const actionState = ensureSoapObjectiveActionState(appointment);
+                    actionState.objectiveRevision += 1;
+                }
              };
 
             const organizeObjectiveContent = async () => {
@@ -7260,32 +7355,41 @@ Requirements:
                         organizedObjective = organizeObjectiveContentLocally(objectiveText);
                     }
 
-                    appointment.soap.o = organizedObjective || objectiveText;
+                    updateSoapFieldValue(appointment, 'o', organizedObjective || objectiveText);
                     setSoapSectionOrderOverride(appointment.soap, 'o', true);
                     syncObjectiveInterventionsFromObjectiveText(appointment, appointment.soap.o);
+                    markObjectiveOrganizeCompleted(appointment);
                     delete appointment.auditCheck;
                     markDirty();
-                    renderSoap();
+                    await generateObjectiveInterventions({
+                        objectiveTextOverride: appointment.soap.o,
+                        renderAfter: false,
+                        suppressEmptyAlert: true
+                    });
                 } catch (error) {
                     console.error('Objective organization error:', error);
                     alert(`Failed to organize Objective content. ${error.message}`);
                 } finally {
-                    if (organizeObjectiveBtn) {
+                    if (organizeObjectiveBtn?.isConnected) {
                         organizeObjectiveBtn.disabled = false;
-                        organizeObjectiveBtn.textContent = 'Organize';
+                        setSoapActionButtonContent(organizeObjectiveBtn, 'Organize', isObjectiveOrganizeCompleted(appointment));
                     }
+                    renderSoap();
                 }
             };
 
-            const generateObjectiveInterventions = async () => {
+            const generateObjectiveInterventions = async ({ objectiveTextOverride = null, renderAfter = true, suppressEmptyAlert = false } = {}) => {
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
-                if (!appointment) return;
+                if (!appointment) return false;
 
-                const objectiveText = (appointment.soap?.o || '').trim();
+                const objectiveText = String(objectiveTextOverride ?? appointment.soap?.o ?? '').trim();
                 if (!objectiveText) {
-                    alert('Please enter Objective content before generating interventions.');
-                    return;
+                    if (!suppressEmptyAlert) {
+                        alert('Please enter Objective content before generating interventions.');
+                    }
+                    if (renderAfter) renderSoap();
+                    return false;
                 }
 
                 const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
@@ -7295,6 +7399,7 @@ Requirements:
                 }
 
                 const bank = getInterventionBankNames();
+                let success = false;
 
                 try {
                     let interventions = [];
@@ -7307,17 +7412,25 @@ Requirements:
 
                     appointment.soap.objectiveInterventionMatches = interventions;
                     appointment.soap.interventions = formatInterventionsByModality(interventions);
+                    markObjectiveReadCompleted(appointment);
+                    delete appointment.auditCheck;
                     markDirty();
-                    renderSoap();
+                    success = true;
                 } catch (error) {
                     console.error('Objective intervention generation error:', error);
                     alert(`Failed to generate interventions from Objective text. ${error.message}`);
                 } finally {
-                    if (generateInterventionsBtn) {
+                    if (generateInterventionsBtn?.isConnected) {
                         generateInterventionsBtn.disabled = false;
-                        generateInterventionsBtn.textContent = 'Read';
+                        setSoapActionButtonContent(generateInterventionsBtn, 'Read', isObjectiveReadCompleted(appointment));
+                    }
+                    if (renderAfter) {
+                        renderSoap();
+                    } else {
+                        refreshObjectiveActionButtons(appointment);
                     }
                 }
+                return success;
             };
 
             const generateSoapNoteWithOpenAI = async () => {

@@ -444,6 +444,15 @@
             font-weight: 700;
         }
 
+        .client-section-header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            min-width: 0;
+            flex-shrink: 0;
+        }
+
         .client-count-badge {
             min-width: 24px;
             height: 24px;
@@ -462,6 +471,12 @@
             font-size: 0.78rem;
             color: var(--text-color-secondary);
             font-weight: 600;
+        }
+
+        .client-bank-sort-btn {
+            padding: 2px 6px;
+            font-size: 12px;
+            flex-shrink: 0;
         }
 
         .client-section-clear-btn {
@@ -2328,7 +2343,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.56</span>
+                <span class="version-badge">v1.0.57</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2379,10 +2394,7 @@
             <div class="panel clients-panel" id="panelClients">
                 <div class="panel-header">
                     <span>Clients</span>
-                    <div style="display: flex; align-items: center;">
-                        <button id="sortClientsBtn" title="Sort Main Bank A-Z" class="btn" style="padding: 2px 6px; font-size: 12px; margin-right: 8px;">A-Z</button>
-                        <button id="addClientBtn" class="add-btn">+</button>
-                    </div>
+                    <button id="addClientBtn" class="add-btn">+</button>
                 </div>
                 <div class="panel-content client-panel-content">
                     <section class="today-sessions-section">
@@ -2402,7 +2414,10 @@
                         <div class="client-section-header main-bank-header">
                             <div class="client-section-title-group">
                                 <span>Main Bank</span>
+                            </div>
+                            <div class="client-section-header-actions">
                                 <span id="mainBankCount" class="client-section-count">0 clients</span>
+                                <button id="sortClientsBtn" title="Sort Main Bank A-Z" class="btn client-bank-sort-btn" type="button">A-Z</button>
                             </div>
                         </div>
                         <div class="client-search-wrap">
@@ -4816,6 +4831,31 @@
                 }
                 const prefix = existing.trim().length > 0 ? '\n' : '';
                 return `${existing}${prefix}• ${trimmedValue}`;
+            };
+
+            const normalizeSuggestionComparableText = (text) => String(text || '')
+                .replace(/^•\s*/, '')
+                .trim()
+                .replace(/\s+/g, ' ')
+                .toLowerCase();
+
+            const getSuggestionComparisonTexts = (suggestions = []) => suggestions.flatMap(suggestion => {
+                if (typeof suggestion === 'object' && suggestion) {
+                    return [suggestion.original, suggestion.suggested]
+                        .map(normalizeSuggestionComparableText)
+                        .filter(Boolean);
+                }
+                return [normalizeSuggestionComparableText(suggestion)].filter(Boolean);
+            });
+
+            const hasPendingSuggestionForText = (suggestions = [], text = '') => {
+                const normalizedTarget = normalizeSuggestionComparableText(text);
+                if (!normalizedTarget) return false;
+                return getSuggestionComparisonTexts(suggestions).some(candidate => (
+                    candidate === normalizedTarget
+                    || candidate.includes(normalizedTarget)
+                    || normalizedTarget.includes(candidate)
+                ));
             };
 
             const getInstructionsContext = (client, appointment) => {
@@ -7794,30 +7834,21 @@ Requirements:
                          suggestions = enforceObjectiveSuggestionCollaboration(suggestions);
                      }
 
+                     const suggestionComparisonTexts = getSuggestionComparisonTexts(suggestions);
+
                      // FIXED: Only add content that's NOT part of suggestions
                      // All suggestion content (both replacements and new additions) should be presented for user approval
                      if (suggestions.length === 0) {
                          // No suggestions - use all the generated content
                          appointment.soap[key] = fullText;
                      } else {
-                         // There are suggestions - only include content that's NOT in any suggestions
-                         const allSuggestionTexts = suggestions.map(s => {
-                             if (typeof s === 'object' && s.original) {
-                                 // For replacement suggestions, withhold the original text
-                                 return s.original.replace(/^•\s*/, '').trim();
-                             } else {
-                                 // For new suggestions, withhold the suggestion text itself
-                                 return s.replace(/^•\s*/, '').trim();
-                             }
-                         });
-
                          // Split the full generated text into bullet points
                          const allBulletPoints = fullText.split('\n').map(line => line.trim()).filter(line => line !== '');
 
-                         // Only include bullet points that are NOT part of any suggestion
+                         // Only include bullet points that are NOT part of any pending suggestion
                          const immediateTextPoints = allBulletPoints.filter(point => {
-                             const trimmedPoint = point.replace(/^•\s*/, '').trim();
-                             return !allSuggestionTexts.some(suggestionText => suggestionText === trimmedPoint);
+                             const trimmedPoint = normalizeSuggestionComparableText(point);
+                             return !suggestionComparisonTexts.some(suggestionText => suggestionText === trimmedPoint);
                          });
 
                          appointment.soap[key] = immediateTextPoints.join('\n');
@@ -7825,13 +7856,21 @@ Requirements:
 
                     if (key === 's') {
                         // Symptoms belong in Subjective
-                        appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Symptom Pattern / Severity Context', auditProofing.symptoms);
+                        if (!hasPendingSuggestionForText(suggestions, auditProofing.symptoms)) {
+                            appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Symptom Pattern / Severity Context', auditProofing.symptoms);
+                        }
                     }
                     if (key === 'a') {
                         // Functional Impact, Progress, and Medical Necessity belong in Assessment
-                        appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Functional Impact', auditProofing.functionalImpact);
-                        appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Progress / Response to Treatment', auditProofing.progressResponse);
-                        appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Medical Necessity Rationale', auditProofing.medicalNecessity);
+                        if (!hasPendingSuggestionForText(suggestions, auditProofing.functionalImpact)) {
+                            appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Functional Impact', auditProofing.functionalImpact);
+                        }
+                        if (!hasPendingSuggestionForText(suggestions, auditProofing.progressResponse)) {
+                            appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Progress / Response to Treatment', auditProofing.progressResponse);
+                        }
+                        if (!hasPendingSuggestionForText(suggestions, auditProofing.medicalNecessity)) {
+                            appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Medical Necessity Rationale', auditProofing.medicalNecessity);
+                        }
                     }
                      
                      // Always store the full list of suggestions for user approval

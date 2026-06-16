@@ -387,6 +387,196 @@
             overflow-y: auto;
             padding: 10px;
         }
+
+        .client-panel-content {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .today-sessions-section,
+        .main-bank-section {
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            background: color-mix(in srgb, var(--panel-bg) 92%, white 8%);
+            overflow: hidden;
+        }
+
+        .today-sessions-section {
+            flex-shrink: 0;
+        }
+
+        .main-bank-section {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .client-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+        }
+
+        .today-sessions-header {
+            background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%);
+            color: #ffffff;
+        }
+
+        .main-bank-header {
+            background: linear-gradient(135deg, rgba(52, 73, 94, 0.14) 0%, rgba(52, 73, 94, 0.05) 100%);
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .client-section-title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .client-section-title-group span:first-child {
+            font-weight: 700;
+        }
+
+        .client-count-badge {
+            min-width: 24px;
+            height: 24px;
+            padding: 0 8px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.24);
+            color: #ffffff;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .client-section-count {
+            font-size: 0.78rem;
+            color: var(--text-color-secondary);
+            font-weight: 600;
+        }
+
+        .client-section-clear-btn {
+            border: none;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            color: #ffffff;
+            background: rgba(59, 130, 246, 0.95);
+            transition: filter 0.15s ease, opacity 0.15s ease;
+        }
+
+        .client-section-clear-btn:hover {
+            filter: brightness(1.06);
+        }
+
+        .client-section-clear-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .client-section-subheader,
+        .client-section-footnote,
+        .client-search-hint {
+            font-size: 0.74rem;
+            color: var(--text-color-secondary);
+        }
+
+        .client-section-subheader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px 0;
+        }
+
+        .client-section-pill {
+            border: 1px solid var(--panel-border);
+            border-radius: 999px;
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-color-secondary);
+            background: color-mix(in srgb, var(--input-bg) 80%, transparent 20%);
+            text-transform: uppercase;
+        }
+
+        .client-list-section {
+            min-height: 84px;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .client-list-section.client-list-drop-target {
+            background: color-mix(in srgb, var(--item-active-bg) 65%, transparent 35%);
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--item-active-border-color) 70%, transparent 30%);
+        }
+
+        .client-section-footnote {
+            padding: 0 12px 12px;
+        }
+
+        .client-search-wrap {
+            position: relative;
+            padding: 12px 12px 0;
+        }
+
+        .client-search-input {
+            width: 100%;
+            padding: 10px 34px 10px 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            font-size: 0.92rem;
+            background: var(--input-bg);
+            color: var(--input-text);
+        }
+
+        .client-search-input:focus {
+            outline: none;
+            border-color: var(--textarea-focus-border);
+            box-shadow: 0 0 0 3px var(--textarea-focus-shadow);
+        }
+
+        .client-search-clear-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-35%);
+            border: none;
+            background: transparent;
+            color: var(--text-color-secondary);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 2px 4px;
+        }
+
+        .client-search-hint {
+            padding: 8px 12px 0;
+        }
+
+        .client-bank-list {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .client-empty-state {
+            border: 1px dashed var(--panel-border);
+            border-radius: 8px;
+            padding: 14px 12px;
+            color: var(--text-color-secondary);
+            text-align: center;
+            background: color-mix(in srgb, var(--panel-footer-bg) 88%, transparent 12%);
+        }
         
         .panel-footer {
             padding: 10px;
@@ -427,6 +617,50 @@
             background: var(--item-active-bg);
             border-left-color: var(--item-active-border-color);
             font-weight: bold;
+        }
+
+        .client-item-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding-right: 64px;
+        }
+
+        .client-item-leading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .client-name-label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .today-session-rank {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: rgba(15, 23, 42, 0.78);
+            color: var(--text-color-inverted);
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .client-drag-handle {
+            color: var(--text-color-secondary);
+            font-size: 0.92rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            flex-shrink: 0;
         }
         
         .client-item.dragging {
@@ -2071,7 +2305,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.53</span>
+                <span class="version-badge">v1.0.54</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2123,12 +2357,44 @@
                 <div class="panel-header">
                     <span>Clients</span>
                     <div style="display: flex; align-items: center;">
-                        <button id="sortClientsBtn" title="Sort A-Z" class="btn" style="padding: 2px 6px; font-size: 12px; margin-right: 8px;">A-Z</button>
+                        <button id="sortClientsBtn" title="Sort Main Bank A-Z" class="btn" style="padding: 2px 6px; font-size: 12px; margin-right: 8px;">A-Z</button>
                         <button id="addClientBtn" class="add-btn">+</button>
                     </div>
                 </div>
-                <div class="panel-content" id="clientList">
-                    <div class="no-selection">Click + to add a client</div>
+                <div class="panel-content client-panel-content">
+                    <section class="today-sessions-section">
+                        <div class="client-section-header today-sessions-header">
+                            <div class="client-section-title-group">
+                                <span>Today's Sessions</span>
+                                <span id="todaySessionsCount" class="client-count-badge">0</span>
+                            </div>
+                            <button id="clearTodaySessionsBtn" class="client-section-clear-btn" type="button">Clear</button>
+                        </div>
+                        <div class="client-section-subheader">
+                            <span>Drag clients here to set today's order.</span>
+                            <span class="client-section-pill">Order only</span>
+                        </div>
+                        <div id="todaySessionsList" class="client-list-section" data-list-type="today">
+                            <div class="client-empty-state">Drag clients from Main Bank here to build today's queue.</div>
+                        </div>
+                        <div class="client-section-footnote">Clear returns every client to Main Bank.</div>
+                    </section>
+                    <section class="main-bank-section">
+                        <div class="client-section-header main-bank-header">
+                            <div class="client-section-title-group">
+                                <span>Main Bank</span>
+                                <span id="mainBankCount" class="client-section-count">0 clients</span>
+                            </div>
+                        </div>
+                        <div class="client-search-wrap">
+                            <input id="mainBankSearchInput" class="client-search-input" type="text" placeholder="Search Main Bank..." autocomplete="off">
+                            <button id="clearMainBankSearchBtn" class="client-search-clear-btn hidden" type="button" aria-label="Clear main bank search">x</button>
+                        </div>
+                        <div class="client-search-hint">Instantly narrows names below.</div>
+                        <div class="client-list-section client-bank-list" id="clientList" data-list-type="main">
+                            <div class="no-selection">Click + to add a client</div>
+                        </div>
+                    </section>
                 </div>
                 <div id="deletedClientsSection" class="panel-footer section-collapser">
                      <button id="deletedClientsToggleBtn" class="section-collapser-btn" type="button" data-section-key="deletedClients" data-section-content="deletedClientsSectionContent" aria-expanded="true">
@@ -2997,6 +3263,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             // DOM Elements
             const clientListEl = document.getElementById('clientList');
+            const todaySessionsListEl = document.getElementById('todaySessionsList');
+            const todaySessionsCountEl = document.getElementById('todaySessionsCount');
+            const clearTodaySessionsBtn = document.getElementById('clearTodaySessionsBtn');
+            const mainBankCountEl = document.getElementById('mainBankCount');
+            const mainBankSearchInput = document.getElementById('mainBankSearchInput');
+            const clearMainBankSearchBtn = document.getElementById('clearMainBankSearchBtn');
             const addClientBtn = document.getElementById('addClientBtn');
             const sortClientsBtn = document.getElementById('sortClientsBtn');
             const appointmentListEl = document.getElementById('appointmentList');
@@ -3190,6 +3462,7 @@
             let selectedAppointmentId = null;
             let selectedNoteId = null;
             let selectedIntakeId = null;
+            let clientSearchQuery = '';
             let isDirty = false;
             let apiProvider = 'openwebui';
             let serverAddress = null;
@@ -3263,6 +3536,7 @@
             const getInitialData = () => ({
                 clients: [],
                 archivedClients: [],
+                todaySessionClientIds: [],
                 interventionBank: [...DEFAULT_INTERVENTION_BANK],
                 aiInstructions: {
                     soapPromptSections: getDefaultSoapInstructionSections(),
@@ -3327,6 +3601,18 @@
             const findIntakeSession = (client, id) => client?.intakeSessions?.find(i => i.id === id);
 
             const normalizeClientData = () => {
+                if (!Array.isArray(data.clients)) data.clients = [];
+                if (!Array.isArray(data.archivedClients)) data.archivedClients = [];
+                if (!Array.isArray(data.todaySessionClientIds)) data.todaySessionClientIds = [];
+
+                const activeClientIds = new Set((data.clients || []).map(client => client.id));
+                const seenTodaySessionIds = new Set();
+                data.todaySessionClientIds = data.todaySessionClientIds.filter(id => {
+                    if (!activeClientIds.has(id) || seenTodaySessionIds.has(id)) return false;
+                    seenTodaySessionIds.add(id);
+                    return true;
+                });
+
                 const allClients = [...(data.clients || []), ...(data.archivedClients || [])];
                 allClients.forEach(client => {
                     if (!Array.isArray(client.appointments)) client.appointments = [];
@@ -3421,6 +3707,52 @@
                 if (!Array.isArray(deletedItems.appointments)) deletedItems.appointments = [];
                 if (!Array.isArray(deletedItems.notes)) deletedItems.notes = [];
                 if (!Array.isArray(deletedItems.intakes)) deletedItems.intakes = [];
+            };
+
+            const isClientInTodaySessions = (clientId) => (data.todaySessionClientIds || []).includes(clientId);
+
+            const removeClientFromTodaySessions = (clientId) => {
+                if (!Array.isArray(data.todaySessionClientIds)) return;
+                data.todaySessionClientIds = data.todaySessionClientIds.filter(id => id !== clientId);
+            };
+
+            const getTodaySessionClients = () => {
+                const clientById = new Map((data.clients || []).map(client => [client.id, client]));
+                return (data.todaySessionClientIds || []).map(id => clientById.get(id)).filter(Boolean);
+            };
+
+            const getMainBankClients = () => {
+                const todaySessionIds = new Set(data.todaySessionClientIds || []);
+                return (data.clients || []).filter(client => !todaySessionIds.has(client.id));
+            };
+
+            const reorderVisibleClientSlots = (orderedVisibleIds) => {
+                const visibleIdSet = new Set(orderedVisibleIds);
+                const clientById = new Map((data.clients || []).filter(client => visibleIdSet.has(client.id)).map(client => [client.id, client]));
+                let visibleIndex = 0;
+                data.clients = (data.clients || []).map(client => (
+                    visibleIdSet.has(client.id) ? clientById.get(orderedVisibleIds[visibleIndex++]) : client
+                ));
+            };
+
+            const moveIdWithinArray = (ids, sourceId, targetId = null, insertAfter = false) => {
+                const orderedIds = [];
+                const seenIds = new Set();
+                ids.forEach(id => {
+                    if (id === sourceId || seenIds.has(id)) return;
+                    seenIds.add(id);
+                    orderedIds.push(id);
+                });
+
+                if (!targetId || !orderedIds.includes(targetId)) {
+                    orderedIds.push(sourceId);
+                    return orderedIds;
+                }
+
+                const targetIndex = orderedIds.indexOf(targetId);
+                const insertionIndex = insertAfter ? targetIndex + 1 : targetIndex;
+                orderedIds.splice(insertionIndex, 0, sourceId);
+                return orderedIds;
             };
 
             const getResolvedSoapAuditResult = (auditResult) => {
@@ -5419,23 +5751,64 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             
             // --- UI Rendering ---
             const renderClients = () => {
-                // Note: Drag and drop reordering means we can't sort here anymore.
-                // The array order is now the source of truth for display order.
-                const clients = data.clients; 
-                if (clients.length === 0) {
-                    clientListEl.innerHTML = '<div class="no-selection">Click + to add a client</div>';
-                    return;
-                }
-                clientListEl.innerHTML = clients.map(client => `
-                    <div class="client-item ${client.id === selectedClientId ? 'active' : ''}" data-client-id="${client.id}">
-                        ${client.name}
+                normalizeClientData();
+
+                const renderClientCard = (client, listType, todayIndex = null) => `
+                    <div class="client-item ${client.id === selectedClientId ? 'active' : ''}" data-client-id="${client.id}" data-list-type="${listType}">
+                        <div class="client-item-main">
+                            <div class="client-item-leading">
+                                ${listType === 'today' ? `<span class="today-session-rank">${todayIndex + 1}</span>` : ''}
+                                <span class="client-name-label">${client.name || 'Untitled Client'}</span>
+                            </div>
+                            <span class="client-drag-handle" aria-hidden="true">::</span>
+                        </div>
                         <div class="action-buttons">
                             <button class="action-btn edit-btn" title="Edit Name">✏️</button>
                             <button class="action-btn archive-btn" title="Archive Client">A</button>
                             <button class="action-btn delete-btn" title="Delete Client">×</button>
                         </div>
                     </div>
-                `).join('');
+                `;
+
+                const todayClients = getTodaySessionClients();
+                const mainBankClients = getMainBankClients();
+                const searchQuery = clientSearchQuery.trim().toLowerCase();
+                const filteredMainBankClients = searchQuery
+                    ? mainBankClients.filter(client => String(client.name || '').toLowerCase().includes(searchQuery))
+                    : mainBankClients;
+
+                if (mainBankSearchInput.value !== clientSearchQuery) {
+                    mainBankSearchInput.value = clientSearchQuery;
+                }
+                clearMainBankSearchBtn.classList.toggle('hidden', !clientSearchQuery);
+                todaySessionsCountEl.textContent = String(todayClients.length);
+                clearTodaySessionsBtn.disabled = todayClients.length === 0;
+
+                const mainBankCountLabel = searchQuery
+                    ? `${filteredMainBankClients.length} of ${mainBankClients.length} clients`
+                    : `${mainBankClients.length} client${mainBankClients.length === 1 ? '' : 's'}`;
+                mainBankCountEl.textContent = mainBankCountLabel;
+
+                todaySessionsListEl.innerHTML = todayClients.length > 0
+                    ? todayClients.map((client, index) => renderClientCard(client, 'today', index)).join('')
+                    : "<div class=\"client-empty-state\">Drag clients from Main Bank here to build today's queue.</div>";
+
+                if (filteredMainBankClients.length > 0) {
+                    clientListEl.innerHTML = filteredMainBankClients.map(client => renderClientCard(client, 'main')).join('');
+                    return;
+                }
+
+                if ((data.clients || []).length === 0) {
+                    clientListEl.innerHTML = '<div class="no-selection">Click + to add a client</div>';
+                    return;
+                }
+
+                if (searchQuery) {
+                    clientListEl.innerHTML = '<div class="client-empty-state">No clients match this search.</div>';
+                    return;
+                }
+
+                clientListEl.innerHTML = "<div class=\"client-empty-state\">All active clients are grouped in Today's Sessions.</div>";
             };
 
             const renderAppointments = () => {
@@ -6219,7 +6592,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 });
             };
             
-            clientListEl.addEventListener('click', (e) => {
+            const handleClientListClick = (e) => {
                 const clientItem = e.target.closest('.client-item');
                 if (!clientItem) return;
 
@@ -6231,6 +6604,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         const clientIndex = data.clients.findIndex(c => c.id === clientId);
                         if (clientIndex === -1) return;
                         const [removedClient] = data.clients.splice(clientIndex, 1);
+                            removeClientFromTodaySessions(clientId);
                             if (removedClient.appointments) {
                                 deletedItems.appointments.push(...removedClient.appointments.map(a => ({...a, clientId})));
                             }
@@ -6251,6 +6625,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     const clientIndex = data.clients.findIndex(c => c.id === clientId);
                     if (clientIndex === -1) return;
                     const [client] = data.clients.splice(clientIndex, 1);
+                    removeClientFromTodaySessions(clientId);
                     if (!data.archivedClients) data.archivedClients = [];
                     data.archivedClients.push(client);
                     if (selectedClientId === clientId) {
@@ -6274,7 +6649,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 } else {
                     selectClient(clientId);
                 }
-            });
+            };
+
+            clientListEl.addEventListener('click', handleClientListClick);
+            todaySessionsListEl.addEventListener('click', handleClientListClick);
 
             // --- Rename Modal Helper ---
             function showRenameModal(title, currentValue) {
@@ -6309,7 +6687,18 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             }
 
             // --- Drag and Drop Client Reordering (mouse events) ---
-            let dragState = null; // { clientId, startY, element, ghost: null, threshold: false }
+            let dragState = null; // { clientId, sourceListType, startY, element, ghost: null, threshold: false, dropListType, targetClientId, insertAfter }
+
+            const getClientDragLists = () => [todaySessionsListEl, clientListEl].filter(Boolean);
+
+            const clearClientDropIndicators = () => {
+                getClientDragLists().forEach(listEl => {
+                    listEl.classList.remove('client-list-drop-target');
+                    listEl.querySelectorAll('.client-item').forEach(item => {
+                        item.classList.remove('drag-over-above', 'drag-over-below');
+                    });
+                });
+            };
 
             function cleanupDrag() {
                 if (dragState) {
@@ -6320,9 +6709,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
                 document.body.style.cursor = '';
                 document.body.classList.remove('dragging-active');
-                clientListEl.querySelectorAll('.client-item').forEach(item => {
-                    item.classList.remove('drag-over-above', 'drag-over-below');
-                });
+                clearClientDropIndicators();
                 dragState = null;
                 document.removeEventListener('mousemove', onDragMouseMove);
                 document.removeEventListener('mouseup', onDragMouseUp);
@@ -6365,74 +6752,89 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     dragState.ghost.style.left = (e.clientX - ghostRect.width / 2) + 'px';
                     dragState.ghost.style.top = (e.clientY - ghostRect.height / 2) + 'px';
                 }
-                // Find the item under the cursor
-                const items = clientListEl.querySelectorAll('.client-item');
-                items.forEach(item => {
-                    item.classList.remove('drag-over-above', 'drag-over-below');
-                });
+                dragState.dropListType = null;
+                dragState.targetClientId = null;
+                dragState.insertAfter = false;
+                clearClientDropIndicators();
+
+                const items = document.querySelectorAll('#todaySessionsList .client-item, #clientList .client-item');
                 for (const item of items) {
-                    if (item.dataset.clientId === dragState.clientId) continue;
+                    if (item.dataset.clientId === dragState.clientId && item.dataset.listType === dragState.sourceListType) continue;
                     const rect = item.getBoundingClientRect();
+                    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) continue;
+
                     const midY = rect.top + rect.height / 2;
-                    if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
-                        if (e.clientY < midY) {
-                            item.classList.add('drag-over-above');
-                        } else {
-                            item.classList.add('drag-over-below');
-                        }
-                        break;
+                    dragState.insertAfter = e.clientY >= midY;
+                    dragState.dropListType = item.dataset.listType;
+                    dragState.targetClientId = item.dataset.clientId;
+                    item.classList.add(dragState.insertAfter ? 'drag-over-below' : 'drag-over-above');
+                    return;
+                }
+
+                for (const listEl of getClientDragLists()) {
+                    const rect = listEl.getBoundingClientRect();
+                    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) continue;
+
+                    listEl.classList.add('client-list-drop-target');
+                    dragState.dropListType = listEl.dataset.listType;
+                    const listItems = listEl.querySelectorAll('.client-item');
+                    if (listItems.length > 0) {
+                        const lastItem = listItems[listItems.length - 1];
+                        dragState.targetClientId = lastItem.dataset.clientId;
+                        dragState.insertAfter = true;
                     }
+                    return;
                 }
             }
 
             function onDragMouseUp(e) {
                 if (!dragState) return;
-                const { clientId: sourceId, threshold } = dragState;
-                // Clean up visual state
-                const items = clientListEl.querySelectorAll('.client-item');
-                let targetId = null;
-                let insertAfter = false;
-                items.forEach(item => {
-                    if (item.classList.contains('drag-over-above')) {
-                        targetId = item.dataset.clientId;
-                        insertAfter = false;
-                    } else if (item.classList.contains('drag-over-below')) {
-                        targetId = item.dataset.clientId;
-                        insertAfter = true;
-                    }
-                });
+                const { clientId: sourceId, sourceListType, threshold, dropListType, targetClientId, insertAfter } = dragState;
                 cleanupDrag();
 
-                if (!threshold || !targetId || targetId === sourceId) return;
+                if (!threshold || !dropListType) return;
 
-                const draggedIndex = data.clients.findIndex(c => c.id === sourceId);
-                const targetIndex = data.clients.findIndex(c => c.id === targetId);
-                if (draggedIndex === -1 || targetIndex === -1) return;
-
-                const [draggedItem] = data.clients.splice(draggedIndex, 1);
-                // After removing, recalculate target position
-                let newTargetIndex = data.clients.findIndex(c => c.id === targetId);
-                if (insertAfter) newTargetIndex += 1;
-                data.clients.splice(newTargetIndex, 0, draggedItem);
+                if (sourceListType === 'today' && dropListType === 'today') {
+                    const reorderedTodayIds = moveIdWithinArray(data.todaySessionClientIds || [], sourceId, targetClientId, insertAfter);
+                    data.todaySessionClientIds = reorderedTodayIds;
+                } else if (sourceListType === 'main' && dropListType === 'main') {
+                    const reorderedMainIds = moveIdWithinArray(getMainBankClients().map(client => client.id), sourceId, targetClientId, insertAfter);
+                    reorderVisibleClientSlots(reorderedMainIds);
+                } else if (sourceListType === 'main' && dropListType === 'today') {
+                    data.todaySessionClientIds = moveIdWithinArray(data.todaySessionClientIds || [], sourceId, targetClientId, insertAfter);
+                } else if (sourceListType === 'today' && dropListType === 'main') {
+                    removeClientFromTodaySessions(sourceId);
+                    const reorderedMainIds = moveIdWithinArray(getMainBankClients().map(client => client.id), sourceId, targetClientId, insertAfter);
+                    reorderVisibleClientSlots(reorderedMainIds);
+                } else {
+                    return;
+                }
 
                 markDirty();
                 renderClients();
             }
 
-            clientListEl.addEventListener('mousedown', (e) => {
+            const handleClientDragStart = (e) => {
                 const clientItem = e.target.closest('.client-item');
                 // Don't initiate drag on action buttons
                 if (!clientItem || e.target.closest('.action-buttons')) return;
                 dragState = {
                     clientId: clientItem.dataset.clientId,
+                    sourceListType: clientItem.dataset.listType,
                     startY: e.clientY,
                     element: clientItem,
                     threshold: false,
-                    ghost: null
+                    ghost: null,
+                    dropListType: null,
+                    targetClientId: null,
+                    insertAfter: false
                 };
                 document.addEventListener('mousemove', onDragMouseMove);
                 document.addEventListener('mouseup', onDragMouseUp);
-            });
+            };
+
+            clientListEl.addEventListener('mousedown', handleClientDragStart);
+            todaySessionsListEl.addEventListener('mousedown', handleClientDragStart);
 
             appointmentListEl.addEventListener('click', (e) => {
                  const appointmentItem = e.target.closest('.appointment-item');
@@ -8984,9 +9386,29 @@ This error cannot be fixed within this application's code; it requires a configu
                 }
             });
             sortClientsBtn.addEventListener('click', () => {
-                data.clients.sort((a, b) => a.name.localeCompare(b.name));
+                const sortedMainIds = getMainBankClients()
+                    .slice()
+                    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+                    .map(client => client.id);
+                reorderVisibleClientSlots(sortedMainIds);
                 markDirty();
                 renderClients();
+            });
+            clearTodaySessionsBtn.addEventListener('click', () => {
+                if ((data.todaySessionClientIds || []).length === 0) return;
+                data.todaySessionClientIds = [];
+                markDirty();
+                renderClients();
+            });
+            mainBankSearchInput.addEventListener('input', () => {
+                clientSearchQuery = mainBankSearchInput.value || '';
+                renderClients();
+            });
+            clearMainBankSearchBtn.addEventListener('click', () => {
+                clientSearchQuery = '';
+                mainBankSearchInput.value = '';
+                renderClients();
+                mainBankSearchInput.focus();
             });
             addAppointmentBtn.addEventListener('click', addAppointment);
             addIntakeBtn.addEventListener('click', addIntakeSession);

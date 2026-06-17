@@ -2343,7 +2343,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.58</span>
+                <span class="version-badge">v1.0.59</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -4190,10 +4190,13 @@
             const stemInterventionToken = (token) => {
                 let t = String(token || '').toLowerCase().trim();
                 if (!t) return '';
-                if (t.length > 5 && t.endsWith('ing')) t = t.slice(0, -3);
+                if (t.length > 7 && t.endsWith('ization')) t = t.slice(0, -5);
+                else if (t.length > 6 && t.endsWith('ation')) t = t.slice(0, -5);
+                else if (t.length > 5 && t.endsWith('ing')) t = t.slice(0, -3);
                 else if (t.length > 4 && t.endsWith('ed')) t = t.slice(0, -2);
                 else if (t.length > 4 && t.endsWith('es')) t = t.slice(0, -2);
                 else if (t.length > 3 && t.endsWith('s')) t = t.slice(0, -1);
+                if (t.length > 5 && t.endsWith('e')) t = t.slice(0, -1);
                 return t;
             };
 
@@ -4535,6 +4538,17 @@
                     phrases.add('deconstructed');
                     phrases.add('deconstructing');
                 }
+                if (canonical.includes('externalization') || canonical.includes('externalize')) {
+                    phrases.add('externalize');
+                    phrases.add('externalized');
+                    phrases.add('externalizing');
+                    phrases.add('externalization');
+                }
+                if ((canonical === 're framing' || canonical === 'reframing' || canonical === 're frame') && !canonical.includes('cognitive')) {
+                    phrases.add('reframe');
+                    phrases.add('reframed');
+                    phrases.add('reframing');
+                }
                 if (canonical.includes('preferred narrative')) {
                     phrases.add('preferred narrative');
                     phrases.add('narrative of agency');
@@ -4618,7 +4632,7 @@
                 return hasStrictInterventionTokenCoverage(entry, new Set(getInterventionMatchTokens(text)));
             };
 
-            const selectInterventionsFromBank = (bank, aiInterventionsText, corpusText) => {
+            const selectInterventionsFromBank = (bank, aiInterventionsText) => {
                 if (!Array.isArray(bank) || bank.length === 0) return [];
 
                 let aiLines = [];
@@ -4630,17 +4644,50 @@
 
                 if (aiLines.length === 0) return [];
 
-                const objectiveItems = splitSoapBulletItems(corpusText);
-                const searchTexts = objectiveItems.length > 0 ? objectiveItems : [corpusText];
                 const selected = new Set();
                 const bankMeta = buildInterventionBankMeta(bank);
+                const exactNameMap = new Map();
+                const normalizedNameMap = new Map();
+                const normalizedCoreNameMap = new Map();
+
+                bank.forEach(item => {
+                    const exactKey = String(item || '').trim();
+                    const normalizedKey = normalizeInterventionText(item);
+                    const normalizedCoreKey = normalizeInterventionMatchKey(item);
+
+                    if (exactKey) exactNameMap.set(exactKey, item);
+                    if (normalizedKey) normalizedNameMap.set(normalizedKey, item);
+                    if (normalizedCoreKey) {
+                        if (!normalizedCoreNameMap.has(normalizedCoreKey)) {
+                            normalizedCoreNameMap.set(normalizedCoreKey, []);
+                        }
+                        normalizedCoreNameMap.get(normalizedCoreKey).push(item);
+                    }
+                });
 
                 aiLines.forEach(line => {
-                    bankMeta.forEach(entry => {
-                        if (!doesTextDirectlySupportIntervention(line, entry)) return;
-                        if (!searchTexts.some(text => doesTextDirectlySupportIntervention(text, entry))) return;
-                        selected.add(entry.item);
-                    });
+                    const exactMatch = exactNameMap.get(line);
+                    if (exactMatch) {
+                        selected.add(exactMatch);
+                        return;
+                    }
+
+                    const normalizedMatch = normalizedNameMap.get(normalizeInterventionText(line));
+                    if (normalizedMatch) {
+                        selected.add(normalizedMatch);
+                        return;
+                    }
+
+                    const coreMatches = normalizedCoreNameMap.get(normalizeInterventionMatchKey(line)) || [];
+                    if (coreMatches.length === 1) {
+                        selected.add(coreMatches[0]);
+                        return;
+                    }
+
+                    const fuzzyMatches = bankMeta.filter(entry => doesTextDirectlySupportIntervention(line, entry));
+                    if (fuzzyMatches.length === 1) {
+                        selected.add(fuzzyMatches[0].item);
+                    }
                 });
 
                 return bank.filter(item => selected.has(item));
@@ -5651,8 +5698,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const bankContext = allowedBank.length > 0
                     ? allowedBank.map(item => `- ${item}`).join('\n')
                     : '- None';
-                const userPrompt = `Objective Section:\n${objectiveText || '- None'}\n\nAllowed Intervention Bank:\n${bankContext}\n\nReturn only JSON in the form {"interventions":["..."]}.`;
-                const systemPrompt = 'You identify interventions directly named in a SOAP Objective section. Only return interventions that are explicitly supported by the objective text and present in the allowed intervention bank. Do not infer or include items awaiting approval.';
+                const userPrompt = `Objective Section:\n${objectiveText || '- None'}\n\nAllowed Intervention Bank:\n${bankContext}\n\nReview the entire Objective section comprehensively. Return every intervention from the allowed bank that is explicitly stated or clearly described by the Objective section. Return exact allowed bank strings only.\n\nReturn only JSON in the form {"interventions":["..."]}.`;
+                const systemPrompt = 'You are matching SOAP Objective content to an allowed intervention bank. Use clinical reasoning across the full Objective section, not simple keyword extraction. Select every allowed intervention that is directly supported by the text, including semantically clear descriptions of the intervention, and exclude unsupported items. Return exact allowed bank strings only.';
 
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
                 const aiInterventions = Array.isArray(aiPayload?.interventions)
@@ -5660,10 +5707,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     : Array.isArray(aiPayload?.matches)
                         ? aiPayload.matches
                         : [];
-                const aiSelected = selectInterventionsFromBank(allowedBank, aiInterventions, objectiveText);
-                const directSelected = extractInterventionsFromObjective(objectiveText).filter(item => allowedBank.includes(item));
-                const selected = new Set([...aiSelected, ...directSelected]);
-                return allowedBank.filter(item => selected.has(item));
+                return selectInterventionsFromBank(allowedBank, aiInterventions);
             };
 
             const generateGoalDrafts = async () => {
@@ -7915,7 +7959,6 @@ Requirements:
 
                     updateSoapFieldValue(appointment, 'o', organizedObjective || objectiveText);
                     setSoapSectionOrderOverride(appointment.soap, 'o', true);
-                    syncObjectiveInterventionsFromObjectiveText(appointment, appointment.soap.o);
                     markObjectiveOrganizeCompleted(appointment);
                     delete appointment.auditCheck;
                     markDirty();

@@ -2343,7 +2343,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.61</span>
+                <span class="version-badge">v1.0.62</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -4159,7 +4159,10 @@
                     groups.get(modality).push(String(name).trim());
                 });
 
-                return [...groups.entries()].map(([modality, items]) => ({ modality, items }));
+                return [...groups.entries()].map(([modality, items]) => ({
+                    modality,
+                    items: [...items].sort((left, right) => interventionBankCollator.compare(left, right))
+                }));
             };
 
             const formatInterventionsByModality = (names) => {

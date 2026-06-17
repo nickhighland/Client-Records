@@ -2343,7 +2343,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.60</span>
+                <span class="version-badge">v1.0.61</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -3285,6 +3285,7 @@
     <input type="file" id="fileInput" class="hidden" accept="application/json,.json,.sql,text/plain">
 
     <script type="module">
+        import { invoke } from '@tauri-apps/api/core';
         import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
         import { getCurrentWindow } from '@tauri-apps/api/window';
         import { save, ask, message } from '@tauri-apps/plugin-dialog';
@@ -9401,6 +9402,20 @@ This error cannot be fixed within this application's code; it requires a configu
 
             const isTauriRuntime = () => typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
 
+            const writeDesktopTextFile = async (path, contents, options = {}) => {
+                const normalizedPath = normalizeSelectedPath(path);
+                if (!normalizedPath) {
+                    throw new Error('No valid file path provided.');
+                }
+
+                if (isTauriRuntime()) {
+                    await invoke('write_backup_file', { path: normalizedPath, contents });
+                    return;
+                }
+
+                await writeTextFile(normalizedPath, contents, options);
+            };
+
             const setBackupWarningVisibility = (isVisible) => {
                 menuBackupWarning?.classList.toggle('hidden', !isVisible);
                 if (headerMenuBtn) {
@@ -9440,7 +9455,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 backupWriteInProgress = true;
                 try {
                     const encryptedSqlPayload = await exportEncryptedSqlDump();
-                    await writeTextFile(autoBackupPath, JSON.stringify(encryptedSqlPayload, null, 2), { create: true });
+                    await writeDesktopTextFile(autoBackupPath, JSON.stringify(encryptedSqlPayload, null, 2), { create: true });
                 } catch (error) {
                     console.error('Secondary auto-backup write failed:', error);
                     updateSaveStatus(`Secondary backup failed: ${resolveErrorMessage(error)}`, false, 4000);
@@ -9536,7 +9551,7 @@ This error cannot be fixed within this application's code; it requires a configu
                             throw new Error('No valid save path returned by dialog.');
                         }
 
-                        await writeTextFile(normalizedPath, json, { create: true });
+                        await writeDesktopTextFile(normalizedPath, json, { create: true });
                         localStorage.setItem('lastExportPath', normalizedPath);
                         updateSaveStatus('Encrypted export saved.', true, 2500);
                         exportDataModal.classList.add('hidden');

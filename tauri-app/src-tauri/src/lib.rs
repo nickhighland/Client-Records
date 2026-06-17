@@ -1,7 +1,35 @@
+use std::fs;
+use std::path::PathBuf;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+fn write_backup_file(path: String, contents: String) -> Result<(), String> {
+    let trimmed_path = path.trim();
+    if trimmed_path.is_empty() {
+        return Err("Backup path is empty.".to_string());
+    }
+
+    let backup_path = PathBuf::from(trimmed_path);
+    if !backup_path.is_absolute() {
+        return Err("Backup path must be an absolute file path.".to_string());
+    }
+
+    let parent_dir = backup_path
+        .parent()
+        .ok_or_else(|| "Backup path must include a parent directory.".to_string())?;
+
+    fs::create_dir_all(parent_dir)
+        .map_err(|error| format!("Failed to prepare backup directory: {error}"))?;
+
+    fs::write(&backup_path, contents)
+        .map_err(|error| format!("Failed to write backup file: {error}"))?;
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -17,6 +45,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            write_backup_file,
             generate_google_token,
             send_password_reset_email,
             send_email_verification_email,

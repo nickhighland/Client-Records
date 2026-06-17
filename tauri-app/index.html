@@ -2343,7 +2343,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.59</span>
+                <span class="version-badge">v1.0.60</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -4041,9 +4041,19 @@
             };
 
             const DEFAULT_INTERVENTION_MODALITY = 'General';
+            const OBJECTIVE_INTERVENTION_MIN_TARGET = 8;
+            const OBJECTIVE_INTERVENTION_MAX_COUNT = 15;
+            const OBJECTIVE_INTERVENTION_MIN_SUPPORT_SCORE = 2;
             const interventionBankCollator = new Intl.Collator(undefined, {
                 sensitivity: 'base',
                 numeric: true
+            });
+            const OBJECTIVE_INTERVENTION_SUPPORT_SCORES = Object.freeze({
+                explicit: 4,
+                direct: 3,
+                strong: 2,
+                interpretive: 1,
+                stretch: 0
             });
 
             const normalizeInterventionModality = (value) => {
@@ -4632,19 +4642,80 @@
                 return hasStrictInterventionTokenCoverage(entry, new Set(getInterventionMatchTokens(text)));
             };
 
+            const normalizeObjectiveInterventionSupportLevel = (value) => {
+                const normalized = normalizeInterventionText(value);
+                if (!normalized) return 'direct';
+                if (normalized.includes('stretch') || normalized.includes('specul') || normalized.includes('weak') || normalized.includes('unclear')) {
+                    return 'stretch';
+                }
+                if (normalized.includes('interpret') || normalized.includes('moderate') || normalized.includes('possible') || normalized.includes('infer')) {
+                    return 'interpretive';
+                }
+                if (normalized.includes('explicit') || normalized.includes('verbatim') || normalized.includes('exact') || normalized.includes('named')) {
+                    return 'explicit';
+                }
+                if (normalized.includes('strong') || normalized.includes('high confidence') || normalized.includes('high support')) {
+                    return 'strong';
+                }
+                if (normalized.includes('direct') || normalized.includes('clear')) {
+                    return 'direct';
+                }
+                return 'direct';
+            };
+
+            const getObjectiveInterventionSupportScore = (value) => {
+                const supportLevel = normalizeObjectiveInterventionSupportLevel(value);
+                return OBJECTIVE_INTERVENTION_SUPPORT_SCORES[supportLevel] ?? OBJECTIVE_INTERVENTION_SUPPORT_SCORES.direct;
+            };
+
+            const normalizeObjectiveInterventionCandidate = (candidate, rank) => {
+                if (typeof candidate === 'string') {
+                    const name = candidate.replace(/^•\s*/, '').trim();
+                    return name ? { name, support: 'direct', rank } : null;
+                }
+
+                if (!candidate || typeof candidate !== 'object') return null;
+
+                const name = String(
+                    candidate.name
+                    || candidate.intervention
+                    || candidate.item
+                    || candidate.match
+                    || candidate.label
+                    || ''
+                ).replace(/^•\s*/, '').trim();
+                if (!name) return null;
+
+                return {
+                    name,
+                    support: normalizeObjectiveInterventionSupportLevel(
+                        candidate.support
+                        || candidate.strength
+                        || candidate.directness
+                        || candidate.confidence
+                        || ''
+                    ),
+                    rank
+                };
+            };
+
             const selectInterventionsFromBank = (bank, aiInterventionsText) => {
                 if (!Array.isArray(bank) || bank.length === 0) return [];
 
-                let aiLines = [];
+                let rawCandidates = [];
                 if (typeof aiInterventionsText === 'string') {
-                    aiLines = aiInterventionsText.split(/\n+/).map(line => line.replace(/^•\s*/, '').trim()).filter(Boolean);
+                    rawCandidates = aiInterventionsText.split(/\n+/).map(line => line.replace(/^•\s*/, '').trim()).filter(Boolean);
                 } else if (Array.isArray(aiInterventionsText)) {
-                    aiLines = aiInterventionsText.map(line => String(line).replace(/^•\s*/, '').trim()).filter(Boolean);
+                    rawCandidates = aiInterventionsText;
                 }
 
-                if (aiLines.length === 0) return [];
+                const aiCandidates = rawCandidates
+                    .map((candidate, rank) => normalizeObjectiveInterventionCandidate(candidate, rank))
+                    .filter(Boolean);
 
-                const selected = new Set();
+                if (aiCandidates.length === 0) return [];
+
+                const selectedByItem = new Map();
                 const bankMeta = buildInterventionBankMeta(bank);
                 const exactNameMap = new Map();
                 const normalizedNameMap = new Map();
@@ -4665,32 +4736,50 @@
                     }
                 });
 
-                aiLines.forEach(line => {
-                    const exactMatch = exactNameMap.get(line);
-                    if (exactMatch) {
-                        selected.add(exactMatch);
-                        return;
+                aiCandidates.forEach(candidate => {
+                    const line = candidate.name;
+                    let resolvedItem = exactNameMap.get(line) || null;
+
+                    if (!resolvedItem) {
+                        resolvedItem = normalizedNameMap.get(normalizeInterventionText(line)) || null;
                     }
 
-                    const normalizedMatch = normalizedNameMap.get(normalizeInterventionText(line));
-                    if (normalizedMatch) {
-                        selected.add(normalizedMatch);
-                        return;
+                    if (!resolvedItem) {
+                        const coreMatches = normalizedCoreNameMap.get(normalizeInterventionMatchKey(line)) || [];
+                        if (coreMatches.length === 1) {
+                            resolvedItem = coreMatches[0];
+                        }
                     }
 
-                    const coreMatches = normalizedCoreNameMap.get(normalizeInterventionMatchKey(line)) || [];
-                    if (coreMatches.length === 1) {
-                        selected.add(coreMatches[0]);
-                        return;
+                    if (!resolvedItem) {
+                        const fuzzyMatches = bankMeta.filter(entry => doesTextDirectlySupportIntervention(line, entry));
+                        if (fuzzyMatches.length === 1) {
+                            resolvedItem = fuzzyMatches[0].item;
+                        }
                     }
 
-                    const fuzzyMatches = bankMeta.filter(entry => doesTextDirectlySupportIntervention(line, entry));
-                    if (fuzzyMatches.length === 1) {
-                        selected.add(fuzzyMatches[0].item);
+                    if (!resolvedItem) return;
+
+                    const score = getObjectiveInterventionSupportScore(candidate.support);
+                    const existing = selectedByItem.get(resolvedItem);
+                    if (!existing || score > existing.score || (score === existing.score && candidate.rank < existing.rank)) {
+                        selectedByItem.set(resolvedItem, {
+                            item: resolvedItem,
+                            score,
+                            rank: candidate.rank
+                        });
                     }
                 });
 
-                return bank.filter(item => selected.has(item));
+                return [...selectedByItem.values()]
+                    .filter(candidate => candidate.score >= OBJECTIVE_INTERVENTION_MIN_SUPPORT_SCORE)
+                    .sort((left, right) => {
+                        if (right.score !== left.score) return right.score - left.score;
+                        if (left.rank !== right.rank) return left.rank - right.rank;
+                        return interventionBankCollator.compare(left.item, right.item);
+                    })
+                    .slice(0, OBJECTIVE_INTERVENTION_MAX_COUNT)
+                    .map(candidate => candidate.item);
             };
 
             const extractInterventionsFromObjective = (objectiveText) => {
@@ -5698,8 +5787,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const bankContext = allowedBank.length > 0
                     ? allowedBank.map(item => `- ${item}`).join('\n')
                     : '- None';
-                const userPrompt = `Objective Section:\n${objectiveText || '- None'}\n\nAllowed Intervention Bank:\n${bankContext}\n\nReview the entire Objective section comprehensively. Return every intervention from the allowed bank that is explicitly stated or clearly described by the Objective section. Return exact allowed bank strings only.\n\nReturn only JSON in the form {"interventions":["..."]}.`;
-                const systemPrompt = 'You are matching SOAP Objective content to an allowed intervention bank. Use clinical reasoning across the full Objective section, not simple keyword extraction. Select every allowed intervention that is directly supported by the text, including semantically clear descriptions of the intervention, and exclude unsupported items. Return exact allowed bank strings only.';
+                const userPrompt = `Objective Section:\n${objectiveText || '- None'}\n\nAllowed Intervention Bank:\n${bankContext}\n\nReview the entire Objective section comprehensively. Choose the strongest interventions only. Return 8-${OBJECTIVE_INTERVENTION_MAX_COUNT} interventions when that many are directly or strongly supported. If fewer than ${OBJECTIVE_INTERVENTION_MAX_COUNT} are well supported, return fewer rather than padding with interpretive choices. Prefer the most specific allowed bank item over a broader duplicate unless both are independently clear in the Objective section. Order the list from strongest to weakest support.\n\nReturn only JSON in the form {"interventions":[{"name":"exact allowed bank item","support":"explicit|direct|strong|interpretive|stretch"}]}.`;
+                const systemPrompt = `You are matching SOAP Objective content to an allowed intervention bank. Use clinical reasoning across the full Objective section, not simple keyword extraction. Include only interventions that are directly named, clearly described, or strongly evidenced by a concrete therapeutic action in the text. Exclude interventions that are merely possible, loosely related, modality-level padding, or a stretch. Aim for ${OBJECTIVE_INTERVENTION_MIN_TARGET}-${OBJECTIVE_INTERVENTION_MAX_COUNT} interventions when that many are truly supported, but return fewer when the remaining options would be interpretive. Prefer specificity over broad duplicates. Return exact allowed bank strings only.`;
 
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
                 const aiInterventions = Array.isArray(aiPayload?.interventions)
@@ -8008,7 +8097,7 @@ Requirements:
                         interventions = await fetchObjectiveInterventionsFromAI(objectiveText, bank);
                     } catch (error) {
                         console.warn('Objective intervention AI generation failed; falling back to direct matching.', error);
-                        interventions = extractInterventionsFromObjective(objectiveText);
+                        interventions = extractInterventionsFromObjective(objectiveText).slice(0, OBJECTIVE_INTERVENTION_MAX_COUNT);
                     }
 
                     appointment.soap.objectiveInterventionMatches = interventions;

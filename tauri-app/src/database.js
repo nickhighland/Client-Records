@@ -18,6 +18,8 @@ const invokeTauriCommand = async (command, args) => {
 };
 
 const randomSecret = () => CryptoJS.lib.WordArray.random(32).toString();
+const deriveEncryptionKey = (username, password) => CryptoJS.SHA256(`${password}${username}`).toString();
+const encryptStateString = (state, key) => CryptoJS.AES.encrypt(JSON.stringify(state), key).toString();
 
 function validateSmtpConfig(smtpHost, smtpPort, smtpSecurity, smtpUsername, smtpFrom, smtpPassword) {
     const normalizedHost = (smtpHost || '').trim();
@@ -206,7 +208,7 @@ async function sendEmailVerificationCode(database, normalizedUsername) {
 
 async function getOrMigrateEncryptionKey(normalizedUsername, password, database) {
     // Derive encryption key from password (no keychain)
-    return CryptoJS.SHA256(password + normalizedUsername).toString();
+    return deriveEncryptionKey(normalizedUsername, password);
 }
 
 async function getDb() {
@@ -326,7 +328,7 @@ export async function loginUser(username, password) {
     try {
         const database = await getDb();
         const normalizedUsername = (username || '').trim();
-        const passwordHash = CryptoJS.SHA256(password).toString();
+        const passwordHash = CryptoJS.SHA256(password || '').toString();
         const result = await database.select('SELECT * FROM users WHERE username = $1 AND password_hash = $2', [normalizedUsername, passwordHash]);
         
         if (result.length > 0) {
@@ -348,35 +350,199 @@ export async function loginUser(username, password) {
     }
 }
 
+export async function loginUserWithBiometricSecret(username, storedEncryptionKey) {
+    try {
+        const database = await getDb();
+        const normalizedUsername = (username || '').trim();
+        const normalizedSecret = (storedEncryptionKey || '').trim();
+        if (!normalizedUsername || !normalizedSecret) {
+            lastAuthError = 'Saved biometric login is incomplete. Please log in with your password.';
+            return false;
+        }
+
+        const result = await database.select('SELECT username, email_verified FROM users WHERE username = $1', [normalizedUsername]);
+        if (!result?.length) {
+            lastAuthError = 'Account not found.';
+            return false;
+        }
+
+        if (Number(result[0].email_verified) !== 1) {
+            lastAuthError = 'Email not verified. Enter your verification code to continue.';
+            return false;
+        }
+
+        encryptionKey = normalizedSecret;
+        currentUser = normalizedUsername;
+        lastAuthError = '';
+        return true;
+    } catch (error) {
+        console.error('Failed to log in with biometric secret:', error);
+        lastAuthError = 'Biometric login failed. Please use your password.';
+        return false;
+    }
+}
+
 export async function changePassword(currentPassword, newPassword) {
     if (!db || !currentUser || !encryptionKey) return false;
 
     try {
-        const currentPasswordHash = CryptoJS.SHA256(currentPassword).toString();
+        const normalizedCurrentPassword = (currentPassword || '').trim();
+        const normalizedNewPassword = (newPassword || '').trim();
+        if (!normalizedCurrentPassword || !normalizedNewPassword) {
+            lastAuthError = 'Current and new password are required.';
+            return false;
+        }
+
+        const currentPasswordHash = CryptoJS.SHA256(normalizedCurrentPassword).toString();
         const userResult = await db.select(
             'SELECT password_hash FROM users WHERE username = $1',
             [currentUser]
         );
 
         if (!userResult?.length || userResult[0].password_hash !== currentPasswordHash) {
+            lastAuthError = 'Incorrect current password.';
             return false;
         }
 
-        const newPasswordHash = CryptoJS.SHA256(newPassword).toString();
-        await db.execute(
-            'UPDATE users SET password_hash = $1 WHERE username = $2',
-            [newPasswordHash, currentUser]
-        );
+        const existingState = await loadState();
+        const newPasswordHash = CryptoJS.SHA256(normalizedNewPassword).toString();
+        const newEncryptionKey = deriveEncryptionKey(currentUser, normalizedNewPassword);
 
+        await db.execute('BEGIN TRANSACTION');
+        try {
+            await db.execute(
+                'UPDATE users SET password_hash = $1 WHERE username = $2',
+                [newPasswordHash, currentUser]
+            );
+
+            if (existingState !== null) {
+                const encryptedState = encryptStateString(existingState, newEncryptionKey);
+                await db.execute(
+                    'INSERT INTO app_state (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = $2',
+                    ['main_state', encryptedState]
+                );
+            }
+
+            await db.execute('COMMIT');
+        } catch (error) {
+            try {
+                await db.execute('ROLLBACK');
+            } catch (_rollbackError) {
+            }
+            throw error;
+        }
+
+        encryptionKey = newEncryptionKey;
+        lastAuthError = '';
         return true;
     } catch (error) {
         console.error('Failed to change password:', error);
+        lastAuthError = 'Failed to change password.';
         return false;
     }
 }
 
 export function getLastAuthError() {
     return lastAuthError;
+}
+
+export function getCurrentUser() {
+    return currentUser;
+}
+
+export function clearActiveSession() {
+    encryptionKey = null;
+    currentUser = null;
+}
+
+export async function getBiometricAvailability() {
+    if (typeof window?.__TAURI__?.core?.invoke !== 'function') {
+        return {
+            supported: false,
+            available: false,
+            enrolled: false,
+            message: 'Biometric launch login is only available in the desktop app.'
+        };
+    }
+
+    try {
+        const availability = await invokeTauriCommand('get_biometric_availability');
+        return {
+            supported: availability?.supported !== false,
+            available: !!availability?.available,
+            enrolled: availability?.enrolled !== false,
+            message: typeof availability?.message === 'string' ? availability.message : ''
+        };
+    } catch (error) {
+        console.error('Failed to check biometric availability:', error);
+        const message = error?.message || String(error) || 'Touch ID availability could not be checked.';
+        lastAuthError = message;
+        return {
+            supported: true,
+            available: false,
+            enrolled: false,
+            message
+        };
+    }
+}
+
+export async function storeCurrentBiometricLogin() {
+    if (!currentUser || !encryptionKey) {
+        lastAuthError = 'Unlock the app before enabling Touch ID login.';
+        return false;
+    }
+
+    try {
+        await invokeTauriCommand('store_biometric_secret', {
+            username: currentUser,
+            secret: encryptionKey
+        });
+        lastAuthError = '';
+        return true;
+    } catch (error) {
+        console.error('Failed to store biometric login secret:', error);
+        lastAuthError = error?.message || String(error) || 'Failed to enable Touch ID login.';
+        return false;
+    }
+}
+
+export async function readBiometricLoginSecret(username) {
+    try {
+        const normalizedUsername = (username || '').trim();
+        if (!normalizedUsername) {
+            lastAuthError = 'Username is required for Touch ID login.';
+            return null;
+        }
+
+        const secret = await invokeTauriCommand('read_biometric_secret', {
+            username: normalizedUsername
+        });
+        lastAuthError = '';
+        return typeof secret === 'string' ? secret : null;
+    } catch (error) {
+        console.error('Failed to read biometric login secret:', error);
+        lastAuthError = error?.message || String(error) || 'Touch ID login failed.';
+        return null;
+    }
+}
+
+export async function removeBiometricLoginForUser(username) {
+    try {
+        const normalizedUsername = (username || '').trim();
+        if (!normalizedUsername) {
+            return true;
+        }
+
+        await invokeTauriCommand('remove_biometric_secret', {
+            username: normalizedUsername
+        });
+        lastAuthError = '';
+        return true;
+    } catch (error) {
+        console.error('Failed to remove biometric login secret:', error);
+        lastAuthError = error?.message || String(error) || 'Failed to disable Touch ID login.';
+        return false;
+    }
 }
 
 export async function requestPasswordReset(username) {
@@ -797,6 +963,7 @@ export async function deleteUserAccount(username, password) {
         await database.execute('DELETE FROM email_verification_codes WHERE username = $1', [normalizedUsername]);
         await database.execute('DELETE FROM users WHERE username = $1', [normalizedUsername]);
         await database.execute('DELETE FROM app_state WHERE key = $1', ['main_state']);
+        await removeBiometricLoginForUser(normalizedUsername);
 
         if (currentUser === normalizedUsername) {
             encryptionKey = null;
@@ -963,8 +1130,7 @@ export async function saveState(state) {
     if (!db || !encryptionKey) return false;
     
     try {
-        const stateString = JSON.stringify(state);
-        const encryptedState = CryptoJS.AES.encrypt(stateString, encryptionKey).toString();
+        const encryptedState = encryptStateString(state, encryptionKey);
         
         await db.execute(
             'INSERT INTO app_state (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = $2',

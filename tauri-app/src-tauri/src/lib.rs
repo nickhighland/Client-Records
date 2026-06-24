@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
 
+mod biometric;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -46,6 +48,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             write_backup_file,
+            biometric::get_biometric_availability,
+            biometric::store_biometric_secret,
+            biometric::read_biometric_secret,
+            biometric::remove_biometric_secret,
             generate_google_token,
             send_password_reset_email,
             send_email_verification_email,

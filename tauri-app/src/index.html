@@ -1982,6 +1982,14 @@
             <p id="loginSubtitle" style="margin-bottom: 20px; color: var(--text-color-secondary); font-size: 0.9rem;">Enter your username and password to unlock the database.</p>
             <input type="text" id="loginUsernameInput" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 16px;">
             <input type="password" id="loginPasswordInput" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 16px;">
+            <div id="biometricLoginPanel" style="display:none; margin-bottom: 16px; padding: 12px; border: 1px solid rgba(39, 174, 96, 0.28); border-radius: 10px; background: rgba(39, 174, 96, 0.08); text-align: left;">
+                <button id="biometricLoginBtn" class="btn" style="width: 100%; padding: 12px; margin-bottom: 8px; background: linear-gradient(135deg, #1f8f59 0%, #146c43 100%);">Unlock with Touch ID</button>
+                <div id="biometricLoginHint" style="font-size: 0.78rem; color: var(--text-color-secondary);"></div>
+                <div id="biometricLoginStatusMsg" style="font-size: 0.8rem; margin-top: 8px; color: var(--text-color-secondary);"></div>
+            </div>
+            <div id="biometricEnrollmentHint" style="display:none; margin-bottom: 16px; font-size: 0.78rem; color: var(--text-color-secondary);">
+                Want faster login? Unlock once with your password, then go to Settings -> Security to enable Touch ID launch login.
+            </div>
             <div id="onboardingRecoverySection" style="display:none; text-align:left; margin-bottom:12px;">
                 <input type="email" id="onboardingEmailInput" placeholder="Recovery Email" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
                 <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-bottom: 6px; font-weight: 600;">SMTP Settings (for in-app password recovery)</div>
@@ -2343,7 +2351,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.62</span>
+                <span class="version-badge">v1.0.63</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2841,6 +2849,18 @@
                         <button id="changePasswordBtn" class="btn">Change Password</button>
                         <span id="changePasswordStatus" style="font-size: 0.875rem; font-weight: 600;"></span>
                     </div>
+                    <div style="margin-top: 0.25rem; padding: 12px; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-bg);">
+                        <div style="font-size: 1rem; font-weight: 600; margin-bottom: 0.35rem;">Touch ID Launch Login</div>
+                        <div style="font-size: 0.82rem; color: var(--text-color-secondary); margin-bottom: 0.75rem;">
+                            Save this account's unlock key in your Mac keychain so you can launch the app with Touch ID instead of typing your password every time.
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;">
+                            <button id="enableBiometricLoginBtn" class="btn" style="background: linear-gradient(135deg, #1f8f59 0%, #146c43 100%);">Enable Touch ID</button>
+                            <button id="disableBiometricLoginBtn" class="btn" style="background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);">Disable Touch ID</button>
+                            <span id="biometricSettingsStatus" style="font-size: 0.875rem; color: var(--text-color-secondary); font-weight: 600;"></span>
+                        </div>
+                        <div id="biometricEnrollmentHelp" style="font-size: 0.78rem; color: var(--text-color-secondary); margin-top: 0.65rem;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -3292,7 +3312,94 @@
         import { writeTextFile } from '@tauri-apps/plugin-fs';
         import { check } from '@tauri-apps/plugin-updater';
         import { relaunch } from '@tauri-apps/plugin-process';
-        import { checkFirstLogin, createUser, loginUser, getLastAuthError, changePassword, requestPasswordReset, confirmPasswordReset, requestEmailVerification, confirmEmailVerification, updateRecoverySettings, getRecoverySettings, testSmtpSettings, deleteUserAccount, saveState, loadState, isDatabaseInitialized, importEncryptedSqlDump, importSqlDump, exportEncryptedSqlDump } from './src/database.js';
+        import {
+            checkFirstLogin,
+            createUser,
+            loginUser,
+            loginUserWithBiometricSecret,
+            getLastAuthError,
+            getCurrentUser,
+            clearActiveSession,
+            changePassword,
+            getBiometricAvailability,
+            storeCurrentBiometricLogin,
+            readBiometricLoginSecret,
+            removeBiometricLoginForUser,
+            requestPasswordReset,
+            confirmPasswordReset,
+            requestEmailVerification,
+            confirmEmailVerification,
+            updateRecoverySettings,
+            getRecoverySettings,
+            testSmtpSettings,
+            deleteUserAccount,
+            saveState,
+            loadState,
+            isDatabaseInitialized,
+            importEncryptedSqlDump,
+            importSqlDump,
+            exportEncryptedSqlDump
+        } from './src/database.js';
+
+        const BIOMETRIC_LOGIN_USERNAME_KEY = 'biometricLoginUsername';
+        let biometricLaunchAttempted = false;
+        let biometricLoginInProgress = false;
+        const isDesktopRuntime = () => typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
+        let biometricAvailability = {
+            supported: isDesktopRuntime(),
+            available: isDesktopRuntime(),
+            enrolled: true,
+            message: ''
+        };
+        const getBiometricLabel = () => (/mac/i.test(navigator.platform || '') ? 'Touch ID' : 'Biometric Login');
+        const getRememberedBiometricUsername = () => (localStorage.getItem(BIOMETRIC_LOGIN_USERNAME_KEY) || '').trim();
+        const rememberBiometricUsername = (username) => {
+            const normalizedUsername = (username || '').trim();
+            if (!normalizedUsername) return;
+            localStorage.setItem(BIOMETRIC_LOGIN_USERNAME_KEY, normalizedUsername);
+        };
+        const clearRememberedBiometricUsername = () => {
+            localStorage.removeItem(BIOMETRIC_LOGIN_USERNAME_KEY);
+        };
+        const isBiometricCancellationMessage = (message) => {
+            const text = String(message || '').toLowerCase();
+            return text.includes('canceled')
+                || text.includes('cancelled')
+                || text.includes('user canceled')
+                || text.includes('user cancelled');
+        };
+        const normalizeBiometricAvailability = (availability) => ({
+            supported: availability?.supported !== false,
+            available: !!availability?.available,
+            enrolled: availability?.enrolled !== false,
+            message: typeof availability?.message === 'string' ? availability.message.trim() : ''
+        });
+        const getBiometricEnrollmentHelpText = () => {
+            if (!isDesktopRuntime()) return '';
+            return /mac/i.test(navigator.platform || '')
+                ? 'Fingerprint enrollment happens in macOS System Settings > Touch ID & Password.'
+                : 'Biometric enrollment is managed by your operating system, not inside the app.';
+        };
+        async function refreshBiometricAvailability() {
+            biometricAvailability = normalizeBiometricAvailability(await getBiometricAvailability());
+            return biometricAvailability;
+        }
+
+        const loginOverlay = document.getElementById('loginOverlay');
+        const loginUsernameInput = document.getElementById('loginUsernameInput');
+        const loginPasswordInput = document.getElementById('loginPasswordInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginErrorMsg = document.getElementById('loginErrorMsg');
+        const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+        const biometricLoginPanel = document.getElementById('biometricLoginPanel');
+        const biometricLoginBtn = document.getElementById('biometricLoginBtn');
+        const biometricLoginHint = document.getElementById('biometricLoginHint');
+        const biometricLoginStatusMsg = document.getElementById('biometricLoginStatusMsg');
+        const biometricEnrollmentHint = document.getElementById('biometricEnrollmentHint');
+        const enableBiometricLoginBtn = document.getElementById('enableBiometricLoginBtn');
+        const disableBiometricLoginBtn = document.getElementById('disableBiometricLoginBtn');
+        const biometricSettingsStatus = document.getElementById('biometricSettingsStatus');
+        const biometricEnrollmentHelp = document.getElementById('biometricEnrollmentHelp');
 
         document.addEventListener('DOMContentLoaded', () => {
             // DOM Elements
@@ -3419,6 +3526,19 @@
             const confirmNewPasswordInput = document.getElementById('confirmNewPasswordInput');
             const changePasswordBtn = document.getElementById('changePasswordBtn');
             const changePasswordStatus = document.getElementById('changePasswordStatus');
+            const loginOverlay = document.getElementById('loginOverlay');
+            const loginUsernameInput = document.getElementById('loginUsernameInput');
+            const loginPasswordInput = document.getElementById('loginPasswordInput');
+            const loginBtn = document.getElementById('loginBtn');
+            const loginErrorMsg = document.getElementById('loginErrorMsg');
+            const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+            const biometricLoginPanel = document.getElementById('biometricLoginPanel');
+            const biometricLoginBtn = document.getElementById('biometricLoginBtn');
+            const biometricLoginHint = document.getElementById('biometricLoginHint');
+            const biometricLoginStatusMsg = document.getElementById('biometricLoginStatusMsg');
+            const enableBiometricLoginBtn = document.getElementById('enableBiometricLoginBtn');
+            const disableBiometricLoginBtn = document.getElementById('disableBiometricLoginBtn');
+            const biometricSettingsStatus = document.getElementById('biometricSettingsStatus');
             // Custom Instructions Modal Elements
             const customInstructionsBtn = document.getElementById('customInstructionsBtn');
             const customInstructionsModal = document.getElementById('customInstructionsModal');
@@ -9912,6 +10032,8 @@ This error cannot be fixed within this application's code; it requires a configu
                 const currentPassword = (currentPasswordInput.value || '').trim();
                 const newPassword = (newPasswordInput.value || '').trim();
                 const confirmNewPassword = (confirmNewPasswordInput.value || '').trim();
+                const currentUsername = (getCurrentUser() || '').trim();
+                const shouldRefreshBiometricLogin = currentUsername && currentUsername === getRememberedBiometricUsername();
 
                 changePasswordStatus.textContent = '';
 
@@ -9937,15 +10059,38 @@ This error cannot be fixed within this application's code; it requires a configu
                 changePasswordStatus.textContent = 'Updating...';
                 changePasswordStatus.style.color = '#f39c12';
 
+                try {
+                    await saveDataToLocalStorage();
+                } catch (error) {
+                    changePasswordStatus.textContent = 'Save failed. Try again before changing password.';
+                    changePasswordStatus.style.color = '#e74c3c';
+                    changePasswordBtn.disabled = false;
+                    return;
+                }
+
                 const success = await changePassword(currentPassword, newPassword);
                 if (success) {
+                    if (shouldRefreshBiometricLogin) {
+                        const biometricSynced = await storeCurrentBiometricLogin();
+                        if (!biometricSynced) {
+                            clearRememberedBiometricUsername();
+                            refreshBiometricLoginUI();
+                            changePasswordStatus.textContent = 'Password updated. Re-enable Touch ID login in Settings.';
+                            changePasswordStatus.style.color = '#e67e22';
+                            changePasswordBtn.disabled = false;
+                            refreshBiometricSettingsUI();
+                            return;
+                        }
+                    }
+
                     currentPasswordInput.value = '';
                     newPasswordInput.value = '';
                     confirmNewPasswordInput.value = '';
                     changePasswordStatus.textContent = 'Password updated.';
                     changePasswordStatus.style.color = '#27ae60';
+                    refreshBiometricSettingsUI();
                 } else {
-                    changePasswordStatus.textContent = 'Password update failed.';
+                    changePasswordStatus.textContent = getLastAuthError() || 'Password update failed.';
                     changePasswordStatus.style.color = '#e74c3c';
                 }
                 changePasswordBtn.disabled = false;
@@ -10082,7 +10227,11 @@ This error cannot be fixed within this application's code; it requires a configu
             configureBackupBtn?.addEventListener('click', configureSecondaryBackupLocation);
             clearBackupBtn?.addEventListener('click', clearSecondaryBackupLocation);
 
-            settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+            settingsBtn.addEventListener('click', async () => {
+                await refreshBiometricAvailability();
+                refreshBiometricSettingsUI();
+                settingsModal.classList.remove('hidden');
+            });
 
             const UPDATE_POLL_INTERVAL_MS = 30 * 60 * 1000;
             let updatePollingIntervalId = null;
@@ -11003,6 +11152,7 @@ This error cannot be fixed within this application's code; it requires a configu
             startRecurringUpdateChecks();
 
             window.__appAuthHooks = {
+                saveDataToLocalStorage,
                 loadDataFromLocalStorage,
                 normalizeClientData,
                 fullRender
@@ -11055,6 +11205,259 @@ This error cannot be fixed within this application's code; it requires a configu
                     lockApp();
                 }
             }, 1000);
+        }
+
+        function setBiometricStatusMessage(message = '', color = 'var(--text-color-secondary)') {
+            if (!biometricLoginStatusMsg) return;
+            biometricLoginStatusMsg.textContent = message;
+            biometricLoginStatusMsg.style.color = color;
+        }
+
+        function refreshBiometricLoginUI() {
+            if (!biometricLoginPanel || !biometricLoginBtn || !biometricLoginHint) return;
+
+            const rememberedUsername = getRememberedBiometricUsername();
+            const biometricLabel = getBiometricLabel();
+
+            biometricLoginBtn.textContent = `Unlock with ${biometricLabel}`;
+
+            if (!isDesktopRuntime() || isFirstLogin || !rememberedUsername) {
+                biometricLoginPanel.style.display = 'none';
+                biometricLoginHint.textContent = '';
+                if (biometricEnrollmentHint) {
+                    biometricEnrollmentHint.style.display = !isDesktopRuntime() || isFirstLogin || rememberedUsername
+                        ? 'none'
+                        : 'block';
+                }
+                if (!rememberedUsername) {
+                    setBiometricStatusMessage('');
+                }
+                return;
+            }
+
+            biometricLoginPanel.style.display = 'block';
+            if (biometricEnrollmentHint) {
+                biometricEnrollmentHint.style.display = 'none';
+            }
+            biometricLoginHint.textContent = `Saved for ${rememberedUsername} on this Mac.`;
+            biometricLoginBtn.disabled = biometricLoginInProgress;
+            biometricLoginBtn.style.opacity = biometricLoginInProgress ? '0.75' : '1';
+            biometricLoginBtn.style.cursor = biometricLoginInProgress ? 'wait' : 'pointer';
+
+            if (loginUsernameInput && !loginUsernameInput.value.trim()) {
+                loginUsernameInput.value = rememberedUsername;
+            }
+        }
+
+        function refreshBiometricSettingsUI() {
+            if (!enableBiometricLoginBtn || !disableBiometricLoginBtn || !biometricSettingsStatus) return;
+
+            const currentUsername = (getCurrentUser() || '').trim();
+            const rememberedUsername = getRememberedBiometricUsername();
+            const biometricLabel = getBiometricLabel();
+            const enabledForCurrentUser = !!currentUsername && currentUsername === rememberedUsername;
+            const availability = biometricAvailability || {};
+            const biometricSupported = availability.supported !== false;
+            const biometricAvailable = !!availability.available;
+            const availabilityMessage = (availability.message || '').trim();
+
+            enableBiometricLoginBtn.textContent = `Enable ${biometricLabel}`;
+            disableBiometricLoginBtn.textContent = `Disable ${biometricLabel}`;
+            if (biometricEnrollmentHelp) {
+                biometricEnrollmentHelp.textContent = getBiometricEnrollmentHelpText();
+            }
+
+            if (!isDesktopRuntime()) {
+                biometricSettingsStatus.style.color = 'var(--text-color-secondary)';
+                biometricSettingsStatus.textContent = `${biometricLabel} launch login is only available in the desktop app.`;
+                enableBiometricLoginBtn.disabled = true;
+                disableBiometricLoginBtn.disabled = true;
+                return;
+            }
+
+            enableBiometricLoginBtn.disabled = !currentUsername || biometricLoginInProgress || !biometricAvailable;
+            disableBiometricLoginBtn.disabled = !enabledForCurrentUser || biometricLoginInProgress;
+
+            if (!biometricSupported || (!biometricAvailable && availabilityMessage)) {
+                biometricSettingsStatus.style.color = availability.enrolled === false ? '#e67e22' : 'var(--text-color-secondary)';
+                biometricSettingsStatus.textContent = availabilityMessage || `${biometricLabel} is not available right now.`;
+            } else if (!currentUsername) {
+                biometricSettingsStatus.style.color = 'var(--text-color-secondary)';
+                biometricSettingsStatus.textContent = `Unlock the app before configuring ${biometricLabel}.`;
+            } else if (enabledForCurrentUser) {
+                biometricSettingsStatus.style.color = '#27ae60';
+                biometricSettingsStatus.textContent = `${biometricLabel} launch login is enabled for ${currentUsername}.`;
+            } else if (rememberedUsername) {
+                biometricSettingsStatus.style.color = '#e67e22';
+                biometricSettingsStatus.textContent = `${biometricLabel} launch login is currently saved for ${rememberedUsername}.`;
+            } else {
+                biometricSettingsStatus.style.color = 'var(--text-color-secondary)';
+                biometricSettingsStatus.textContent = `${biometricLabel} launch login is not enabled on this Mac.`;
+            }
+        }
+
+        async function finalizeSuccessfulUnlock() {
+            const hooks = window.__appAuthHooks;
+            if (!hooks) {
+                throw new Error('Application is not initialized yet.');
+            }
+
+            try {
+                await hooks.loadDataFromLocalStorage();
+            } catch (error) {
+                clearActiveSession();
+                throw new Error(`Incorrect password, ${getBiometricLabel()} login, or corrupted data.`);
+            }
+
+            loginOverlay.style.display = 'none';
+            document.getElementById('appContainer').style.display = 'flex';
+            resetInactivityTimer();
+
+            hooks.normalizeClientData();
+            hooks.fullRender();
+            setBiometricStatusMessage('');
+            refreshBiometricSettingsUI();
+        }
+
+        async function enableBiometricLoginForCurrentSession() {
+            const currentUsername = (getCurrentUser() || '').trim();
+            const biometricLabel = getBiometricLabel();
+            const previouslyRememberedUsername = getRememberedBiometricUsername();
+            if (!currentUsername) {
+                refreshBiometricSettingsUI();
+                return false;
+            }
+
+            const availability = await refreshBiometricAvailability();
+            if (!availability.available) {
+                refreshBiometricSettingsUI();
+                return false;
+            }
+
+            biometricLoginInProgress = true;
+            enableBiometricLoginBtn.disabled = true;
+            disableBiometricLoginBtn.disabled = true;
+            biometricSettingsStatus.style.color = 'var(--text-color-secondary)';
+            biometricSettingsStatus.textContent = `Saving ${biometricLabel} launch login...`;
+
+            if (previouslyRememberedUsername && previouslyRememberedUsername !== currentUsername) {
+                await removeBiometricLoginForUser(previouslyRememberedUsername);
+            }
+
+            const success = await storeCurrentBiometricLogin();
+            biometricLoginInProgress = false;
+
+            if (success) {
+                rememberBiometricUsername(currentUsername);
+                biometricLaunchAttempted = true;
+                setBiometricStatusMessage(`${biometricLabel} launch login is ready for ${currentUsername}.`, '#27ae60');
+            } else if (getRememberedBiometricUsername() === currentUsername) {
+                clearRememberedBiometricUsername();
+            }
+
+            await refreshBiometricAvailability();
+            refreshBiometricLoginUI();
+            refreshBiometricSettingsUI();
+
+            if (!success) {
+                biometricSettingsStatus.style.color = '#e74c3c';
+                biometricSettingsStatus.textContent = getLastAuthError() || `Failed to enable ${biometricLabel}.`;
+            }
+
+            return success;
+        }
+
+        async function disableBiometricLoginForCurrentSession() {
+            const currentUsername = (getCurrentUser() || '').trim();
+            const biometricLabel = getBiometricLabel();
+            if (!currentUsername) {
+                refreshBiometricSettingsUI();
+                return false;
+            }
+
+            biometricLoginInProgress = true;
+            enableBiometricLoginBtn.disabled = true;
+            disableBiometricLoginBtn.disabled = true;
+            biometricSettingsStatus.style.color = 'var(--text-color-secondary)';
+            biometricSettingsStatus.textContent = `Removing ${biometricLabel} launch login...`;
+
+            const success = await removeBiometricLoginForUser(currentUsername);
+            biometricLoginInProgress = false;
+
+            if (success) {
+                clearRememberedBiometricUsername();
+                setBiometricStatusMessage('', 'var(--text-color-secondary)');
+            }
+
+            refreshBiometricLoginUI();
+            refreshBiometricSettingsUI();
+
+            if (!success) {
+                biometricSettingsStatus.style.color = '#e74c3c';
+                biometricSettingsStatus.textContent = getLastAuthError() || `Failed to disable ${biometricLabel}.`;
+            }
+
+            return success;
+        }
+
+        async function attemptBiometricLogin({ autoTriggered = false } = {}) {
+            const rememberedUsername = getRememberedBiometricUsername();
+            const biometricLabel = getBiometricLabel();
+
+            if (!rememberedUsername || biometricLoginInProgress || isFirstLogin || !isDesktopRuntime()) {
+                return false;
+            }
+
+            biometricLoginInProgress = true;
+            refreshBiometricLoginUI();
+            refreshBiometricSettingsUI();
+            loginUsernameInput.value = rememberedUsername;
+
+            if (!autoTriggered) {
+                setBiometricStatusMessage(`Waiting for ${biometricLabel}...`);
+                loginErrorMsg.style.display = 'none';
+            }
+
+            try {
+                const secret = await readBiometricLoginSecret(rememberedUsername);
+                if (!secret) {
+                    throw new Error(getLastAuthError() || `${biometricLabel} login failed.`);
+                }
+
+                const success = await loginUserWithBiometricSecret(rememberedUsername, secret);
+                if (!success) {
+                    throw new Error(getLastAuthError() || `${biometricLabel} login failed.`);
+                }
+
+                await finalizeSuccessfulUnlock();
+                return true;
+            } catch (error) {
+                clearActiveSession();
+
+                const message = error?.message || String(error) || `${biometricLabel} login failed.`;
+                const lowerMessage = message.toLowerCase();
+                if (lowerMessage.includes('item not found') || lowerMessage.includes('no touch id login is saved')) {
+                    clearRememberedBiometricUsername();
+                }
+
+                if (!autoTriggered || !isBiometricCancellationMessage(message)) {
+                    loginErrorMsg.textContent = message;
+                    loginErrorMsg.style.display = 'block';
+                }
+
+                setBiometricStatusMessage(
+                    isBiometricCancellationMessage(message)
+                        ? `${biometricLabel} was canceled. You can use your password instead.`
+                        : message,
+                    isBiometricCancellationMessage(message) ? 'var(--text-color-secondary)' : '#e74c3c'
+                );
+
+                return false;
+            } finally {
+                biometricLoginInProgress = false;
+                refreshBiometricLoginUI();
+                refreshBiometricSettingsUI();
+            }
         }
 
         function showVerificationPanel(username = '') {
@@ -11137,20 +11540,30 @@ This error cannot be fixed within this application's code; it requires a configu
             resetInactivityTimer();
         }
 
-        function lockApp() {
+        async function lockApp() {
             stopCountdown();
             clearTimeout(inactivityTimer);
-            document.getElementById('loginOverlay').style.display = 'flex';
+            const hooks = window.__appAuthHooks;
+            if (isAppUnlocked() && hooks?.saveDataToLocalStorage) {
+                try {
+                    await hooks.saveDataToLocalStorage();
+                } catch (error) {
+                    console.error('Failed to save before lock:', error);
+                }
+            }
+            clearActiveSession();
+            loginOverlay.style.display = 'flex';
             document.getElementById('appContainer').style.display = 'none';
-            document.getElementById('loginUsernameInput').value = '';
-            document.getElementById('loginPasswordInput').value = '';
-            document.getElementById('loginErrorMsg').style.display = 'none';
+            loginUsernameInput.value = '';
+            loginPasswordInput.value = '';
+            loginErrorMsg.style.display = 'none';
             document.getElementById('resetPanel').style.display = 'none';
             document.getElementById('verifyEmailPanel').style.display = 'none';
             document.getElementById('smtpSettingsPanel').style.display = 'none';
             document.getElementById('deleteAccountPanel').style.display = 'none';
             document.getElementById('loginToolsDropdown').classList.add('hidden');
-            // Clear sensitive data from memory if needed
+            setBiometricStatusMessage('');
+            refreshBiometricSettingsUI();
             initLoginScreen(); // Re-check if it's still the first login
         }
 
@@ -11160,7 +11573,6 @@ This error cannot be fixed within this application's code; it requires a configu
             isFirstLogin = await checkFirstLogin();
             const authError = getLastAuthError();
             const onboardingRecoverySection = document.getElementById('onboardingRecoverySection');
-            const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
             const resetPanel = document.getElementById('resetPanel');
             const verifyEmailPanel = document.getElementById('verifyEmailPanel');
             const smtpSettingsPanel = document.getElementById('smtpSettingsPanel');
@@ -11170,15 +11582,15 @@ This error cannot be fixed within this application's code; it requires a configu
                 const hint = authError.includes('window.__TAURI_INTERNALS__') || authError.includes('invoke')
                     ? 'Open the desktop app window (Tauri), not the browser URL.'
                     : '';
-                document.getElementById('loginErrorMsg').textContent = hint ? `${authError} ${hint}` : authError;
-                document.getElementById('loginErrorMsg').style.display = 'block';
+                loginErrorMsg.textContent = hint ? `${authError} ${hint}` : authError;
+                loginErrorMsg.style.display = 'block';
             } else {
-                document.getElementById('loginErrorMsg').style.display = 'none';
+                loginErrorMsg.style.display = 'none';
             }
             if (isFirstLogin) {
                 document.getElementById('loginTitle').textContent = "Create Account";
                 document.getElementById('loginSubtitle').textContent = "Create a username/password and recovery email + SMTP settings.";
-                document.getElementById('loginBtn').textContent = "Create Account";
+                loginBtn.textContent = "Create Account";
                 onboardingRecoverySection.style.display = 'block';
                 forgotPasswordBtn.style.display = 'none';
                 loginToolsMenu.style.display = 'none';
@@ -11189,7 +11601,7 @@ This error cannot be fixed within this application's code; it requires a configu
             } else {
                 document.getElementById('loginTitle').textContent = "Client Records Login";
                 document.getElementById('loginSubtitle').textContent = "Enter your username and password to unlock the database.";
-                document.getElementById('loginBtn').textContent = "Unlock";
+                loginBtn.textContent = "Unlock";
                 onboardingRecoverySection.style.display = 'none';
                 forgotPasswordBtn.style.display = 'block';
                 loginToolsMenu.style.display = 'block';
@@ -11198,11 +11610,22 @@ This error cannot be fixed within this application's code; it requires a configu
                 smtpSettingsPanel.style.display = 'none';
                 deleteAccountPanel.style.display = 'none';
             }
+
+            await refreshBiometricAvailability();
+            refreshBiometricLoginUI();
+            refreshBiometricSettingsUI();
+
+            if (!isFirstLogin && !biometricLaunchAttempted && getRememberedBiometricUsername() && isDesktopRuntime()) {
+                biometricLaunchAttempted = true;
+                setTimeout(() => {
+                    attemptBiometricLogin({ autoTriggered: true });
+                }, 150);
+            }
         }
 
         async function unlockApp() {
-            const username = document.getElementById('loginUsernameInput').value;
-            const password = document.getElementById('loginPasswordInput').value;
+            const username = loginUsernameInput.value;
+            const password = loginPasswordInput.value;
             
             if (username && password) {
                 let success = false;
@@ -11228,7 +11651,7 @@ This error cannot be fixed within this application's code; it requires a configu
                         const verifyStatus = document.getElementById('verifyEmailStatusMsg');
                         verifyStatus.style.color = '#27ae60';
                         verifyStatus.textContent = 'Verification code sent. Enter it below to finish setup.';
-                        document.getElementById('loginErrorMsg').style.display = 'none';
+                        loginErrorMsg.style.display = 'none';
                         return;
                     }
                 } else {
@@ -11247,56 +11670,50 @@ This error cannot be fixed within this application's code; it requires a configu
 
                 if (success) {
                     try {
-                        const hooks = window.__appAuthHooks;
-                        if (!hooks) {
-                            throw new Error('Application is not initialized yet.');
-                        }
-
-                        // Try to load data to verify password
-                        await hooks.loadDataFromLocalStorage();
-                        
-                        document.getElementById('loginOverlay').style.display = 'none';
-                        document.getElementById('appContainer').style.display = 'flex';
-                        resetInactivityTimer();
-                        
-                        // Re-render after loading data
-                        hooks.normalizeClientData();
-                        hooks.fullRender();
+                        await finalizeSuccessfulUnlock();
                     } catch (e) {
-                        document.getElementById('loginErrorMsg').textContent = "Incorrect username, password, or corrupted data.";
-                        document.getElementById('loginErrorMsg').style.display = 'block';
+                        loginErrorMsg.textContent = e?.message || "Incorrect username, password, or corrupted data.";
+                        loginErrorMsg.style.display = 'block';
                     }
                 } else {
                     const authError = getLastAuthError();
-                    document.getElementById('loginErrorMsg').textContent = authError || (isFirstLogin ? "Failed to create user." : "Incorrect username or password.");
-                    document.getElementById('loginErrorMsg').style.display = 'block';
+                    loginErrorMsg.textContent = authError || (isFirstLogin ? "Failed to create user." : "Incorrect username or password.");
+                    loginErrorMsg.style.display = 'block';
                     if (isFirstLogin && authError && authError.includes('already exists')) {
                         await initLoginScreen();
                     }
                 }
             } else {
-                document.getElementById('loginErrorMsg').textContent = "Please enter a username and password.";
-                document.getElementById('loginErrorMsg').style.display = 'block';
+                loginErrorMsg.textContent = "Please enter a username and password.";
+                loginErrorMsg.style.display = 'block';
             }
         }
 
-        document.getElementById('loginBtn').addEventListener('click', unlockApp);
-        document.getElementById('loginPasswordInput').addEventListener('keypress', (e) => {
+        loginBtn.addEventListener('click', unlockApp);
+        loginPasswordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') unlockApp();
         });
-        document.getElementById('loginUsernameInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') document.getElementById('loginPasswordInput').focus();
+        loginUsernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loginPasswordInput.focus();
+        });
+        biometricLoginBtn?.addEventListener('click', () => {
+            attemptBiometricLogin({ autoTriggered: false });
+        });
+        enableBiometricLoginBtn?.addEventListener('click', async () => {
+            await enableBiometricLoginForCurrentSession();
+        });
+        disableBiometricLoginBtn?.addEventListener('click', async () => {
+            await disableBiometricLoginForCurrentSession();
         });
 
-        document.getElementById('forgotPasswordBtn').addEventListener('click', () => {
+        forgotPasswordBtn.addEventListener('click', () => {
             const resetPanel = document.getElementById('resetPanel');
-            const usernameInput = document.getElementById('loginUsernameInput');
             const resetUsernameInput = document.getElementById('resetUsernameInput');
             resetPanel.style.display = resetPanel.style.display === 'none' ? 'block' : 'none';
             document.getElementById('verifyEmailPanel').style.display = 'none';
             document.getElementById('smtpSettingsPanel').style.display = 'none';
             document.getElementById('deleteAccountPanel').style.display = 'none';
-            resetUsernameInput.value = (usernameInput.value || '').trim();
+            resetUsernameInput.value = (loginUsernameInput.value || '').trim();
             document.getElementById('resetStatusMsg').textContent = '';
         });
 
@@ -11560,6 +11977,10 @@ This error cannot be fixed within this application's code; it requires a configu
 
             const success = await deleteUserAccount(username, password);
             if (success) {
+                if (getRememberedBiometricUsername() === username) {
+                    clearRememberedBiometricUsername();
+                    setBiometricStatusMessage('');
+                }
                 status.style.color = '#27ae60';
                 status.textContent = 'Account deleted. You can now create a fresh account.';
 

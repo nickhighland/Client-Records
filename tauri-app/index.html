@@ -2351,7 +2351,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.64</span>
+                <span class="version-badge">v1.0.65</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2583,48 +2583,57 @@
                  </div>
                  <div class="resizer-y" id="resizer-session-notes"></div>
                  <div id="notesWrapper" class="session-section persistent-notes-section" style="flex-basis: 50%;">
-                     <div class="panel-header collapsible-header" data-target="notesContent" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                         <span>Client Details <span class="collapse-icon">▼</span></span>
-                        <div id="clientDetailsTabGroup" style="display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; min-width: 0;">
-                            <button id="clientDetailsTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-color-primary); font-size: 0.8rem; font-weight: 600; flex: 0 0 72px; min-width: 72px; white-space: nowrap; overflow: visible; text-overflow: clip;">Details</button>
-                            <button id="nextSessionTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 600; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Next Session</button>
+                    <div class="panel-header collapsible-header" data-target="notesContent" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                            <span style="display: flex; flex-direction: column; line-height: 1.02;">
+                                <span>Client</span>
+                                <span>Details</span>
+                            </span>
+                            <span class="collapse-icon">▼</span>
                         </div>
-                     </div>
-                         <div id="notesContent" class="panel-content collapsible-content" style="display: flex; flex-direction: column; min-height: 160px;">
-                         <div id="clientDetailsContent" style="flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px;">
-                             <div style="padding: 12px; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-bg);">
-                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px;">
-                                     <div>
-                                         <div style="font-size: 0.98rem; font-weight: 700;">Contact Information</div>
-                                         <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 2px;">Track multiple phone numbers and email addresses for this client.</div>
-                                     </div>
-                                 </div>
-                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
-                                     <div>
-                                         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
-                                             <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-color-primary);">Phone Numbers</label>
-                                             <button id="addPhoneNumberBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.78rem;">+ Phone</button>
-                                         </div>
-                                         <div id="clientPhoneList" style="display: flex; flex-direction: column; gap: 8px;"></div>
-                                     </div>
-                                     <div>
-                                         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
-                                             <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-color-primary);">Email Addresses</label>
-                                             <button id="addEmailAddressBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.78rem;">+ Email</button>
-                                         </div>
-                                         <div id="clientEmailList" style="display: flex; flex-direction: column; gap: 8px;"></div>
-                                     </div>
-                                 </div>
-                             </div>
-                             <div style="display: flex; flex-direction: column; gap: 6px; min-height: 0;">
-                                 <label for="persistentNotes" style="font-weight: 600; color: var(--text-color-primary); display: block;">Client Details / Notes</label>
-                                 <textarea id="persistentNotes" placeholder="Select a client to enter client details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; min-height:220px; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:vertical;"></textarea>
-                             </div>
-                         </div>
-                         <div id="nextSessionContent" class="hidden" style="flex: 1; overflow: auto;">
-                             <textarea id="nextSessionNotes" placeholder="Select a client to enter next session notes..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; height:100%; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:none;"></textarea>
-                         </div>
-                     </div>
+                       <div id="clientDetailsTabGroup" style="display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; min-width: 0; flex: 1 1 auto;">
+                           <button id="clientDetailsTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-color-primary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Details</button>
+                           <button id="contactTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Contact</button>
+                           <button id="nextSessionTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Next Session</button>
+                       </div>
+                    </div>
+                        <div id="notesContent" class="panel-content collapsible-content" style="display: flex; flex-direction: column; min-height: 160px;">
+                        <div id="clientDetailsContent" style="flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px;">
+                            <div style="display: flex; flex-direction: column; gap: 6px; min-height: 0;">
+                                <label for="persistentNotes" style="font-weight: 600; color: var(--text-color-primary); display: block;">Client Details / Notes</label>
+                                <textarea id="persistentNotes" placeholder="Select a client to enter client details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; min-height:220px; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:vertical;"></textarea>
+                            </div>
+                        </div>
+                        <div id="contactContent" class="hidden" style="flex: 1; overflow: auto;">
+                            <div style="padding: 12px; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-bg);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                    <div>
+                                        <div style="font-size: 0.98rem; font-weight: 700;">Contact Information</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 2px;">Track multiple phone numbers and email addresses for this client.</div>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+                                    <div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-color-primary);">Phone Numbers</label>
+                                            <button id="addPhoneNumberBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.78rem;">+ Phone</button>
+                                        </div>
+                                        <div id="clientPhoneList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                                    </div>
+                                    <div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-color-primary);">Email Addresses</label>
+                                            <button id="addEmailAddressBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.78rem;">+ Email</button>
+                                        </div>
+                                        <div id="clientEmailList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="nextSessionContent" class="hidden" style="flex: 1; overflow: auto;">
+                            <textarea id="nextSessionNotes" placeholder="Select a client to enter next session notes..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; height:100%; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:none;"></textarea>
+                        </div>
+                    </div>
                  </div>
             </div>
 
@@ -3459,8 +3468,10 @@
             const persistentNotesEl = document.getElementById('persistentNotes');
             const nextSessionNotesEl = document.getElementById('nextSessionNotes');
             const clientDetailsTabBtn = document.getElementById('clientDetailsTabBtn');
+            const contactTabBtn = document.getElementById('contactTabBtn');
             const nextSessionTabBtn = document.getElementById('nextSessionTabBtn');
             const clientDetailsContentEl = document.getElementById('clientDetailsContent');
+            const contactContentEl = document.getElementById('contactContent');
             const nextSessionContentEl = document.getElementById('nextSessionContent');
             const clientDiagnosisEl = document.getElementById('clientDiagnosis');
             const sessionInfoEl = document.getElementById('sessionInfo');
@@ -3485,9 +3496,10 @@
             const sessionDurationEl = document.getElementById('sessionDuration');
             const clientDetailsTabGroup = document.getElementById('clientDetailsTabGroup');
             const updateClientDetailsTabLabels = () => {
-                if (!clientDetailsTabBtn || !nextSessionTabBtn || !clientDetailsTabGroup) return;
-                const compactLabels = clientDetailsTabGroup.clientWidth > 0 && clientDetailsTabGroup.clientWidth < 260;
+                if (!clientDetailsTabBtn || !contactTabBtn || !nextSessionTabBtn || !clientDetailsTabGroup) return;
+                const compactLabels = clientDetailsTabGroup.clientWidth > 0 && clientDetailsTabGroup.clientWidth < 340;
                 clientDetailsTabBtn.textContent = 'Details';
+                contactTabBtn.textContent = 'Contact';
                 nextSessionTabBtn.textContent = compactLabels ? 'Next' : 'Next Session';
             };
             if (clientDetailsTabGroup && typeof ResizeObserver !== 'undefined') {
@@ -3662,15 +3674,29 @@
             let activeNotesTab = 'clientDetails';
 
             const updateNotesTabUI = () => {
-                const showClientDetails = activeNotesTab !== 'nextSession';
-                clientDetailsTabBtn.classList.toggle('active', showClientDetails);
-                nextSessionTabBtn.classList.toggle('active', !showClientDetails);
-                clientDetailsContentEl.classList.toggle('hidden', !showClientDetails);
-                nextSessionContentEl.classList.toggle('hidden', showClientDetails);
-                clientDetailsTabBtn.style.background = showClientDetails ? 'var(--accent-color, #007aff)' : 'transparent';
-                clientDetailsTabBtn.style.color = showClientDetails ? '#ffffff' : 'var(--text-color-secondary)';
-                nextSessionTabBtn.style.background = showClientDetails ? 'transparent' : 'var(--accent-color, #007aff)';
-                nextSessionTabBtn.style.color = showClientDetails ? 'var(--text-color-secondary)' : '#ffffff';
+                const activeTabMap = {
+                    clientDetails: {
+                        button: clientDetailsTabBtn,
+                        content: clientDetailsContentEl
+                    },
+                    contact: {
+                        button: contactTabBtn,
+                        content: contactContentEl
+                    },
+                    nextSession: {
+                        button: nextSessionTabBtn,
+                        content: nextSessionContentEl
+                    }
+                };
+
+                Object.entries(activeTabMap).forEach(([tabKey, { button, content }]) => {
+                    if (!button || !content) return;
+                    const isActive = activeNotesTab === tabKey;
+                    button.classList.toggle('active', isActive);
+                    content.classList.toggle('hidden', !isActive);
+                    button.style.background = isActive ? 'var(--accent-color, #007aff)' : 'transparent';
+                    button.style.color = isActive ? '#ffffff' : 'var(--text-color-secondary)';
+                });
             };
             let sessionInstructions = '';
             let preferredPronouns = '';
@@ -7595,14 +7621,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             addEmailAddressBtn?.addEventListener('click', () => {
                 addClientContactEntry('emails');
             });
-            clientDetailsContentEl.addEventListener('input', (e) => {
+            contactContentEl.addEventListener('input', (e) => {
                 if (!e.target.matches('.client-contact-input')) return;
                 const type = e.target.dataset.contactType;
                 const index = parseInt(e.target.dataset.contactIndex || '-1', 10);
                 if (!type || index < 0) return;
                 updateClientContactEntry(type, index, e.target.value);
             });
-            clientDetailsContentEl.addEventListener('click', (e) => {
+            contactContentEl.addEventListener('click', (e) => {
                 const removeBtn = e.target.closest('.client-contact-remove-btn');
                 if (!removeBtn) return;
                 const type = removeBtn.dataset.contactType;
@@ -7620,6 +7646,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             clientDetailsTabBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 activeNotesTab = 'clientDetails';
+                updateNotesTabUI();
+            });
+            contactTabBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                activeNotesTab = 'contact';
                 updateNotesTabUI();
             });
             nextSessionTabBtn.addEventListener('click', (e) => {

@@ -2351,7 +2351,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.63</span>
+                <span class="version-badge">v1.0.64</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -2591,8 +2591,35 @@
                         </div>
                      </div>
                          <div id="notesContent" class="panel-content collapsible-content" style="display: flex; flex-direction: column; min-height: 160px;">
-                         <div id="clientDetailsContent" style="flex: 1; overflow: auto;">
-                             <textarea id="persistentNotes" placeholder="Select a client to enter client details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; height:100%; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:none;"></textarea>
+                         <div id="clientDetailsContent" style="flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px;">
+                             <div style="padding: 12px; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-bg);">
+                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                     <div>
+                                         <div style="font-size: 0.98rem; font-weight: 700;">Contact Information</div>
+                                         <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 2px;">Track multiple phone numbers and email addresses for this client.</div>
+                                     </div>
+                                 </div>
+                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+                                     <div>
+                                         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                                             <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-color-primary);">Phone Numbers</label>
+                                             <button id="addPhoneNumberBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.78rem;">+ Phone</button>
+                                         </div>
+                                         <div id="clientPhoneList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                                     </div>
+                                     <div>
+                                         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                                             <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-color-primary);">Email Addresses</label>
+                                             <button id="addEmailAddressBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.78rem;">+ Email</button>
+                                         </div>
+                                         <div id="clientEmailList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                                     </div>
+                                 </div>
+                             </div>
+                             <div style="display: flex; flex-direction: column; gap: 6px; min-height: 0;">
+                                 <label for="persistentNotes" style="font-weight: 600; color: var(--text-color-primary); display: block;">Client Details / Notes</label>
+                                 <textarea id="persistentNotes" placeholder="Select a client to enter client details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; min-height:220px; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:vertical;"></textarea>
+                             </div>
                          </div>
                          <div id="nextSessionContent" class="hidden" style="flex: 1; overflow: auto;">
                              <textarea id="nextSessionNotes" placeholder="Select a client to enter next session notes..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; height:100%; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:none;"></textarea>
@@ -3391,6 +3418,10 @@
         const loginBtn = document.getElementById('loginBtn');
         const loginErrorMsg = document.getElementById('loginErrorMsg');
         const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+        const clientPhoneListEl = document.getElementById('clientPhoneList');
+        const clientEmailListEl = document.getElementById('clientEmailList');
+        const addPhoneNumberBtn = document.getElementById('addPhoneNumberBtn');
+        const addEmailAddressBtn = document.getElementById('addEmailAddressBtn');
         const biometricLoginPanel = document.getElementById('biometricLoginPanel');
         const biometricLoginBtn = document.getElementById('biometricLoginBtn');
         const biometricLoginHint = document.getElementById('biometricLoginHint');
@@ -3753,6 +3784,51 @@
             const findAppointment = (client, id) => client?.appointments.find(a => a.id === id);
             const findNote = (client, id) => client?.notes?.find(n => n.id === id);
             const findIntakeSession = (client, id) => client?.intakeSessions?.find(i => i.id === id);
+            const normalizeClientContactEntries = (entries) => {
+                if (Array.isArray(entries)) {
+                    return entries.map(entry => typeof entry === 'string' ? entry : String(entry ?? ''));
+                }
+                if (typeof entries === 'string') {
+                    return entries.trim() ? [entries.trim()] : [];
+                }
+                return [];
+            };
+            const ensureClientContactInfo = (client) => {
+                if (!client || typeof client !== 'object') {
+                    return { phones: [], emails: [] };
+                }
+                if (!client.contactInfo || typeof client.contactInfo !== 'object') {
+                    client.contactInfo = {};
+                }
+                if (!Array.isArray(client.contactInfo.phones)) {
+                    client.contactInfo.phones = normalizeClientContactEntries(client.phoneNumbers ?? client.phone ?? []);
+                }
+                if (!Array.isArray(client.contactInfo.emails)) {
+                    client.contactInfo.emails = normalizeClientContactEntries(client.emailAddresses ?? client.email ?? []);
+                }
+                client.contactInfo.phones = normalizeClientContactEntries(client.contactInfo.phones);
+                client.contactInfo.emails = normalizeClientContactEntries(client.contactInfo.emails);
+                return client.contactInfo;
+            };
+            const getSelectedAppointmentContext = () => {
+                const client = findClient(selectedClientId);
+                const appointment = findAppointment(client, selectedAppointmentId);
+                if (!client || !appointment) return null;
+                return { clientId: client.id, appointmentId: appointment.id, appointment };
+            };
+            const getAppointmentFromContext = (appointmentContext) => {
+                if (!appointmentContext) return null;
+                if (appointmentContext.appointment) return appointmentContext.appointment;
+                const client = findClient(appointmentContext.clientId);
+                return findAppointment(client, appointmentContext.appointmentId) || null;
+            };
+            const isCurrentAppointmentContext = (appointmentContext) => {
+                if (!appointmentContext) return false;
+                return selectedClientId === appointmentContext.clientId
+                    && selectedAppointmentId === appointmentContext.appointmentId
+                    && !selectedNoteId
+                    && !selectedIntakeId;
+            };
 
             const normalizeClientData = () => {
                 if (!Array.isArray(data.clients)) data.clients = [];
@@ -3773,6 +3849,7 @@
                     if (!Array.isArray(client.notes)) client.notes = [];
                     if (!Array.isArray(client.intakeSessions)) client.intakeSessions = [];
                     if (!Array.isArray(client.goals)) client.goals = [];
+                    ensureClientContactInfo(client);
                     if (typeof client.persistentInstructions !== 'string') client.persistentInstructions = '';
                     if (typeof client.nextSessionNotes !== 'string') client.nextSessionNotes = '';
                     if (!client.preferredPronouns || typeof client.preferredPronouns !== 'object') {
@@ -5029,7 +5106,9 @@
                     setSoapActionButtonContent(organizeObjectiveBtn, 'Organize', isObjectiveOrganizeCompleted(appointment));
                 }
 
-                const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
+                const generateInterventionsBtn = isCurrentAppointmentContext(resolvedAppointmentContext)
+                    ? document.getElementById('generateInterventionsBtn')
+                    : null;
                 if (generateInterventionsBtn) {
                     generateInterventionsBtn.disabled = !objectiveText;
                     setSoapActionButtonContent(generateInterventionsBtn, 'Read', isObjectiveReadCompleted(appointment));
@@ -6196,6 +6275,133 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 appointmentListEl.innerHTML = `${appointmentsHtml}${intakeHtml}${notesHtml}`;
             };
 
+            const buildContactEmptyState = (message) => {
+                const emptyState = document.createElement('div');
+                emptyState.style.fontSize = '0.8rem';
+                emptyState.style.color = 'var(--text-color-secondary)';
+                emptyState.style.padding = '10px 12px';
+                emptyState.style.border = '1px dashed var(--panel-border)';
+                emptyState.style.borderRadius = '8px';
+                emptyState.style.background = 'var(--input-bg)';
+                emptyState.textContent = message;
+                return emptyState;
+            };
+
+            const renderClientContactFields = (client) => {
+                if (!clientPhoneListEl || !clientEmailListEl) return;
+
+                const disabled = !client;
+                const contactInfo = client ? ensureClientContactInfo(client) : { phones: [], emails: [] };
+
+                const renderContactList = (listEl, entries, config) => {
+                    listEl.innerHTML = '';
+
+                    if (!client) {
+                        listEl.appendChild(buildContactEmptyState(config.selectPrompt));
+                        return;
+                    }
+
+                    if (!entries.length) {
+                        listEl.appendChild(buildContactEmptyState(config.emptyPrompt));
+                        return;
+                    }
+
+                    entries.forEach((entry, index) => {
+                        const row = document.createElement('div');
+                        row.style.display = 'flex';
+                        row.style.alignItems = 'center';
+                        row.style.gap = '8px';
+
+                        const input = document.createElement('input');
+                        input.type = config.inputType;
+                        input.className = 'setting-input client-contact-input';
+                        input.placeholder = config.placeholder;
+                        input.value = entry;
+                        input.disabled = disabled;
+                        input.dataset.contactType = config.type;
+                        input.dataset.contactIndex = String(index);
+                        input.style.margin = '0';
+                        input.style.flex = '1 1 auto';
+                        input.style.minWidth = '0';
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.className = 'btn client-contact-remove-btn';
+                        removeBtn.textContent = 'Remove';
+                        removeBtn.disabled = disabled;
+                        removeBtn.dataset.contactType = config.type;
+                        removeBtn.dataset.contactIndex = String(index);
+                        removeBtn.style.padding = '6px 10px';
+                        removeBtn.style.flex = '0 0 auto';
+                        removeBtn.style.background = 'linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%)';
+
+                        row.appendChild(input);
+                        row.appendChild(removeBtn);
+                        listEl.appendChild(row);
+                    });
+                };
+
+                renderContactList(clientPhoneListEl, contactInfo.phones, {
+                    type: 'phones',
+                    inputType: 'tel',
+                    placeholder: 'Enter phone number',
+                    selectPrompt: 'Select a client to add phone numbers.',
+                    emptyPrompt: 'No phone numbers saved yet.',
+                });
+
+                renderContactList(clientEmailListEl, contactInfo.emails, {
+                    type: 'emails',
+                    inputType: 'email',
+                    placeholder: 'Enter email address',
+                    selectPrompt: 'Select a client to add email addresses.',
+                    emptyPrompt: 'No email addresses saved yet.',
+                });
+
+                if (addPhoneNumberBtn) addPhoneNumberBtn.disabled = disabled;
+                if (addEmailAddressBtn) addEmailAddressBtn.disabled = disabled;
+            };
+
+            const addClientContactEntry = (type) => {
+                const client = findClient(selectedClientId);
+                if (!client) return;
+
+                const contactInfo = ensureClientContactInfo(client);
+                const listKey = type === 'emails' ? 'emails' : 'phones';
+                contactInfo[listKey].push('');
+                markDirty();
+                renderDetails();
+
+                setTimeout(() => {
+                    const input = document.querySelector(`.client-contact-input[data-contact-type="${listKey}"][data-contact-index="${contactInfo[listKey].length - 1}"]`);
+                    input?.focus();
+                }, 0);
+            };
+
+            const updateClientContactEntry = (type, index, value) => {
+                const client = findClient(selectedClientId);
+                if (!client) return;
+
+                const contactInfo = ensureClientContactInfo(client);
+                const listKey = type === 'emails' ? 'emails' : 'phones';
+                if (!Array.isArray(contactInfo[listKey]) || index < 0 || index >= contactInfo[listKey].length) return;
+
+                contactInfo[listKey][index] = value;
+                markDirty();
+            };
+
+            const removeClientContactEntry = (type, index) => {
+                const client = findClient(selectedClientId);
+                if (!client) return;
+
+                const contactInfo = ensureClientContactInfo(client);
+                const listKey = type === 'emails' ? 'emails' : 'phones';
+                if (!Array.isArray(contactInfo[listKey]) || index < 0 || index >= contactInfo[listKey].length) return;
+
+                contactInfo[listKey].splice(index, 1);
+                markDirty();
+                renderDetails();
+            };
+
             const renderDetails = () => {
                 const client = findClient(selectedClientId);
                 const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
@@ -6210,6 +6416,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 nextSessionNotesEl.placeholder = client ? "Enter next session notes for this client..." : "Select a client to enter next session notes...";
                 updateNotesTabUI();
                 updateClientDetailsTabLabels();
+                renderClientContactFields(client);
 
                 clientDiagnosisEl.disabled = !client;
                 clientDiagnosisEl.value = client ? client.diagnosis || '' : '';
@@ -6790,6 +6997,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const newClient = {
                     id: crypto.randomUUID(),
                     name: name.trim(),
+                    contactInfo: {
+                        phones: [],
+                        emails: []
+                    },
                     persistentNotes: '',
                     nextSessionNotes: '',
                     persistentInstructions: '',
@@ -7377,6 +7588,27 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                      client.persistentNotes = persistentNotesEl.value;
                      markDirty();
                  }
+            });
+            addPhoneNumberBtn?.addEventListener('click', () => {
+                addClientContactEntry('phones');
+            });
+            addEmailAddressBtn?.addEventListener('click', () => {
+                addClientContactEntry('emails');
+            });
+            clientDetailsContentEl.addEventListener('input', (e) => {
+                if (!e.target.matches('.client-contact-input')) return;
+                const type = e.target.dataset.contactType;
+                const index = parseInt(e.target.dataset.contactIndex || '-1', 10);
+                if (!type || index < 0) return;
+                updateClientContactEntry(type, index, e.target.value);
+            });
+            clientDetailsContentEl.addEventListener('click', (e) => {
+                const removeBtn = e.target.closest('.client-contact-remove-btn');
+                if (!removeBtn) return;
+                const type = removeBtn.dataset.contactType;
+                const index = parseInt(removeBtn.dataset.contactIndex || '-1', 10);
+                if (!type || index < 0) return;
+                removeClientContactEntry(type, index);
             });
             nextSessionNotesEl.addEventListener('input', () => {
                  const client = findClient(selectedClientId);
@@ -8144,8 +8376,8 @@ Requirements:
              };
 
             const organizeObjectiveContent = async () => {
-                const client = findClient(selectedClientId);
-                const appointment = findAppointment(client, selectedAppointmentId);
+                const appointmentContext = getSelectedAppointmentContext();
+                const appointment = getAppointmentFromContext(appointmentContext);
                 if (!appointment) return;
 
                 const objectiveText = (appointment.soap?.o || '').trim();
@@ -8177,6 +8409,7 @@ Requirements:
                     markDirty();
                     await generateObjectiveInterventions({
                         objectiveTextOverride: appointment.soap.o,
+                        appointmentContext,
                         renderAfter: false,
                         suppressEmptyAlert: true
                     });
@@ -8188,13 +8421,15 @@ Requirements:
                         organizeObjectiveBtn.disabled = false;
                         setSoapActionButtonContent(organizeObjectiveBtn, 'Organize', isObjectiveOrganizeCompleted(appointment));
                     }
-                    renderSoap();
+                    if (isCurrentAppointmentContext(appointmentContext)) {
+                        renderSoap();
+                    }
                 }
             };
 
-            const generateObjectiveInterventions = async ({ objectiveTextOverride = null, renderAfter = true, suppressEmptyAlert = false } = {}) => {
-                const client = findClient(selectedClientId);
-                const appointment = findAppointment(client, selectedAppointmentId);
+            const generateObjectiveInterventions = async ({ objectiveTextOverride = null, appointmentContext = null, renderAfter = true, suppressEmptyAlert = false } = {}) => {
+                const resolvedAppointmentContext = appointmentContext || getSelectedAppointmentContext();
+                const appointment = getAppointmentFromContext(resolvedAppointmentContext);
                 if (!appointment) return false;
 
                 const objectiveText = String(objectiveTextOverride ?? appointment.soap?.o ?? '').trim();
@@ -8202,7 +8437,9 @@ Requirements:
                     if (!suppressEmptyAlert) {
                         alert('Please enter Objective content before generating interventions.');
                     }
-                    if (renderAfter) renderSoap();
+                    if (renderAfter && isCurrentAppointmentContext(resolvedAppointmentContext)) {
+                        renderSoap();
+                    }
                     return false;
                 }
 
@@ -8238,9 +8475,9 @@ Requirements:
                         generateInterventionsBtn.disabled = false;
                         setSoapActionButtonContent(generateInterventionsBtn, 'Read', isObjectiveReadCompleted(appointment));
                     }
-                    if (renderAfter) {
+                    if (renderAfter && isCurrentAppointmentContext(resolvedAppointmentContext)) {
                         renderSoap();
-                    } else {
+                    } else if (!renderAfter && isCurrentAppointmentContext(resolvedAppointmentContext)) {
                         refreshObjectiveActionButtons(appointment);
                     }
                 }

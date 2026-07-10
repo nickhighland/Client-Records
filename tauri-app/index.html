@@ -2351,7 +2351,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.66</span>
+                <span class="version-badge">v1.0.67</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -5132,7 +5132,9 @@
                     setSoapActionButtonContent(organizeObjectiveBtn, 'Organize', isObjectiveOrganizeCompleted(appointment));
                 }
 
-                const generateInterventionsBtn = isCurrentAppointmentContext(resolvedAppointmentContext)
+                const selectedAppointmentContext = getSelectedAppointmentContext();
+                const selectedAppointment = getAppointmentFromContext(selectedAppointmentContext);
+                const generateInterventionsBtn = selectedAppointment && appointment && selectedAppointment.id === appointment.id
                     ? document.getElementById('generateInterventionsBtn')
                     : null;
                 if (generateInterventionsBtn) {
@@ -8028,6 +8030,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const sectionKey = type.toLowerCase();
 
                 const textarea = document.getElementById(`soap${type.toUpperCase()}`);
+                const sectionViewportOffset = textarea
+                    ? textarea.offsetTop - soapPanelContent.scrollTop
+                    : null;
                 const isReplacement = typeof suggestionData === 'object' && suggestionData.original && suggestionData.suggested;
                 let textToAdd = '';
 
@@ -8085,10 +8090,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
                 refreshObjectiveSuggestionInterventionMatches(appointment);
                 markDirty();
-                renderSoap(); 
+                renderSoap();
 
-                // Restore scroll position
-                soapPanelContent.scrollTop = scrollTop;
+                requestAnimationFrame(() => {
+                    const rerenderedTextarea = document.getElementById(`soap${type.toUpperCase()}`);
+                    if (rerenderedTextarea && sectionViewportOffset !== null) {
+                        soapPanelContent.scrollTop = Math.max(0, rerenderedTextarea.offsetTop - sectionViewportOffset);
+                        return;
+                    }
+                    soapPanelContent.scrollTop = scrollTop;
+                });
             };
 
 

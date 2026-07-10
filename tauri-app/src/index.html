@@ -2351,7 +2351,7 @@
         <div class="header">
             <h1>
                 Client Data Organizer
-                <span class="version-badge">v1.0.65</span>
+                <span class="version-badge">v1.0.66</span>
             </h1>
             <div class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
@@ -6195,7 +6195,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             <button class="action-btn archive-btn" title="Archive Client">A</button>
                             <button class="action-btn delete-btn" title="Delete Client">×</button>
                         </div>
-                        <button class="today-session-btn" type="button" title="Move to bottom of Today's Sessions">T</button>
+                        <button class="today-session-btn" type="button" title="${listType === 'today' ? 'Move back to Main Bank' : "Move to bottom of Today's Sessions"}" aria-label="${listType === 'today' ? 'Move back to Main Bank' : "Move to bottom of Today's Sessions"}">${listType === 'today' ? 'M' : 'T'}</button>
                     </div>
                 `;
 
@@ -7160,7 +7160,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const clientId = clientItem.dataset.clientId;
 
                 if (e.target.closest('.today-session-btn')) {
-                    moveClientToTodaySessionsEnd(clientId);
+                    if (isClientInTodaySessions(clientId)) {
+                        removeClientFromTodaySessions(clientId);
+                    } else {
+                        moveClientToTodaySessionsEnd(clientId);
+                    }
                     markDirty();
                     renderClients();
                 } else if (e.target.closest('.delete-btn')) {

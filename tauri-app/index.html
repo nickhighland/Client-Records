@@ -2444,7 +2444,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge">v2.0.00</span>
+                    <span class="version-badge">v2.0.01</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -6645,6 +6645,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 sessionTimerWrapper.style.display = appointment ? 'block' : 'none';
                 if (appointment) {
                     renderSessionTimer(appointment);
+                } else {
+                    clearInterval(sessionTimerInterval);
+                    sessionTimerInterval = null;
+                    sessionDurationEl.textContent = '00:00';
+                    startTimerBtn.disabled = true;
+                    stopTimerBtn.disabled = true;
                 }
 
                 renderGoals();
@@ -6706,6 +6712,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             
             const renderSessionTimer = (appointment) => {
                 clearInterval(sessionTimerInterval);
+                sessionTimerInterval = null;
+
+                const isRunning = !!appointment.startTime && !appointment.endTime;
+                startTimerBtn.disabled = isRunning;
+                stopTimerBtn.disabled = !isRunning;
 
                 if (appointment.startTime) {
                     startTimerBtn.textContent = `Start: ${new Date(appointment.startTime).toLocaleTimeString()}`;
@@ -6727,6 +6738,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     
                     const start = new Date(appointment.startTime);
                     const end = appointment.endTime ? new Date(appointment.endTime) : new Date();
+
+                    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+                        sessionDurationEl.textContent = '00:00';
+                        return;
+                    }
                     
                     let totalSeconds = Math.floor((end - start) / 1000);
                     if (totalSeconds < 0) totalSeconds = 0;
@@ -6744,6 +6760,24 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     sessionTimerInterval = setInterval(updateDuration, 1000);
                 }
             };
+
+            const refreshSelectedSessionTimer = () => {
+                const client = findClient(selectedClientId);
+                const appointment = findAppointment(client, selectedAppointmentId);
+                if (appointment) {
+                    renderSessionTimer(appointment);
+                    return;
+                }
+
+                clearInterval(sessionTimerInterval);
+                sessionTimerInterval = null;
+            };
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) refreshSelectedSessionTimer();
+            });
+            window.addEventListener('focus', refreshSelectedSessionTimer);
+            window.addEventListener('pageshow', refreshSelectedSessionTimer);
 
             const renderSoap = () => {
                 const client = findClient(selectedClientId);
@@ -6949,6 +6983,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 selectedNoteId = null;
                 selectedIntakeId = null;
                 clearInterval(sessionTimerInterval); // Stop timer when switching clients
+                sessionTimerInterval = null;
                 fullRender();
             };
 
@@ -9670,6 +9705,7 @@ This error cannot be fixed within this application's code; it requires a configu
                     
                     isDirty = false;
                     await persistEncryptedAutoBackup();
+                    return true;
                 } catch (e) {
                     console.error("Failed to save data", e);
                     updateSaveStatus('Save failed!', false, 3000);
@@ -9677,6 +9713,7 @@ This error cannot be fixed within this application's code; it requires a configu
                     if (e.name === 'QuotaExceededError') {
                         alert('Failed to save data: Storage quota exceeded. Please export your data to a file and consider clearing some old records.');
                     }
+                    return false;
                 }
             };
 
@@ -9776,9 +9813,10 @@ This error cannot be fixed within this application's code; it requires a configu
             let saveTimeout;
             const debouncedAutoSave = () => {
                 clearTimeout(saveTimeout);
-                saveTimeout = setTimeout(() => {
-                    saveDataToLocalStorage();
-                    updateSaveStatus('Auto-saved', true, 2000);
+                saveTimeout = setTimeout(async () => {
+                    if (await saveDataToLocalStorage()) {
+                        updateSaveStatus('Auto-saved', true, 2000);
+                    }
                 }, 1500);
             };
 
@@ -11130,25 +11168,71 @@ This error cannot be fixed within this application's code; it requires a configu
             };
             apiProviderSelect.addEventListener('change', toggleProviderSettings);
 
-            startTimerBtn.addEventListener('click', () => {
+            const findRunningAppointmentContexts = (excludedAppointmentId = null) => {
+                const runningContexts = [];
+                const allClients = [...(data.clients || []), ...(data.archivedClients || [])];
+                for (const client of allClients) {
+                    (client.appointments || []).filter(candidate => (
+                        candidate.id !== excludedAppointmentId
+                        && candidate.startTime
+                        && !candidate.endTime
+                    )).forEach(appointment => runningContexts.push({ client, appointment }));
+                }
+                return runningContexts;
+            };
+
+            startTimerBtn.addEventListener('click', async () => {
                 const appointment = findAppointment(findClient(selectedClientId), selectedAppointmentId);
-                if (appointment) {
-                    appointment.startTime = new Date().toISOString();
-                    appointment.endTime = null; // Clear end time if starting again
-                    delete appointment.auditCheck;
-                    markDirty();
-                    renderSessionTimer(appointment);
+                if (!appointment || (appointment.startTime && !appointment.endTime)) return;
+
+                if (appointment.startTime && appointment.endTime) {
+                    const shouldRestart = confirm('Restart this completed timer? This will replace its recorded start and end times.');
+                    if (!shouldRestart) return;
+                }
+
+                const runningContexts = findRunningAppointmentContexts(appointment.id);
+                const now = new Date().toISOString();
+                if (runningContexts.length > 0) {
+                    const firstRunningContext = runningContexts[0];
+                    const appointmentDate = new Date(firstRunningContext.appointment.date).toLocaleDateString();
+                    const runningDescription = runningContexts.length === 1
+                        ? `${firstRunningContext.client.name} (${appointmentDate})`
+                        : `${runningContexts.length} other appointments`;
+                    const shouldSwitch = confirm(
+                        `A timer is already running for ${runningDescription}. Stop ${runningContexts.length === 1 ? 'it' : 'them'} now and start this timer?`
+                    );
+                    if (!shouldSwitch) return;
+
+                    runningContexts.forEach(({ appointment: runningAppointment }) => {
+                        runningAppointment.endTime = now;
+                        delete runningAppointment.auditCheck;
+                    });
+                }
+
+                appointment.startTime = now;
+                appointment.endTime = null;
+                delete appointment.auditCheck;
+                markDirty();
+                renderSessionTimer(appointment);
+                clearTimeout(saveTimeout);
+                if (await saveDataToLocalStorage()) {
+                    updateSaveStatus('Timer saved', true, 2000);
                 }
             });
 
-            stopTimerBtn.addEventListener('click', () => {
+            stopTimerBtn.addEventListener('click', async () => {
                 const appointment = findAppointment(findClient(selectedClientId), selectedAppointmentId);
-                if (appointment && appointment.startTime) { // Can only stop if started
+                if (appointment && appointment.startTime && !appointment.endTime) {
                     appointment.endTime = new Date().toISOString();
                     clearInterval(sessionTimerInterval);
+                    sessionTimerInterval = null;
                     delete appointment.auditCheck;
                     markDirty();
                     renderSessionTimer(appointment);
+                    clearTimeout(saveTimeout);
+                    if (await saveDataToLocalStorage()) {
+                        updateSaveStatus('Timer saved', true, 2000);
+                    }
                 }
             });
 
@@ -11585,6 +11669,7 @@ This error cannot be fixed within this application's code; it requires a configu
         // --- Login and Auto-Lock Logic ---
         let inactivityTimer;
         let countdownInterval = null;
+        let countdownDeadline = null;
         const COUNTDOWN_SECONDS = 60; // seconds of warning before locking
 
         function getInactivityLimit() {
@@ -11597,6 +11682,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 clearInterval(countdownInterval);
                 countdownInterval = null;
             }
+            countdownDeadline = null;
             const countdown = document.getElementById('autolockCountdown');
             const select    = document.getElementById('autolockSelect');
             if (countdown) countdown.style.display = 'none';
@@ -11609,7 +11695,7 @@ This error cannot be fixed within this application's code; it requires a configu
             if (select)    select.style.display    = 'none';
             if (countdown) countdown.style.display = '';
 
-            let remaining = COUNTDOWN_SECONDS;
+            countdownDeadline = Date.now() + (COUNTDOWN_SECONDS * 1000);
 
             function formatTime(secs) {
                 const m = Math.floor(secs / 60);
@@ -11617,17 +11703,31 @@ This error cannot be fixed within this application's code; it requires a configu
                 return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `0:${String(s).padStart(2, '0')}`;
             }
 
-            if (countdown) countdown.textContent = `Locking in ${formatTime(remaining)}…`;
-
-            countdownInterval = setInterval(() => {
-                remaining -= 1;
+            const updateCountdown = () => {
+                const remaining = Math.max(0, Math.ceil((countdownDeadline - Date.now()) / 1000));
                 if (countdown) countdown.textContent = `Locking in ${formatTime(remaining)}…`;
                 if (remaining <= 0) {
                     stopCountdown();
                     lockApp();
                 }
-            }, 1000);
+            };
+
+            updateCountdown();
+            countdownInterval = setInterval(updateCountdown, 1000);
         }
+
+        const reconcileCountdownAfterResume = () => {
+            if (!document.hidden && countdownDeadline !== null) {
+                const remaining = Math.max(0, Math.ceil((countdownDeadline - Date.now()) / 1000));
+                if (remaining <= 0) {
+                    stopCountdown();
+                    lockApp();
+                }
+            }
+        };
+        document.addEventListener('visibilitychange', reconcileCountdownAfterResume);
+        window.addEventListener('focus', reconcileCountdownAfterResume);
+        window.addEventListener('pageshow', reconcileCountdownAfterResume);
 
         function setBiometricStatusMessage(message = '', color = 'var(--text-color-secondary)') {
             if (!biometricLoginStatusMsg) return;

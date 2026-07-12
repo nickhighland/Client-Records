@@ -26,6 +26,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_ref || inputs.release_tag || github.ref }}
+          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -54,7 +55,7 @@ jobs:
         with:
           projectPath: ./tauri-app
           tagName: ${{ inputs.release_tag || github.ref_name }}
-          releaseName: 'Client Records ${{ inputs.release_tag || github.ref_name }}'
+          releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: false
           prerelease: false
@@ -69,8 +70,8 @@ jobs:
           TAG_NAME="${{ inputs.release_tag || github.ref_name }}"
           VERSION="${TAG_NAME#v}"
           BUNDLE_DIR="$GITHUB_WORKSPACE/tauri-app/src-tauri/target/release/bundle/macos"
-          APP_NAME="Client Records.app"
-          TARGZ="Client.Records_${VERSION}_aarch64.app.tar.gz"
+          APP_NAME="SmartEMR.app"
+          TARGZ="SmartEMR_${VERSION}_aarch64.app.tar.gz"
           KEY_FILE="$RUNNER_TEMP/tauri-signing.key"
 
           printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" > "$KEY_FILE"

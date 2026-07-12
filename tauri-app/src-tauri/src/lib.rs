@@ -222,9 +222,9 @@ async fn send_password_reset_email(args: ResetEmailArgs) -> Result<(), String> {
         let message = Message::builder()
             .from(from_email.parse().map_err(|err| format!("Invalid from email: {err}"))?)
             .to(to_email.parse().map_err(|err| format!("Invalid recipient email: {err}"))?)
-            .subject("Client Records Password Reset Code")
+            .subject("SmartEMR Password Reset Code")
             .body(format!(
-                "Your Client Records password reset code is: {}\n\nThis code expires in 10 minutes.\nIf you did not request this, you can ignore this email.",
+                "Your SmartEMR password reset code is: {}\n\nThis code expires in 10 minutes.\nIf you did not request this, you can ignore this email.",
                 code
             ))
             .map_err(|err| format!("Failed to compose email: {err}"))?;
@@ -286,9 +286,9 @@ async fn send_email_verification_email(args: ResetEmailArgs) -> Result<(), Strin
         let message = Message::builder()
             .from(from_email.parse().map_err(|err| format!("Invalid from email: {err}"))?)
             .to(to_email.parse().map_err(|err| format!("Invalid recipient email: {err}"))?)
-            .subject("Client Records Email Verification Code")
+            .subject("SmartEMR Email Verification Code")
             .body(format!(
-                "Your Client Records email verification code is: {}\n\nThis code expires in 10 minutes.",
+                "Your SmartEMR email verification code is: {}\n\nThis code expires in 10 minutes.",
                 code
             ))
             .map_err(|err| format!("Failed to compose email: {err}"))?;
@@ -348,7 +348,7 @@ async fn send_smtp_test_email(args: SmtpTestArgs) -> Result<(), String> {
         let message = Message::builder()
             .from(from_email.parse().map_err(|err| format!("Invalid from email: {err}"))?)
             .to(to_email.parse().map_err(|err| format!("Invalid recipient email: {err}"))?)
-            .subject("Client Records SMTP Test")
+            .subject("SmartEMR SMTP Test")
             .body("SMTP test successful. Your recovery email configuration is working.".to_string())
             .map_err(|err| format!("Failed to compose test email: {err}"))?;
 

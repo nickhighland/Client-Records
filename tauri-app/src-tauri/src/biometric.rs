@@ -138,7 +138,7 @@ mod macos {
         unsafe {
             context.evaluatePolicy_localizedReason_reply(
                 LAPolicy::DeviceOwnerAuthenticationWithBiometrics,
-                ns_string!("unlock Client Records"),
+                ns_string!("unlock SmartEMR"),
                 &reply,
             );
         }
@@ -181,7 +181,7 @@ mod macos {
         let mut options =
             PasswordOptions::new_generic_password(BIOMETRIC_SERVICE_NAME, &normalized_username);
         options.set_access_synchronized(Some(false));
-        options.set_label("Client Records Touch ID Login");
+        options.set_label("SmartEMR Touch ID Login");
         options.set_comment("Launch login secret unlocked after a Touch ID prompt.");
 
         set_generic_password_options(secret.as_bytes(), options)

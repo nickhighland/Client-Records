@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Local build + publish script for Client Records (macOS Apple Silicon only)
+# Local build + publish script for SmartEMR (macOS Apple Silicon only)
 # Usage: ./publish.sh <version>
 # Example: ./publish.sh 1.0.8
 
@@ -21,7 +21,7 @@ fi
 VERSION="$1"
 TAG="v$VERSION"
 
-echo "==> Publishing Client Records $TAG"
+echo "==> Publishing SmartEMR $TAG"
 
 # --- Check prerequisites ---
 command -v gh >/dev/null 2>&1 || { echo "ERROR: gh CLI not installed. Run: brew install gh"; exit 1; }
@@ -48,7 +48,7 @@ for f in ['src-tauri/tauri.conf.json', 'package.json']:
 sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
 echo "  Updated src-tauri/Cargo.toml"
 
-# Update version displayed next to "Client Data Organizer" in all HTML files
+# Update version displayed next to "SmartEMR" in all HTML files
 echo "==> Updating version in HTML files..."
 for f in \
   "$TAURI_DIR/index.html" \
@@ -59,7 +59,7 @@ for f in \
     # New header markup uses <span class="version-badge">vX.Y.Z</span>
     sed -E -i '' "s|(<span[^>]*class=\"version-badge\"[^>]*>)v[0-9][^<]*(</span>)|\\1v${VERSION}\\2|g" "$f"
     # Legacy header markup fallback
-    sed -i '' "s|Client Data Organizer <span[^>]*>v[0-9][^<]*</span>|Client Data Organizer <span style=\"font-size: 0.8rem; font-weight: normal; vertical-align: middle;\">v${VERSION}</span>|g" "$f"
+    sed -i '' "s|SmartEMR <span[^>]*>v[0-9][^<]*</span>|SmartEMR <span style=\"font-size: 0.8rem; font-weight: normal; vertical-align: middle;\">v${VERSION}</span>|g" "$f"
     echo "  Updated $f"
   fi
 done
@@ -72,9 +72,9 @@ npm run tauri build
 
 BUNDLE_DIR="src-tauri/target/release/bundle/macos"
 DMG_DIR="src-tauri/target/release/bundle/dmg"
-APP_NAME="Client Records.app"
-TARGZ="Client.Records_${VERSION}_aarch64.app.tar.gz"
-DMG="Client Records_${VERSION}_aarch64.dmg"
+APP_NAME="SmartEMR.app"
+TARGZ="SmartEMR_${VERSION}_aarch64.app.tar.gz"
+DMG="SmartEMR_${VERSION}_aarch64.dmg"
 
 # --- Create updater bundle ---
 echo "==> Creating updater tar.gz..."
@@ -124,7 +124,7 @@ git push origin "refs/tags/$TAG:refs/tags/$TAG"
 echo "==> Creating GitHub release $TAG..."
 gh release create "$TAG" \
   -R "$REPO" \
-  --title "Client Records $TAG" \
+  --title "SmartEMR $TAG" \
   --notes "macOS (Apple Silicon) release." \
   "$TAURI_DIR/$BUNDLE_DIR/$TARGZ" \
   "$TAURI_DIR/$SIG_FILE" \
@@ -162,6 +162,6 @@ with open('/tmp/latest.json', 'w') as f:
 gh release upload "$TAG" /tmp/latest.json -R "$REPO" --clobber
 
 echo ""
-echo "==> Done! Published Client Records $TAG"
+echo "==> Done! Published SmartEMR $TAG"
 echo "    Release: https://github.com/$REPO/releases/tag/$TAG"
 echo "    Updater: https://github.com/$REPO/releases/latest/download/latest.json"

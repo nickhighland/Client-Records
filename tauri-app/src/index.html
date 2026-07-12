@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>Mental Health Client Data Organizer</title>
+    <title>SmartEMR</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -138,15 +138,57 @@
             }
         }
         
+        .header-title-group {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-right: auto;
+            min-width: 0;
+        }
+
         .header h1 {
             font-size: 1.5rem;
-            margin-right: auto;
+            margin: 0;
+            white-space: nowrap;
         }
 
         .version-badge {
             font-size: 0.8rem;
             font-weight: normal;
             vertical-align: middle;
+        }
+
+        .app-mode-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.14);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        }
+
+        .app-mode-btn {
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 999px;
+            background: transparent;
+            color: #ffffff;
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            padding: 7px 14px;
+            transition: transform 0.15s ease, filter 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .app-mode-btn:hover {
+            filter: brightness(1.06);
+            transform: translateY(-1px);
+        }
+
+        .app-mode-btn.is-active {
+            background: rgba(255, 255, 255, 0.92);
+            color: #0f172a;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.22);
         }
 
         .header-column-controls {
@@ -245,6 +287,28 @@
             z-index: 2000;
         }
 
+        @media (max-width: 1380px) {
+            .header {
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+
+            .header-title-group {
+                flex-wrap: wrap;
+            }
+
+            .header-column-controls {
+                position: static;
+                left: auto;
+                top: auto;
+                transform: none;
+                order: 10;
+                width: 100%;
+                justify-content: flex-start;
+                grid-template-columns: repeat(4, max-content);
+            }
+        }
+
         .menu-item-btn {
             width: 100%;
             text-align: left;
@@ -320,6 +384,34 @@
             display: flex;
             flex-grow: 1;
             overflow: hidden;
+            min-height: 0;
+        }
+
+        #dsmView {
+            display: flex;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+            padding: 14px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.04) 0%, transparent 22%), var(--bg-container);
+        }
+
+        .dsm-view-shell {
+            flex: 1 1 auto;
+            min-height: 0;
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            overflow: hidden;
+            background: var(--panel-bg);
+            box-shadow: 0 20px 34px rgba(15, 23, 42, 0.12);
+        }
+
+        #dsmIframe {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #ffffff;
         }
 
         .panel {
@@ -1978,8 +2070,8 @@
     <!-- Login Overlay -->
     <div id="loginOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-main); z-index: 9999; overflow-y: auto; display: flex; text-align: center; justify-content: center; align-items: flex-start; padding: 20px;">
         <div style="background: var(--panel-bg); padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; width: 400px; margin: auto;">
-            <h2 id="loginTitle" style="margin-bottom: 20px; color: var(--text-color-primary);">Client Records Login</h2>
-            <p id="loginSubtitle" style="margin-bottom: 20px; color: var(--text-color-secondary); font-size: 0.9rem;">Enter your username and password to unlock the database.</p>
+            <h2 id="loginTitle" style="margin-bottom: 20px; color: var(--text-color-primary);">SmartEMR Login</h2>
+            <p id="loginSubtitle" style="margin-bottom: 20px; color: var(--text-color-secondary); font-size: 0.9rem;">Enter your username and password to unlock SmartEMR.</p>
             <input type="text" id="loginUsernameInput" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 16px;">
             <input type="password" id="loginPasswordInput" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 16px;">
             <div id="biometricLoginPanel" style="display:none; margin-bottom: 16px; padding: 12px; border: 1px solid rgba(39, 174, 96, 0.28); border-radius: 10px; background: rgba(39, 174, 96, 0.08); text-align: left;">
@@ -2349,11 +2441,17 @@
 
     <div class="container" id="appContainer" style="display: none;">
         <div class="header">
-            <h1>
-                Client Data Organizer
-                <span class="version-badge">v1.0.67</span>
-            </h1>
-            <div class="header-column-controls" aria-label="Column visibility controls">
+            <div class="header-title-group">
+                <h1>
+                    SmartEMR
+                    <span class="version-badge">v2.0.00</span>
+                </h1>
+                <div class="app-mode-toggle" aria-label="Application mode">
+                    <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
+                    <button id="appModeDsmBtn" class="app-mode-btn" type="button" aria-pressed="false">DSM-V-TR</button>
+                </div>
+            </div>
+            <div id="headerColumnControls" class="header-column-controls" aria-label="Column visibility controls">
                 <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
                 <button id="columnToggleAppointments" class="column-visibility-pill is-shown" type="button" title="Hide Appointments">Appointments</button>
                 <button id="columnToggleNotes" class="column-visibility-pill is-shown" type="button" title="Hide Notes">Notes</button>
@@ -2647,6 +2745,12 @@
                 <div class="panel-content" id="soapContent">
                     <div class="no-selection">Select an appointment to begin</div>
                 </div>
+            </div>
+        </div>
+
+        <div id="dsmView" class="hidden">
+            <div class="dsm-view-shell">
+                <iframe id="dsmIframe" title="DSM-V-TR Diagnostic Reference" data-src="dsmdx/index.html" loading="lazy"></iframe>
             </div>
         </div>
     </div>
@@ -3633,6 +3737,12 @@
             const modelSelectWrapper = document.getElementById('modelSelectWrapper');
             const generateNoteBtn = document.getElementById('generateNoteBtn');
             const fileInput = document.getElementById('fileInput');
+            const appModeEmrBtn = document.getElementById('appModeEmrBtn');
+            const appModeDsmBtn = document.getElementById('appModeDsmBtn');
+            const headerColumnControls = document.getElementById('headerColumnControls');
+            const mainGridEl = document.getElementById('mainGrid');
+            const dsmViewEl = document.getElementById('dsmView');
+            const dsmIframeEl = document.getElementById('dsmIframe');
             const headerMenu = document.getElementById('headerMenu');
             const headerMenuBtn = document.getElementById('headerMenuBtn');
             const headerMenuDropdown = document.getElementById('headerMenuDropdown');
@@ -3708,6 +3818,35 @@
             let goalGeneratorModalityOther = '';
             let autoBackupPath = '';
             let backupWriteInProgress = false;
+            let activeWorkspaceMode = 'emr';
+
+            const ensureDsmIframeLoaded = () => {
+                if (!dsmIframeEl || dsmIframeEl.getAttribute('src')) return;
+                dsmIframeEl.setAttribute('src', dsmIframeEl.dataset.src || 'dsmdx/index.html');
+            };
+
+            const setWorkspaceMode = (mode) => {
+                activeWorkspaceMode = mode === 'dsm' ? 'dsm' : 'emr';
+                const isDsmMode = activeWorkspaceMode === 'dsm';
+
+                if (isDsmMode) {
+                    ensureDsmIframeLoaded();
+                }
+
+                mainGridEl?.classList.toggle('hidden', isDsmMode);
+                dsmViewEl?.classList.toggle('hidden', !isDsmMode);
+                headerColumnControls?.classList.toggle('hidden', isDsmMode);
+                autoSaveIndicator?.classList.toggle('hidden', isDsmMode);
+                headerMenuDropdown?.classList.add('hidden');
+
+                appModeEmrBtn?.classList.toggle('is-active', !isDsmMode);
+                appModeDsmBtn?.classList.toggle('is-active', isDsmMode);
+                appModeEmrBtn?.setAttribute('aria-pressed', String(!isDsmMode));
+                appModeDsmBtn?.setAttribute('aria-pressed', String(isDsmMode));
+            };
+            appModeEmrBtn?.addEventListener('click', () => setWorkspaceMode('emr'));
+            appModeDsmBtn?.addEventListener('click', () => setWorkspaceMode('dsm'));
+            setWorkspaceMode('emr');
             let backupWritePending = false;
             const INFORMED_CONSENT_CONVERSATION_NOTATION = 'Reviewed limits of confidentiality, including that information shared in session is confidential with exceptions for risk of serious harm to self or others, suspected abuse or neglect of a child, elderly person, or vulnerable adult, and legal requirements such as court orders or subpoenas. Reviewed fees and billing, including that sessions are billed at the agreed-upon rate, insurance is billed when applicable, and the client is responsible for copays, deductibles, and any denied claims. Reviewed cancellation and attendance policy, including that appointments cancelled with less than 24 hours\u2019 notice or missed sessions are charged the full session fee, and that the therapist waits up to 10 minutes before a session is considered a no-show. Reviewed communication guidelines, including that email is used for scheduling and administrative purposes only and is not appropriate for emergencies. Reviewed crisis procedures, including instruction to contact 988 or call 911 in case of emergency.';
             const PRONOUN_PRESETS = {
@@ -11882,8 +12021,8 @@ This error cannot be fixed within this application's code; it requires a configu
                 smtpSettingsPanel.style.display = 'none';
                 deleteAccountPanel.style.display = 'none';
             } else {
-                document.getElementById('loginTitle').textContent = "Client Records Login";
-                document.getElementById('loginSubtitle').textContent = "Enter your username and password to unlock the database.";
+                document.getElementById('loginTitle').textContent = "SmartEMR Login";
+                document.getElementById('loginSubtitle').textContent = "Enter your username and password to unlock SmartEMR.";
                 loginBtn.textContent = "Unlock";
                 onboardingRecoverySection.style.display = 'none';
                 forgotPasswordBtn.style.display = 'block';

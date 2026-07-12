@@ -996,7 +996,7 @@ export async function exportEncryptedSqlDump() {
         "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     );
 
-    let sqlDump = '-- Client Records SQL Export\n';
+    let sqlDump = '-- SmartEMR SQL Export\n';
     sqlDump += `-- Generated: ${new Date().toISOString()}\n\n`;
 
     for (const row of schemaRows) {

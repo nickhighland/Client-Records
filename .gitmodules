@@ -1,0 +1,4 @@
+[submodule "tauri-app/public/dsmdx"]
+	path = tauri-app/public/dsmdx
+	url = https://github.com/nickhighland/DSMDx.git
+	branch = main

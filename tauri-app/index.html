@@ -1291,6 +1291,20 @@
             border-radius: 10px;
             padding: 12px;
         }
+        @media (max-width: 720px) {
+            .goal-generator-secondary {
+                grid-template-columns: 1fr;
+                align-items: stretch;
+            }
+            .goal-draft-grid,
+            .objective-draft-grid {
+                grid-template-columns: 1fr !important;
+                align-items: stretch !important;
+            }
+            .goal-generator-actions {
+                flex-wrap: wrap;
+            }
+        }
         .modality-grid {
             display: flex;
             flex-direction: column;
@@ -1606,6 +1620,14 @@
         .modal-content.goal-generator-modal {
             width: min(99vw, 1940px);
             max-width: min(99vw, 1940px);
+        }
+
+        @media (max-width: 720px) {
+            .modal-content.goal-generator-modal {
+                width: 96vw;
+                max-width: 96vw;
+                padding: 16px;
+            }
         }
 
         .guide-modal-content {
@@ -2444,7 +2466,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge">v2.0.2</span>
+                    <span class="version-badge">v2.0.3</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -2609,17 +2631,19 @@
                     <div style="padding: 10px; border-bottom: 1px solid var(--panel-border); flex-shrink: 0;">
                         <label for="clientDiagnosis" style="font-weight: 600; color: var(--text-color-primary); display: block; margin-bottom: 8px;">Diagnosis</label>
                         <textarea id="clientDiagnosis" placeholder="Enter client diagnoses here for reference..." style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text); resize: vertical;" disabled></textarea>
+                        <label for="clientPresentingProblem" style="font-weight: 600; color: var(--text-color-primary); display: block; margin: 12px 0 8px;">Presenting Problem</label>
+                        <textarea id="clientPresentingProblem" placeholder="Enter or generate the client's presenting problem..." style="width: 100%; min-height: 100px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text); resize: vertical;" disabled></textarea>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--panel-border); flex-shrink: 0;">
-                        <span style="font-weight: 600; color: var(--text-color-primary);">Client Goals</span>
+                        <span style="font-weight: 600; color: var(--text-color-primary);">Tx Plan</span>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <button id="generateGoalsBtn" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background: linear-gradient(135deg, #16a085 0%, #138d75 100%);" disabled>Goal/Objective Generator</button>
+                            <button id="generateGoalsBtn" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background: linear-gradient(135deg, #16a085 0%, #138d75 100%);" disabled>Build</button>
                             <button id="addGoalBtnInTab" class="add-btn" disabled>+</button>
                         </div>
                     </div>
                     <div id="goalsListSection" class="section-collapser" style="display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 10px;">
                         <button id="goalsListToggleBtn" class="section-collapser-btn" type="button" data-section-key="goalsList" data-section-content="goalsListSectionContent" aria-expanded="true">
-                            <span>Client Goals</span>
+                            <span>Tx Plan</span>
                             <span class="section-collapser-icon">▼</span>
                         </button>
                         <div id="goalsListSectionContent" class="section-collapsible-content" style="display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;">
@@ -2669,13 +2693,6 @@
                          <div id="intakeSessionBlock" class="audit-proofing-block hidden">
                              <div style="font-size: 0.85rem; color: var(--text-color-secondary); font-weight: 700; margin-bottom: 6px;">Intake Session Prompts</div>
                              <div id="intakeFieldsContainer" class="audit-proofing-grid"></div>
-                         </div>
-                     </div>
-                     <div class="panel-footer" id="sessionTimerWrapper" style="display: none;">
-                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                             <button id="startTimerBtn" class="btn" style="flex-grow: 1;">Start</button>
-                             <button id="stopTimerBtn" class="btn" style="flex-grow: 1;">Stop</button>
-                             <div id="sessionDuration" style="font-weight: 600; white-space: nowrap;">00:00</div>
                          </div>
                      </div>
                  </div>
@@ -3009,25 +3026,33 @@
     <div id="goalGeneratorModal" class="modal-overlay hidden">
         <div class="modal-content goal-generator-modal">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
-                <h2 style="font-size: 1.5rem; font-weight: bold;">Auto-Generate Goals & Objectives</h2>
+                <h2 style="font-size: 1.5rem; font-weight: bold;">Build Treatment Plan</h2>
                 <button id="closeGoalGeneratorBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
             </div>
             <div class="goal-generator-controls">
                 <div class="goal-generator-card">
                     <div class="goal-generator-title">Clinical Focus</div>
-                    <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;" for="goalProblemInput">Problem / Diagnosis Focus</label>
-                    <textarea id="goalProblemInput" class="setting-input" rows="4" placeholder="Describe the presenting problem/diagnosis to target."></textarea>
+                    <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;" for="goalDiagnosisInput">Diagnosis</label>
+                    <textarea id="goalDiagnosisInput" class="setting-input" rows="3" placeholder="Enter the diagnosis to use for this treatment plan."></textarea>
+                    <label style="margin: 0.75rem 0 0.25rem; font-weight: 600; display: block;" for="presentingProblemShorthandInput">Presenting Problem Shorthand</label>
+                    <textarea id="presentingProblemShorthandInput" class="setting-input" rows="4" placeholder="Enter shorthand symptoms, concerns, functional impact, and other clinician notes."></textarea>
                 </div>
                 <div class="goal-generator-card">
-                    <div class="goal-generator-title">Generation Settings</div>
+                    <div class="goal-generator-title">Goal / Objective Settings</div>
                     <div class="goal-generator-secondary">
                     <div>
                         <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;" for="goalCountInput"># Goals</label>
                         <input id="goalCountInput" class="setting-input" type="number" min="1" max="20" value="1">
                     </div>
                     <div>
-                        <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;" for="objectiveCountInput"># Objectives per Goal</label>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 0.25rem;">
+                            <label style="font-weight: 600; display: block;" for="objectiveCountInput"># Objectives</label>
+                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.82rem; font-weight: 600; white-space: nowrap;">
+                                <input id="objectivesPerGoalInput" type="checkbox"> Per Goal
+                            </label>
+                        </div>
                         <input id="objectiveCountInput" class="setting-input" type="number" min="1" max="20" value="4">
+                        <div id="objectiveCountHelp" style="font-size: 0.75rem; color: var(--text-color-secondary); margin-top: 4px;">Total objectives distributed across all goals.</div>
                     </div>
                     <div>
                         <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;" for="objectiveStyleSelect">Objective Format</label>
@@ -3050,7 +3075,7 @@
             </div>
             <div class="goal-generator-actions">
                 <button id="runGoalGeneratorBtn" class="btn">Generate Draft</button>
-                <button id="applyGeneratedGoalsBtn" class="btn save-btn" disabled>Apply Approved Goals</button>
+                <button id="applyGeneratedGoalsBtn" class="btn save-btn" disabled>Save</button>
             </div>
             <div id="generatedGoalsReview" class="intervention-list"></div>
         </div>
@@ -3578,6 +3603,7 @@
             const contactContentEl = document.getElementById('contactContent');
             const nextSessionContentEl = document.getElementById('nextSessionContent');
             const clientDiagnosisEl = document.getElementById('clientDiagnosis');
+            const clientPresentingProblemEl = document.getElementById('clientPresentingProblem');
             const sessionInfoEl = document.getElementById('sessionInfo');
             const auditProofSymptomsEl = document.getElementById('auditProofSymptoms');
             const auditProofFunctionalEl = document.getElementById('auditProofFunctional');
@@ -3593,11 +3619,6 @@
             const soapContentEl = document.getElementById('soapContent');
             const autoSaveIndicator = document.getElementById('autoSaveIndicator');
             const saveStatus = document.getElementById('saveStatus');
-            // Session Timer Elements
-            const sessionTimerWrapper = document.getElementById('sessionTimerWrapper');
-            const startTimerBtn = document.getElementById('startTimerBtn');
-            const stopTimerBtn = document.getElementById('stopTimerBtn');
-            const sessionDurationEl = document.getElementById('sessionDuration');
             const clientDetailsTabGroup = document.getElementById('clientDetailsTabGroup');
             const updateClientDetailsTabLabels = () => {
                 if (!clientDetailsTabBtn || !contactTabBtn || !nextSessionTabBtn || !clientDetailsTabGroup) return;
@@ -3645,9 +3666,12 @@
             const exportDataText = document.getElementById('exportDataText');
             const copyExportDataBtn = document.getElementById('copyExportDataBtn');
             const downloadExportDataBtn = document.getElementById('downloadExportDataBtn');
-            const goalProblemInput = document.getElementById('goalProblemInput');
+            const goalDiagnosisInput = document.getElementById('goalDiagnosisInput');
+            const presentingProblemShorthandInput = document.getElementById('presentingProblemShorthandInput');
             const goalCountInput = document.getElementById('goalCountInput');
             const objectiveCountInput = document.getElementById('objectiveCountInput');
+            const objectivesPerGoalInput = document.getElementById('objectivesPerGoalInput');
+            const objectiveCountHelp = document.getElementById('objectiveCountHelp');
             const objectiveStyleSelect = document.getElementById('objectiveStyleSelect');
             const runGoalGeneratorBtn = document.getElementById('runGoalGeneratorBtn');
             const applyGeneratedGoalsBtn = document.getElementById('applyGeneratedGoalsBtn');
@@ -3779,7 +3803,6 @@
             let vertexLocation = 'us-central1';
             let openaiApiKey = null;
             let selectedModel = null;
-            let sessionTimerInterval = null;
             let persistentInstructions = '';
             let activeNotesTab = 'clientDetails';
 
@@ -3814,11 +3837,31 @@
             let customPronounObject = '';
             let customPronounPossessive = '';
             let generatedGoalsDraft = [];
+            let generatedPresentingProblemDraft = '';
+            let activeGoalGeneratorClientId = null;
+            let goalGenerationRequestId = 0;
             let goalGeneratorModalities = [];
             let goalGeneratorModalityOther = '';
             let autoBackupPath = '';
             let backupWriteInProgress = false;
             let activeWorkspaceMode = 'emr';
+
+            const syncDsmTheme = (effectiveTheme = document.body.dataset.theme) => {
+                if (!dsmIframeEl?.contentWindow) return;
+
+                const theme = effectiveTheme === 'dark' ? 'dark' : 'light';
+                const currentOrigin = window.location.origin;
+                const targetOrigin = currentOrigin && currentOrigin !== 'null' ? currentOrigin : '*';
+                const message = { type: 'smartemr-theme', theme };
+
+                try {
+                    dsmIframeEl.contentWindow.postMessage(message, targetOrigin);
+                } catch (error) {
+                    dsmIframeEl.contentWindow.postMessage(message, '*');
+                }
+            };
+
+            dsmIframeEl?.addEventListener('load', () => syncDsmTheme());
 
             const ensureDsmIframeLoaded = () => {
                 if (!dsmIframeEl || dsmIframeEl.getAttribute('src')) return;
@@ -4015,6 +4058,8 @@
                     if (!Array.isArray(client.intakeSessions)) client.intakeSessions = [];
                     if (!Array.isArray(client.goals)) client.goals = [];
                     ensureClientContactInfo(client);
+                    if (typeof client.diagnosis !== 'string') client.diagnosis = '';
+                    if (typeof client.presentingProblem !== 'string') client.presentingProblem = '';
                     if (typeof client.persistentInstructions !== 'string') client.persistentInstructions = '';
                     if (typeof client.nextSessionNotes !== 'string') client.nextSessionNotes = '';
                     if (!client.preferredPronouns || typeof client.preferredPronouns !== 'object') {
@@ -4383,15 +4428,26 @@
             };
 
             const getTreatmentGoalsContext = (client) => {
-                if (!client?.goals?.length) return '';
-                const activeGoals = client.goals.filter(g => g.status === 'active');
-                if (activeGoals.length === 0) return '';
-                return `\n- **Current Treatment Goals:**\n${activeGoals.map(goal => {
-                    const objectives = goal.objectives && goal.objectives.length > 0
-                        ? goal.objectives.map(obj => `  - ${obj.text} (${obj.completed ? 'Completed' : 'In Progress'}, ${obj.timelineMonths || 3} months)`).join('\n')
-                        : '  - No specific objectives defined';
-                    return `  • ${goal.title} (${goal.timelineMonths || 12} months)\n${objectives}`;
-                }).join('\n')}\n`;
+                if (!client) return '';
+                const contextSections = [];
+                const presentingProblem = (client.presentingProblem || '').trim();
+                if (presentingProblem) {
+                    contextSections.push(`- **Presenting Problem:**\n${presentingProblem}`);
+                }
+
+                const activeGoals = Array.isArray(client.goals)
+                    ? client.goals.filter(goal => goal.status === 'active')
+                    : [];
+                if (activeGoals.length > 0) {
+                    contextSections.push(`- **Current Treatment Goals:**\n${activeGoals.map(goal => {
+                        const objectives = goal.objectives && goal.objectives.length > 0
+                            ? goal.objectives.map(obj => `  - ${obj.text} (${obj.completed ? 'Completed' : 'In Progress'}, ${obj.timelineMonths || 3} months)`).join('\n')
+                            : '  - No specific objectives defined';
+                        return `  • ${goal.title} (${goal.timelineMonths || 12} months)\n${objectives}`;
+                    }).join('\n')}`);
+                }
+
+                return contextSections.length > 0 ? `\n${contextSections.join('\n')}\n` : '';
             };
 
             const getSelectedObjectivesContext = (client) => {
@@ -5426,8 +5482,8 @@
                 };
             };
 
-            const saveClientGoalGenerationLens = () => {
-                const client = findClient(selectedClientId);
+            const saveClientGoalGenerationLens = (clientId = selectedClientId) => {
+                const client = findClient(clientId);
                 if (!client) return;
 
                 client.goalGenerationLens = {
@@ -5746,51 +5802,90 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return JSON.parse(jsonText);
             };
 
-            const normalizeGoalDraftsFromAi = (aiPayload, problem, goalCount, objectiveCount, format, modalities) => {
+            const normalizePresentingProblemFromAi = (aiPayload, diagnosis, shorthand) => {
+                const generatedText = (aiPayload?.presentingProblem || aiPayload?.presenting_problem || '').toString().trim();
+                if (generatedText) return generatedText;
+
+                const diagnosisText = diagnosis ? `Client presents for treatment related to ${diagnosis}.` : '';
+                const shorthandText = shorthand ? ` Clinician shorthand: ${shorthand}.` : '';
+                return `${diagnosisText}${shorthandText}`.trim();
+            };
+
+            const getObjectiveTargetsByGoal = (goalCount, objectiveCount, objectivesPerGoal) => {
+                if (objectivesPerGoal) return Array(goalCount).fill(objectiveCount);
+                const targets = Array(goalCount).fill(0);
+                for (let index = 0; index < objectiveCount; index += 1) {
+                    targets[index % goalCount] += 1;
+                }
+                return targets;
+            };
+
+            const normalizeGoalDraftsFromAi = (aiPayload, diagnosis, goalCount, objectiveCount, format, modalities, objectivesPerGoal) => {
                 const staggeredTimeline = [3, 6, 9, 12];
                 const aiGoals = Array.isArray(aiPayload?.goals) ? aiPayload.goals : [];
                 const normalizedGoals = [];
 
-                for (let goalIndex = 0; goalIndex < goalCount; goalIndex++) {
+                for (let goalIndex = 0; goalIndex < goalCount; goalIndex += 1) {
                     const aiGoal = aiGoals[goalIndex] || {};
-                    const fallbackGoalTitle = makeGoalText(problem, goalIndex, modalities);
+                    const fallbackGoalTitle = makeGoalText(diagnosis, goalIndex, modalities);
                     const goalTitle = (aiGoal.title || fallbackGoalTitle || '').toString().trim() || fallbackGoalTitle;
-                    const timelineMonths = parseInt(aiGoal.timelineMonths, 10) || 12;
+                    normalizedGoals.push({
+                        id: crypto.randomUUID(),
+                        approved: true,
+                        title: sanitizeGoalTextByModalities(goalTitle, modalities),
+                        timelineMonths: parseInt(aiGoal.timelineMonths, 10) || 12,
+                        objectives: []
+                    });
+                }
 
-                    const aiObjectives = Array.isArray(aiGoal.objectives) ? aiGoal.objectives : [];
-                    const objectives = [];
-                    for (let objectiveIndex = 0; objectiveIndex < objectiveCount; objectiveIndex++) {
-                        const aiObjective = aiObjectives[objectiveIndex] || {};
-                        const fallbackObjectiveText = makeObjectiveText(problem, goalTitle, objectiveIndex, format, modalities);
+                const objectiveTargets = getObjectiveTargetsByGoal(goalCount, objectiveCount, objectivesPerGoal);
+                const sharedGoalContext = normalizedGoals.map(goal => goal.title).join('; ');
+                const overallAiObjectives = Array.isArray(aiPayload?.objectives)
+                    ? aiPayload.objectives
+                    : aiGoals.flatMap(goal => Array.isArray(goal?.objectives) ? goal.objectives : []);
+                let overallObjectiveIndex = 0;
+
+                normalizedGoals.forEach((goal, goalIndex) => {
+                    const nestedAiObjectives = Array.isArray(aiGoals[goalIndex]?.objectives)
+                        ? aiGoals[goalIndex].objectives
+                        : [];
+                    const targetCount = objectiveTargets[goalIndex];
+
+                    for (let objectiveIndex = 0; objectiveIndex < targetCount; objectiveIndex += 1) {
+                        const rawAiObjective = objectivesPerGoal
+                            ? nestedAiObjectives[objectiveIndex]
+                            : overallAiObjectives[overallObjectiveIndex];
+                        const aiObjective = typeof rawAiObjective === 'string'
+                            ? { text: rawAiObjective }
+                            : (rawAiObjective || {});
+                        const goalContext = objectivesPerGoal ? goal.title : sharedGoalContext;
+                        const fallbackObjectiveText = makeObjectiveText(
+                            diagnosis,
+                            goalContext,
+                            overallObjectiveIndex,
+                            format,
+                            modalities
+                        );
                         const objectiveText = (aiObjective.text || fallbackObjectiveText || '').toString().trim() || fallbackObjectiveText;
-                        const fallbackTimeline = staggeredTimeline[Math.min(objectiveIndex, staggeredTimeline.length - 1)];
-                        const objectiveTimeline = parseInt(aiObjective.timelineMonths, 10) || fallbackTimeline;
-                        const objectiveFormat = aiObjective.format === 'smart' ? 'smart' : format;
+                        const fallbackTimeline = staggeredTimeline[Math.min(overallObjectiveIndex, staggeredTimeline.length - 1)];
 
-                        objectives.push({
+                        goal.objectives.push({
                             id: crypto.randomUUID(),
-                            approved: false,
+                            approved: true,
                             text: sanitizeGoalTextByModalities(objectiveText, modalities),
-                            timelineMonths: objectiveTimeline,
-                            format: objectiveFormat,
+                            timelineMonths: parseInt(aiObjective.timelineMonths, 10) || fallbackTimeline,
+                            format: aiObjective.format === 'smart' ? 'smart' : format,
                             completed: false,
                             dateCreated: new Date().toISOString()
                         });
+                        overallObjectiveIndex += 1;
                     }
-
-                    normalizedGoals.push({
-                        id: crypto.randomUUID(),
-                        approved: false,
-                        title: sanitizeGoalTextByModalities(goalTitle, modalities),
-                        timelineMonths,
-                        objectives
-                    });
-                }
+                });
 
                 return normalizedGoals;
             };
 
-            const fetchGoalDraftsFromAI = async (problem, goalCount, objectiveCount, format, modalities) => {
+            const fetchGoalDraftsFromAI = async (diagnosis, shorthand, goalCount, objectiveCount, format, modalities, objectivesPerGoal) => {
                 if (!selectedModel) {
                     throw new Error('Please connect to a provider and select a model in Settings.');
                 }
@@ -5804,7 +5899,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     ? forbiddenModalityOptions.map(item => `- ${item}`).join('\n')
                     : '- None';
 
-                const userPrompt = `Problem/Diagnosis Focus:\n${problem}\n\nRequested Output:\n- Goals: ${goalCount}\n- Objectives per goal: ${objectiveCount}\n- Objective format: ${styleDescriptor}\n\nGuiding Modalities (Allowed):\n${modalityContext}\n\nForbidden Modalities (Do not use):\n${forbiddenContext}\n\nReturn only JSON in the required schema.`;
+                const objectiveRequest = objectivesPerGoal
+                    ? `${objectiveCount} objectives under every goal`
+                    : `${objectiveCount} total objectives distributed across all goals; each objective must support the complete set of goals`;
+                const userPrompt = `Diagnosis:\n${diagnosis}\n\nPresenting Problem Shorthand:\n${shorthand || '- None provided'}\n\nRequested Output:\n- Goals: ${goalCount}\n- Objectives: ${objectiveRequest}\n- Objective format: ${styleDescriptor}\n\nWrite a concise clinical Presenting Problem using only the Diagnosis and Presenting Problem Shorthand above. Do not invent symptoms, duration, risk factors, functional impairment, or history that was not supplied.\n\nGuiding Modalities (Allowed):\n${modalityContext}\n\nForbidden Modalities (Do not use):\n${forbiddenContext}\n\nReturn only JSON in the required schema.`;
 
                 if (apiProvider === 'vertex') {
                     if (!vertexServiceAccount || !vertexLocation) throw new Error('Please connect Vertex in Settings first.');
@@ -6170,15 +6268,21 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const generateGoalDrafts = async () => {
-                const problem = (goalProblemInput.value || '').trim();
-                const goalCount = Math.max(1, Math.min(8, parseInt(goalCountInput.value, 10) || 1));
-                const objectiveCount = Math.max(1, Math.min(6, parseInt(objectiveCountInput.value, 10) || 1));
+                const diagnosis = (goalDiagnosisInput.value || '').trim();
+                const shorthand = (presentingProblemShorthandInput.value || '').trim();
+                const goalCount = Math.max(1, Math.min(20, parseInt(goalCountInput.value, 10) || 1));
+                const objectiveCount = Math.max(1, Math.min(20, parseInt(objectiveCountInput.value, 10) || 1));
+                const objectivesPerGoal = !!objectivesPerGoalInput.checked;
                 const format = objectiveStyleSelect.value === 'smart' ? 'smart' : 'action';
                 const modalities = getGoalGenerationModalitiesContext();
-                saveClientGoalGenerationLens();
+                const generatorClientId = activeGoalGeneratorClientId;
+                const requestId = ++goalGenerationRequestId;
+                const generatorClient = findClient(generatorClientId);
+                if (!generatorClient) return;
+                saveClientGoalGenerationLens(generatorClientId);
 
-                if (!problem) {
-                    alert('Please enter a problem/diagnosis focus first.');
+                if (!diagnosis) {
+                    alert('Please enter a diagnosis first.');
                     return;
                 }
 
@@ -6186,33 +6290,67 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 runGoalGeneratorBtn.textContent = 'Generating...';
 
                 try {
-                    const aiPayload = await fetchGoalDraftsFromAI(problem, goalCount, objectiveCount, format, modalities);
-                    generatedGoalsDraft = normalizeGoalDraftsFromAi(aiPayload, problem, goalCount, objectiveCount, format, modalities);
+                    const aiPayload = await fetchGoalDraftsFromAI(
+                        diagnosis,
+                        shorthand,
+                        goalCount,
+                        objectiveCount,
+                        format,
+                        modalities,
+                        objectivesPerGoal
+                    );
+                    if (activeGoalGeneratorClientId !== generatorClientId || goalGenerationRequestId !== requestId) return;
+                    generatedPresentingProblemDraft = normalizePresentingProblemFromAi(aiPayload, diagnosis, shorthand);
+                    generatedGoalsDraft = normalizeGoalDraftsFromAi(
+                        aiPayload,
+                        diagnosis,
+                        goalCount,
+                        objectiveCount,
+                        format,
+                        modalities,
+                        objectivesPerGoal
+                    );
                     renderGeneratedGoalsReview();
                 } catch (error) {
+                    if (activeGoalGeneratorClientId !== generatorClientId || goalGenerationRequestId !== requestId) return;
                     console.error('Goal generation error:', error);
                     alert(`Failed to generate goals/objectives with AI. ${error.message}`);
                 } finally {
-                    runGoalGeneratorBtn.disabled = false;
-                    runGoalGeneratorBtn.textContent = 'Generate Draft';
+                    if (goalGenerationRequestId === requestId) {
+                        runGoalGeneratorBtn.disabled = false;
+                        runGoalGeneratorBtn.textContent = 'Generate Draft';
+                    }
                 }
             };
 
+            const escapeGoalDraftHtml = (value) => String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+
             const renderGeneratedGoalsReview = () => {
                 if (!generatedGoalsReview) return;
-                if (!generatedGoalsDraft.length) {
-                    generatedGoalsReview.innerHTML = '<div class="no-selection">Generate a draft to review, edit, and approve.</div>';
+                if (!generatedGoalsDraft.length && !generatedPresentingProblemDraft) {
+                    generatedGoalsReview.innerHTML = '<div class="no-selection">Generate a draft to review, edit, and save.</div>';
                     applyGeneratedGoalsBtn.disabled = true;
                     return;
                 }
 
-                generatedGoalsReview.innerHTML = generatedGoalsDraft.map((goal, goalIndex) => `
+                generatedGoalsReview.innerHTML = `
+                    <div class="generator-card">
+                        <div class="generator-title">Presenting Problem</div>
+                        <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;" for="draftPresentingProblem">Review and edit before saving</label>
+                        <textarea id="draftPresentingProblem" class="mini-input draft-presenting-problem" rows="5">${escapeGoalDraftHtml(generatedPresentingProblemDraft)}</textarea>
+                    </div>
+                ` + generatedGoalsDraft.map((goal, goalIndex) => `
                     <div class="generator-card" data-draft-goal-index="${goalIndex}">
                         <div class="generator-title">Goal ${goalIndex + 1}</div>
-                        <div style="display:grid;grid-template-columns:1fr 110px 120px;gap:8px;align-items:end;margin-bottom:8px;">
+                        <div class="goal-draft-grid" style="display:grid;grid-template-columns:1fr 110px 120px;gap:8px;align-items:end;margin-bottom:8px;">
                             <div>
                                 <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">Goal Text</label>
-                                <textarea class="mini-input draft-goal-text" rows="2">${goal.title}</textarea>
+                                <textarea class="mini-input draft-goal-text" rows="2">${escapeGoalDraftHtml(goal.title)}</textarea>
                             </div>
                             <div>
                                 <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">Timeline (mo)</label>
@@ -6223,10 +6361,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             </label>
                         </div>
                         ${(goal.objectives || []).map((obj, objIndex) => `
-                            <div style="display:grid;grid-template-columns:1fr 110px 140px;gap:8px;align-items:end;margin:6px 0 0 0;" data-draft-objective-index="${objIndex}">
+                            <div class="objective-draft-grid" style="display:grid;grid-template-columns:1fr 110px 140px;gap:8px;align-items:end;margin:6px 0 0 0;" data-draft-objective-index="${objIndex}">
                                 <div>
                                     <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:4px;">Objective ${objIndex + 1}</label>
-                                    <textarea class="mini-input draft-obj-text" rows="2">${obj.text}</textarea>
+                                    <textarea class="mini-input draft-obj-text" rows="2">${escapeGoalDraftHtml(obj.text)}</textarea>
                                 </div>
                                 <div>
                                     <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:4px;">Timeline (mo)</label>
@@ -6250,6 +6388,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const syncGeneratedGoalsFromReview = () => {
+                const presentingProblemReview = generatedGoalsReview.querySelector('.draft-presenting-problem');
+                if (presentingProblemReview) {
+                    generatedPresentingProblemDraft = presentingProblemReview.value.trim();
+                }
                 const goalCards = Array.from(generatedGoalsReview.querySelectorAll('[data-draft-goal-index]'));
                 goalCards.forEach(card => {
                     const goalIndex = parseInt(card.dataset.draftGoalIndex, 10);
@@ -6276,7 +6418,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const applyGeneratedGoals = () => {
-                const client = findClient(selectedClientId);
+                const client = findClient(activeGoalGeneratorClientId);
                 if (!client) return;
                 syncGeneratedGoalsFromReview();
 
@@ -6285,14 +6427,19 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     .map(goal => ({
                         ...goal,
                         objectives: (goal.objectives || []).filter(obj => obj.approved && (obj.text || '').trim())
-                    }))
-                    .filter(goal => goal.objectives.length > 0);
+                    }));
+                const approvedObjectiveCount = approvedGoals.reduce((count, goal) => count + goal.objectives.length, 0);
 
-                if (approvedGoals.length === 0) {
-                    alert('Approve at least one goal and one objective under it, then click Apply Approved Goals.');
+                if (!generatedPresentingProblemDraft.trim()) {
+                    alert('Review or enter a Presenting Problem before saving.');
+                    return;
+                }
+                if (approvedGoals.length === 0 || approvedObjectiveCount === 0) {
+                    alert('Approve at least one goal and one objective, then click Save.');
                     return;
                 }
 
+                client.presentingProblem = generatedPresentingProblemDraft.trim();
                 if (!Array.isArray(client.goals)) client.goals = [];
                 approvedGoals.forEach(draftGoal => {
                     client.goals.push({
@@ -6313,10 +6460,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 });
 
                 generatedGoalsDraft = [];
+                generatedPresentingProblemDraft = '';
                 renderGeneratedGoalsReview();
                 goalGeneratorModal.classList.add('hidden');
+                activeGoalGeneratorClientId = null;
+                goalGenerationRequestId += 1;
                 markDirty();
-                renderGoals();
+                if (selectedClientId === client.id) renderDetails();
             };
             
             // --- UI Rendering ---
@@ -6588,6 +6738,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 clientDiagnosisEl.disabled = !client;
                 clientDiagnosisEl.value = client ? client.diagnosis || '' : '';
                 clientDiagnosisEl.placeholder = client ? "Enter client diagnoses here for reference..." : "Select a client to enter diagnoses...";
+                clientPresentingProblemEl.disabled = !client;
+                clientPresentingProblemEl.value = client ? client.presentingProblem || '' : '';
+                clientPresentingProblemEl.placeholder = client
+                    ? "Enter or generate the client's presenting problem..."
+                    : "Select a client to enter a presenting problem...";
 
                 sessionInfoEl.disabled = !appointment && !note;
                 sessionInfoEl.value = appointment
@@ -6642,17 +6797,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 noteNameInput.disabled = !client;
                 generateGoalsBtn.disabled = !client;
 
-                sessionTimerWrapper.style.display = appointment ? 'block' : 'none';
-                if (appointment) {
-                    renderSessionTimer(appointment);
-                } else {
-                    clearInterval(sessionTimerInterval);
-                    sessionTimerInterval = null;
-                    sessionDurationEl.textContent = '00:00';
-                    startTimerBtn.disabled = true;
-                    stopTimerBtn.disabled = true;
-                }
-
                 renderGoals();
                 renderSoap();
                 
@@ -6681,7 +6825,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 goalsListInTabEl.innerHTML = client.goals.map(goal => `
                     <div class="goal-item" data-goal-id="${goal.id}">
                         <div class="goal-header">
-                            <div class="goal-title">${goal.title}</div>
+                            <div class="goal-title">${escapeGoalDraftHtml(goal.title)}</div>
                             <div style="display: flex; align-items: center;">
                                 <div class="goal-status" style="margin-right: 8px;">${goal.timelineMonths || 12} mo</div>
                                 <div class="goal-status ${goal.status}">${goal.status.charAt(0).toUpperCase() + goal.status.slice(1)}</div>
@@ -6697,7 +6841,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             ${(goal.objectives || []).map(obj => `
                                 <div class="objective-item" data-objective-id="${obj.id}">
                                     <input type="checkbox" class="objective-checkbox" ${obj.completed ? 'checked' : ''}>
-                                    <span class="objective-text ${obj.completed ? 'completed' : ''}">${obj.text}</span>
+                                    <span class="objective-text ${obj.completed ? 'completed' : ''}">${escapeGoalDraftHtml(obj.text)}</span>
                                     <span class="goal-status" style="margin-left: 6px;">${obj.timelineMonths || 3} mo</span>
                                     <button class="action-btn edit-objective-btn" title="Edit Objective" style="opacity: 0; width: 16px; height: 16px; font-size: 10px; background:#3498db;">✏️</button>
                                     <button class="action-btn timeline-objective-btn" title="Edit Objective Timeline" style="opacity: 0; width: 16px; height: 16px; font-size: 10px; background:#e67e22;">⏱</button>
@@ -6710,75 +6854,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 `).join('');
             };
             
-            const renderSessionTimer = (appointment) => {
-                clearInterval(sessionTimerInterval);
-                sessionTimerInterval = null;
-
-                const isRunning = !!appointment.startTime && !appointment.endTime;
-                startTimerBtn.disabled = isRunning;
-                stopTimerBtn.disabled = !isRunning;
-
-                if (appointment.startTime) {
-                    startTimerBtn.textContent = `Start: ${new Date(appointment.startTime).toLocaleTimeString()}`;
-                } else {
-                    startTimerBtn.textContent = 'Start';
-                }
-
-                if (appointment.endTime) {
-                    stopTimerBtn.textContent = `End: ${new Date(appointment.endTime).toLocaleTimeString()}`;
-                } else {
-                    stopTimerBtn.textContent = 'Stop';
-                }
-
-                const updateDuration = () => {
-                    if (!appointment.startTime) {
-                        sessionDurationEl.textContent = '00:00';
-                        return;
-                    }
-                    
-                    const start = new Date(appointment.startTime);
-                    const end = appointment.endTime ? new Date(appointment.endTime) : new Date();
-
-                    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
-                        sessionDurationEl.textContent = '00:00';
-                        return;
-                    }
-                    
-                    let totalSeconds = Math.floor((end - start) / 1000);
-                    if (totalSeconds < 0) totalSeconds = 0;
-
-                    const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-                    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-                    
-                    sessionDurationEl.textContent = `${minutes}:${seconds}`;
-                };
-
-                updateDuration();
-
-                // If the timer is running (start time exists but no end time), set an interval to update it.
-                if (appointment.startTime && !appointment.endTime) {
-                    sessionTimerInterval = setInterval(updateDuration, 1000);
-                }
-            };
-
-            const refreshSelectedSessionTimer = () => {
-                const client = findClient(selectedClientId);
-                const appointment = findAppointment(client, selectedAppointmentId);
-                if (appointment) {
-                    renderSessionTimer(appointment);
-                    return;
-                }
-
-                clearInterval(sessionTimerInterval);
-                sessionTimerInterval = null;
-            };
-
-            document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) refreshSelectedSessionTimer();
-            });
-            window.addEventListener('focus', refreshSelectedSessionTimer);
-            window.addEventListener('pageshow', refreshSelectedSessionTimer);
-
             const renderSoap = () => {
                 const client = findClient(selectedClientId);
                 const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
@@ -6982,8 +7057,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 selectedAppointmentId = null;
                 selectedNoteId = null;
                 selectedIntakeId = null;
-                clearInterval(sessionTimerInterval); // Stop timer when switching clients
-                sessionTimerInterval = null;
                 fullRender();
             };
 
@@ -7205,6 +7278,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     },
                     persistentNotes: '',
                     nextSessionNotes: '',
+                    diagnosis: '',
+                    presentingProblem: '',
                     persistentInstructions: '',
                     appointments: [],
                     intakeSessions: [],
@@ -7254,8 +7329,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     sessionInfo: '',
                     sessionInstructions: '',
                     selectedInterventions: [],
-                    startTime: null,
-                    endTime: null,
                     soap: { s: '', o: '', a: '', p: '' }
                 };
                 client.appointments.push(newAppointment);
@@ -7845,6 +7918,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                      client.diagnosis = clientDiagnosisEl.value;
                      markDirty();
                  }
+            });
+            clientPresentingProblemEl.addEventListener('input', () => {
+                const client = findClient(selectedClientId);
+                if (client) {
+                    client.presentingProblem = clientPresentingProblemEl.value;
+                    markDirty();
+                }
             });
 
             const autoResizeTextarea = (el) => {
@@ -8467,6 +8547,7 @@ Analyze the "Session Information" text provided by the user. Categorize every pi
 
 ${guidanceBlock}Return ONLY valid JSON in this exact shape:
 {
+  "presentingProblem": "...",
   "goals": [
     {
       "title": "...",
@@ -8483,8 +8564,10 @@ ${guidanceBlock}Return ONLY valid JSON in this exact shape:
 }
 
 Requirements:
+- Generate a concise clinical presenting problem from only the supplied diagnosis and presenting-problem shorthand.
+- Do not invent symptoms, duration, risk factors, functional impairment, history, or other clinical facts.
 - Generate exactly the requested number of goals.
-- Generate exactly the requested number of objectives per goal.
+- Follow the requested objective-count mode exactly. When a total objective count is requested, distribute that total across the goals and write each objective to advance the complete goal set. When objectives per goal are requested, generate that count under every goal.
 - Goal language: concise and outcome-focused, written as "Client will ... resulting in ...".
 - Goals use 12-month timeline unless explicitly requested otherwise.
 - Objectives use staggered timeline anchors across 3, 6, 9, 12 months.
@@ -10303,23 +10386,41 @@ This error cannot be fixed within this application's code; it requires a configu
             generateGoalsBtn.addEventListener('click', () => {
                 const client = findClient(selectedClientId);
                 if (!client) return;
+                goalGenerationRequestId += 1;
+                activeGoalGeneratorClientId = client.id;
                 generatedGoalsDraft = [];
+                generatedPresentingProblemDraft = '';
                 const clientLens = getClientGoalGenerationLens(client);
                 goalGeneratorModalities = [...clientLens.modalities];
                 goalGeneratorModalityOther = clientLens.other || '';
-                goalProblemInput.value = '';
-                goalCountInput.value = '2';
+                goalDiagnosisInput.value = client.diagnosis || '';
+                presentingProblemShorthandInput.value = '';
+                goalCountInput.value = '1';
                 objectiveCountInput.value = '4';
+                objectivesPerGoalInput.checked = false;
                 objectiveStyleSelect.value = 'action';
+                objectiveCountHelp.textContent = 'Total objectives distributed across all goals.';
+                runGoalGeneratorBtn.disabled = false;
+                runGoalGeneratorBtn.textContent = 'Generate Draft';
                 renderGuidingModalities();
                 renderGeneratedGoalsReview();
                 goalGeneratorModal.classList.remove('hidden');
             });
-            closeGoalGeneratorBtn.addEventListener('click', () => goalGeneratorModal.classList.add('hidden'));
+            const closeGoalGenerator = () => {
+                goalGenerationRequestId += 1;
+                activeGoalGeneratorClientId = null;
+                goalGeneratorModal.classList.add('hidden');
+            };
+            closeGoalGeneratorBtn.addEventListener('click', closeGoalGenerator);
             goalGeneratorModal.addEventListener('click', (e) => {
                 if (e.target.id === 'goalGeneratorModal') {
-                    goalGeneratorModal.classList.add('hidden');
+                    closeGoalGenerator();
                 }
+            });
+            objectivesPerGoalInput.addEventListener('change', () => {
+                objectiveCountHelp.textContent = objectivesPerGoalInput.checked
+                    ? 'This many objectives will be generated under every goal.'
+                    : 'Total objectives distributed across all goals.';
             });
             runGoalGeneratorBtn.addEventListener('click', generateGoalDrafts);
             applyGeneratedGoalsBtn.addEventListener('click', applyGeneratedGoals);
@@ -10622,7 +10723,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 '#persistentInstructionsInput',
                 '#sessionInstructionsInput',
                 '#sessionInfo',
-                '#goalProblemInput',
+                '#goalDiagnosisInput',
                 '#noteNameInput',
                 '#appointmentDateInput',
                 '.goal-title',
@@ -11168,74 +11269,6 @@ This error cannot be fixed within this application's code; it requires a configu
             };
             apiProviderSelect.addEventListener('change', toggleProviderSettings);
 
-            const findRunningAppointmentContexts = (excludedAppointmentId = null) => {
-                const runningContexts = [];
-                const allClients = [...(data.clients || []), ...(data.archivedClients || [])];
-                for (const client of allClients) {
-                    (client.appointments || []).filter(candidate => (
-                        candidate.id !== excludedAppointmentId
-                        && candidate.startTime
-                        && !candidate.endTime
-                    )).forEach(appointment => runningContexts.push({ client, appointment }));
-                }
-                return runningContexts;
-            };
-
-            startTimerBtn.addEventListener('click', async () => {
-                const appointment = findAppointment(findClient(selectedClientId), selectedAppointmentId);
-                if (!appointment || (appointment.startTime && !appointment.endTime)) return;
-
-                if (appointment.startTime && appointment.endTime) {
-                    const shouldRestart = confirm('Restart this completed timer? This will replace its recorded start and end times.');
-                    if (!shouldRestart) return;
-                }
-
-                const runningContexts = findRunningAppointmentContexts(appointment.id);
-                const now = new Date().toISOString();
-                if (runningContexts.length > 0) {
-                    const firstRunningContext = runningContexts[0];
-                    const appointmentDate = new Date(firstRunningContext.appointment.date).toLocaleDateString();
-                    const runningDescription = runningContexts.length === 1
-                        ? `${firstRunningContext.client.name} (${appointmentDate})`
-                        : `${runningContexts.length} other appointments`;
-                    const shouldSwitch = confirm(
-                        `A timer is already running for ${runningDescription}. Stop ${runningContexts.length === 1 ? 'it' : 'them'} now and start this timer?`
-                    );
-                    if (!shouldSwitch) return;
-
-                    runningContexts.forEach(({ appointment: runningAppointment }) => {
-                        runningAppointment.endTime = now;
-                        delete runningAppointment.auditCheck;
-                    });
-                }
-
-                appointment.startTime = now;
-                appointment.endTime = null;
-                delete appointment.auditCheck;
-                markDirty();
-                renderSessionTimer(appointment);
-                clearTimeout(saveTimeout);
-                if (await saveDataToLocalStorage()) {
-                    updateSaveStatus('Timer saved', true, 2000);
-                }
-            });
-
-            stopTimerBtn.addEventListener('click', async () => {
-                const appointment = findAppointment(findClient(selectedClientId), selectedAppointmentId);
-                if (appointment && appointment.startTime && !appointment.endTime) {
-                    appointment.endTime = new Date().toISOString();
-                    clearInterval(sessionTimerInterval);
-                    sessionTimerInterval = null;
-                    delete appointment.auditCheck;
-                    markDirty();
-                    renderSessionTimer(appointment);
-                    clearTimeout(saveTimeout);
-                    if (await saveDataToLocalStorage()) {
-                        updateSaveStatus('Timer saved', true, 2000);
-                    }
-                }
-            });
-
             // --- Theme Management ---
             const updateThemeButton = () => {
                 const savedTheme = localStorage.getItem('theme') || 'automatic';
@@ -11293,6 +11326,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 localStorage.setItem('theme', theme);
                 updateTaskbarTheme(effectiveTheme);
                 updateThemeButton();
+                syncDsmTheme(effectiveTheme);
             };
 
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {

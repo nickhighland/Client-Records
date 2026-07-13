@@ -10,7 +10,13 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-fn write_backup_file(path: String, contents: String) -> Result<(), String> {
+async fn write_backup_file(path: String, contents: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || write_backup_file_blocking(path, contents))
+        .await
+        .map_err(|error| format!("Backup write task failed: {error}"))?
+}
+
+fn write_backup_file_blocking(path: String, contents: String) -> Result<(), String> {
     let trimmed_path = path.trim();
     if trimmed_path.is_empty() {
         return Err("Backup path is empty.".to_string());
@@ -32,6 +38,53 @@ fn write_backup_file(path: String, contents: String) -> Result<(), String> {
         .map_err(|error| format!("Failed to write backup file: {error}"))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod backup_tests {
+    use super::write_backup_file_blocking;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn writes_backup_to_an_absolute_path() {
+        let unique_suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after Unix epoch")
+            .as_nanos();
+        let backup_path = std::env::temp_dir().join(format!(
+            "smartemr-backup-test-{}-{unique_suffix}/backup.json",
+            std::process::id()
+        ));
+
+        write_backup_file_blocking(
+            backup_path.to_string_lossy().into_owned(),
+            "encrypted backup".to_string(),
+        )
+        .expect("backup write should succeed");
+
+        assert_eq!(
+            fs::read_to_string(&backup_path).expect("backup should be readable"),
+            "encrypted backup"
+        );
+
+        if let Some(parent) = backup_path.parent() {
+            fs::remove_dir_all(parent).expect("test backup directory should be removable");
+        }
+    }
+
+    #[test]
+    fn rejects_relative_backup_paths() {
+        let result = write_backup_file_blocking(
+            "relative/backup.json".to_string(),
+            "encrypted backup".to_string(),
+        );
+
+        assert_eq!(
+            result.expect_err("relative path should be rejected"),
+            "Backup path must be an absolute file path."
+        );
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

@@ -1,6 +1,6 @@
 {
   "productName": "SmartEMR",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "identifier": "com.clientrecords.tauriapp",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -40,6 +40,12 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns"
-    ]
+    ],
+    "macOS": {
+      "minimumSystemVersion": "26.0",
+      "signingIdentity": "-",
+      "entitlements": "SmartEMR.entitlements",
+      "infoPlist": "Info.plist"
+    }
   }
 }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>SmartEMR captures audio only from the telehealth app you select so it can create a private, on-device clinical transcript.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>SmartEMR uses the microphone during a Listener session to transcribe the counselor locally.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>SmartEMR uses on-device speech recognition to create a real-time clinical transcript without saving audio.</string>
+</dict>
+</plist>

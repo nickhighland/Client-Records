@@ -2,6 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 mod biometric;
+mod listener;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -98,6 +99,15 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            listener::initialize(app.handle());
+            Ok(())
+        })
+        .on_window_event(|_window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                listener::shutdown();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             write_backup_file,
@@ -105,6 +115,14 @@ pub fn run() {
             biometric::store_biometric_secret,
             biometric::read_biometric_secret,
             biometric::remove_biometric_secret,
+            listener::listener_capabilities,
+            listener::listener_sources,
+            listener::listener_start,
+            listener::listener_pause,
+            listener::listener_resume,
+            listener::listener_stop,
+            listener::listener_cancel,
+            listener::listener_generate_draft,
             generate_google_token,
             send_password_reset_email,
             send_email_verification_email,

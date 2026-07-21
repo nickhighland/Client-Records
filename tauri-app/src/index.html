@@ -1492,6 +1492,191 @@
             resize: vertical;
         }
 
+        .listener-panel {
+            margin-top: 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            background:
+                linear-gradient(135deg, rgba(52, 152, 219, 0.09), rgba(22, 160, 133, 0.05)),
+                var(--panel-bg);
+            overflow: hidden;
+            flex: 0 0 auto;
+        }
+        .listener-panel.is-active {
+            border-color: #16a085;
+            box-shadow: 0 0 0 2px rgba(22, 160, 133, 0.12);
+        }
+        .listener-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+        .listener-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+        }
+        .listener-live-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 999px;
+            background: #95a5a6;
+        }
+        .listener-panel.is-active .listener-live-dot {
+            background: #e74c3c;
+            box-shadow: 0 0 0 5px rgba(231, 76, 60, 0.14);
+            animation: listenerPulse 1.8s ease-in-out infinite;
+        }
+        @keyframes listenerPulse {
+            50% { transform: scale(0.72); opacity: 0.72; }
+        }
+        .listener-status {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-color-secondary);
+            text-align: right;
+        }
+        .listener-body {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .listener-source-grid {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) minmax(140px, 0.65fr) auto;
+            gap: 8px;
+            align-items: end;
+        }
+        .listener-field label {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-color-secondary);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .listener-field select,
+        #listenerTranscriptEditor {
+            width: 100%;
+            border: 1px solid var(--input-border);
+            border-radius: 7px;
+            background: var(--input-bg);
+            color: var(--input-text);
+            font: inherit;
+        }
+        .listener-field select { min-height: 36px; padding: 6px 8px; }
+        .listener-consent {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 9px 10px;
+            border-radius: 8px;
+            background: rgba(52, 152, 219, 0.08);
+            color: var(--text-color-primary);
+            font-size: 0.8rem;
+            line-height: 1.35;
+        }
+        .listener-consent input { margin-top: 2px; }
+        .listener-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            align-items: center;
+        }
+        .listener-controls .btn { padding: 7px 11px; font-size: 0.78rem; }
+        .listener-start-btn { background: linear-gradient(135deg, #16a085, #117864); }
+        .listener-stop-btn { background: linear-gradient(135deg, #d35400, #b03a2e); }
+        .listener-meter-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .listener-meter {
+            display: grid;
+            grid-template-columns: 72px minmax(0, 1fr);
+            align-items: center;
+            gap: 8px;
+            color: var(--text-color-secondary);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .listener-meter-track {
+            height: 7px;
+            border-radius: 999px;
+            background: rgba(127, 140, 141, 0.22);
+            overflow: hidden;
+        }
+        .listener-meter-fill {
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #3498db, #16a085, #f1c40f);
+            transition: width 80ms linear;
+        }
+        .listener-transcript-shell {
+            border: 1px solid var(--panel-border);
+            border-radius: 9px;
+            background: var(--textarea-bg);
+            overflow: hidden;
+        }
+        .listener-transcript-heading {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 7px 9px;
+            border-bottom: 1px solid var(--panel-border);
+            color: var(--text-color-secondary);
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+        .listener-transcript {
+            max-height: 230px;
+            overflow-y: auto;
+            padding: 9px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+        .listener-segment {
+            display: grid;
+            grid-template-columns: 72px minmax(0, 1fr);
+            gap: 8px;
+            font-size: 0.82rem;
+            line-height: 1.35;
+        }
+        .listener-speaker {
+            font-weight: 800;
+            color: #2471a3;
+        }
+        .listener-segment.client .listener-speaker { color: #117864; }
+        .listener-segment.volatile { opacity: 0.64; }
+        .listener-empty {
+            padding: 10px;
+            color: var(--text-color-secondary);
+            font-size: 0.8rem;
+            font-style: italic;
+            text-align: center;
+        }
+        #listenerTranscriptEditor {
+            min-height: 180px;
+            padding: 9px;
+            resize: vertical;
+            line-height: 1.4;
+        }
+        .listener-privacy-note {
+            color: var(--text-color-secondary);
+            font-size: 0.72rem;
+            line-height: 1.4;
+        }
+        @media (max-width: 900px) {
+            .listener-source-grid { grid-template-columns: 1fr; }
+        }
+
         .no-selection {
             color: var(--text-color-secondary); text-align: center;
             margin-top: 50px; font-style: italic;
@@ -2466,7 +2651,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge">v2.0.3</span>
+                    <span class="version-badge">v2.0.4</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -2668,6 +2853,49 @@
                      <div class="panel-content">
                          <div id="regularSessionFields">
                          <textarea id="sessionInfo" placeholder="Select an appointment to enter session details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                         <section id="listenerPanel" class="listener-panel">
+                             <div class="listener-heading">
+                                 <div class="listener-title"><span class="listener-live-dot"></span><span>Listener</span></div>
+                                 <div id="listenerStatus" class="listener-status">Select an appointment</div>
+                             </div>
+                             <div class="listener-body">
+                                 <div class="listener-source-grid">
+                                     <div class="listener-field">
+                                         <label for="listenerTelehealthSource">Client audio source</label>
+                                         <select id="listenerTelehealthSource" disabled><option value="">Select an appointment first</option></select>
+                                     </div>
+                                     <div class="listener-field">
+                                         <label for="listenerMicrophoneSource">Counselor microphone</label>
+                                         <select id="listenerMicrophoneSource" disabled><option value="system-default">System Default Microphone</option></select>
+                                     </div>
+                                     <button id="listenerRefreshSourcesBtn" type="button" class="btn" disabled>Refresh Apps</button>
+                                 </div>
+                                 <label class="listener-consent">
+                                     <input id="listenerConsentCheck" type="checkbox" disabled>
+                                     <span>I confirmed everyone in this session consented to live transcription. Audio stays in memory and is never saved; transcript text remains encrypted with this chart and is used to generate the note.</span>
+                                 </label>
+                                 <div class="listener-controls">
+                                     <button id="listenerStartBtn" type="button" class="btn listener-start-btn" disabled>Start Listening</button>
+                                     <button id="listenerPauseBtn" type="button" class="btn hidden">Pause</button>
+                                     <button id="listenerStopBtn" type="button" class="btn listener-stop-btn hidden">Stop Listening</button>
+                                     <button id="listenerCancelBtn" type="button" class="btn hidden" style="background: linear-gradient(135deg, #7f8c8d, #626567);">Cancel &amp; Discard</button>
+                                     <button id="listenerGenerateNoteBtn" type="button" class="btn listener-start-btn hidden">Generate Note</button>
+                                 </div>
+                                 <div id="listenerMeters" class="listener-meter-grid hidden">
+                                     <div class="listener-meter"><span>Counselor</span><div class="listener-meter-track"><div id="listenerCounselorMeter" class="listener-meter-fill"></div></div></div>
+                                     <div class="listener-meter"><span>Client</span><div class="listener-meter-track"><div id="listenerClientMeter" class="listener-meter-fill"></div></div></div>
+                                 </div>
+                                 <div id="listenerMessage" class="listener-privacy-note">Requires macOS 26, Apple Intelligence, microphone access, speech recognition, and system audio recording permission.</div>
+                                 <div id="listenerTranscriptShell" class="listener-transcript-shell hidden">
+                                     <div class="listener-transcript-heading"><span>Live Transcript</span><span id="listenerTranscriptCount">0 segments</span></div>
+                                     <div id="listenerTranscript" class="listener-transcript"></div>
+                                     <div id="listenerTranscriptEditorWrap" class="hidden" style="padding: 9px; border-top: 1px solid var(--panel-border);">
+                                         <label for="listenerTranscriptEditor" style="display: block; font-size: 0.75rem; font-weight: 800; margin-bottom: 5px;">Edit transcript before generating the note</label>
+                                         <textarea id="listenerTranscriptEditor" spellcheck="true"></textarea>
+                                     </div>
+                                 </div>
+                             </div>
+                         </section>
                          <div id="auditProofingBlock" class="audit-proofing-block">
                              <div style="font-size: 0.85rem; color: var(--text-color-secondary); font-weight: 700; margin-bottom: 6px;">Audit-Proofing</div>
                              <div class="audit-proofing-grid">
@@ -3471,12 +3699,19 @@
 
     <script type="module">
         import { invoke } from '@tauri-apps/api/core';
+        import { listen } from '@tauri-apps/api/event';
         import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
         import { getCurrentWindow } from '@tauri-apps/api/window';
         import { save, ask, message } from '@tauri-apps/plugin-dialog';
         import { writeTextFile } from '@tauri-apps/plugin-fs';
         import { check } from '@tauri-apps/plugin-updater';
         import { relaunch } from '@tauri-apps/plugin-process';
+        import { reconcileListenerEcho } from '/src/listener-echo.js';
+        import { applyGeneratedListenerNote } from '/src/listener-note.js';
+        import {
+            loadEncryptedStateWithLegacyMigration,
+            saveEncryptedState
+        } from '/src/state-persistence.js';
         import {
             checkFirstLogin,
             createUser,
@@ -3605,6 +3840,26 @@
             const clientDiagnosisEl = document.getElementById('clientDiagnosis');
             const clientPresentingProblemEl = document.getElementById('clientPresentingProblem');
             const sessionInfoEl = document.getElementById('sessionInfo');
+            const listenerPanelEl = document.getElementById('listenerPanel');
+            const listenerStatusEl = document.getElementById('listenerStatus');
+            const listenerMessageEl = document.getElementById('listenerMessage');
+            const listenerTelehealthSourceEl = document.getElementById('listenerTelehealthSource');
+            const listenerMicrophoneSourceEl = document.getElementById('listenerMicrophoneSource');
+            const listenerRefreshSourcesBtn = document.getElementById('listenerRefreshSourcesBtn');
+            const listenerConsentCheck = document.getElementById('listenerConsentCheck');
+            const listenerStartBtn = document.getElementById('listenerStartBtn');
+            const listenerPauseBtn = document.getElementById('listenerPauseBtn');
+            const listenerStopBtn = document.getElementById('listenerStopBtn');
+            const listenerCancelBtn = document.getElementById('listenerCancelBtn');
+            const listenerGenerateNoteBtn = document.getElementById('listenerGenerateNoteBtn');
+            const listenerMetersEl = document.getElementById('listenerMeters');
+            const listenerCounselorMeterEl = document.getElementById('listenerCounselorMeter');
+            const listenerClientMeterEl = document.getElementById('listenerClientMeter');
+            const listenerTranscriptShellEl = document.getElementById('listenerTranscriptShell');
+            const listenerTranscriptEl = document.getElementById('listenerTranscript');
+            const listenerTranscriptCountEl = document.getElementById('listenerTranscriptCount');
+            const listenerTranscriptEditorWrapEl = document.getElementById('listenerTranscriptEditorWrap');
+            const listenerTranscriptEditorEl = document.getElementById('listenerTranscriptEditor');
             const auditProofSymptomsEl = document.getElementById('auditProofSymptoms');
             const auditProofFunctionalEl = document.getElementById('auditProofFunctional');
             const auditProofProgressEl = document.getElementById('auditProofProgress');
@@ -3805,6 +4060,12 @@
             let selectedModel = null;
             let persistentInstructions = '';
             let activeNotesTab = 'clientDetails';
+            let listenerCapabilities = { supported: false, message: 'Listener is initializing...' };
+            let listenerSources = { applications: [], microphones: [] };
+            let activeListenerBinding = null;
+            let listenerRuntimeState = 'idle';
+            let listenerEventUnlisten = null;
+            let listenerElapsedInterval = null;
 
             const updateNotesTabUI = () => {
                 const activeTabMap = {
@@ -4038,6 +4299,632 @@
                     && !selectedIntakeId;
             };
 
+            const ensureAppointmentListener = (appointment) => {
+                if (!appointment || typeof appointment !== 'object') return null;
+                if (!appointment.listener || typeof appointment.listener !== 'object') {
+                    appointment.listener = {};
+                }
+                const listener = appointment.listener;
+                if (!Array.isArray(listener.transcriptSegments)) listener.transcriptSegments = [];
+                if (!Array.isArray(listener.warnings)) listener.warnings = [];
+                if (typeof listener.status !== 'string') listener.status = 'idle';
+                if (typeof listener.editedTranscript !== 'string') listener.editedTranscript = '';
+                if (listener.status === 'review') {
+                    listener.status = 'stopped';
+                    listener.statusMessage = 'Transcript ready. Review or edit it, then press Generate Note.';
+                }
+                return listener;
+            };
+
+            const listenerBindingMatches = (left, right) => !!left && !!right
+                && left.listenerSessionId === right.listenerSessionId
+                && left.clientId === right.clientId
+                && left.appointmentId === right.appointmentId;
+
+            const getListenerBoundContext = (binding) => {
+                if (!binding) return null;
+                const client = findClient(binding.clientId);
+                const appointment = findAppointment(client, binding.appointmentId);
+                if (!client || !appointment) return null;
+                return { client, appointment, clientId: client.id, appointmentId: appointment.id };
+            };
+
+            const getListenerEventBinding = (event) => {
+                if (!event?.listenerSessionId || !event?.clientId || !event?.appointmentId) return null;
+                return {
+                    listenerSessionId: event.listenerSessionId,
+                    clientId: event.clientId,
+                    appointmentId: event.appointmentId
+                };
+            };
+
+            const formatListenerTranscript = (listener) => {
+                if (listener?.editedTranscript?.trim()) return listener.editedTranscript.trim();
+                return [...(listener?.transcriptSegments || [])]
+                    .filter(segment => segment?.text?.trim())
+                    .sort((left, right) => (left.startMs || 0) - (right.startMs || 0))
+                    .map(segment => {
+                        const seconds = Math.max(0, Math.floor((segment.startMs || 0) / 1000));
+                        const timestamp = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+                        const speaker = segment.source === 'counselor' ? 'Counselor' : 'Client';
+                        return `[${timestamp}] ${speaker}: ${segment.text.trim()}`;
+                    })
+                    .join('\n');
+            };
+
+            const formatListenerElapsed = (milliseconds) => {
+                const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const remainder = seconds % 60;
+                return hours > 0
+                    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
+                    : `${minutes}:${String(remainder).padStart(2, '0')}`;
+            };
+
+            const refreshListenerElapsed = () => {
+                if (!activeListenerBinding || !['preparing', 'listening', 'paused', 'stopping'].includes(listenerRuntimeState)) return;
+                if (activeListenerBinding.clientId !== selectedClientId || activeListenerBinding.appointmentId !== selectedAppointmentId) return;
+                const context = getListenerBoundContext(activeListenerBinding);
+                const startedAt = Date.parse(context?.appointment?.listener?.startedAt || '');
+                if (!Number.isFinite(startedAt)) return;
+                const stateLabel = listenerRuntimeState === 'listening'
+                    ? 'Listening locally'
+                    : listenerRuntimeState.charAt(0).toUpperCase() + listenerRuntimeState.slice(1);
+                listenerStatusEl.textContent = `${stateLabel} · ${formatListenerElapsed(Date.now() - startedAt)}`;
+            };
+
+            const syncListenerElapsedTicker = () => {
+                const shouldTick = !!activeListenerBinding
+                    && ['preparing', 'listening', 'paused', 'stopping'].includes(listenerRuntimeState);
+                if (shouldTick && listenerElapsedInterval === null) {
+                    listenerElapsedInterval = setInterval(refreshListenerElapsed, 1000);
+                } else if (!shouldTick && listenerElapsedInterval !== null) {
+                    clearInterval(listenerElapsedInterval);
+                    listenerElapsedInterval = null;
+                }
+                refreshListenerElapsed();
+            };
+
+            const renderListenerTranscript = (listener) => {
+                if (!listenerTranscriptEl || !listenerTranscriptCountEl) return;
+                const segments = [...(listener?.transcriptSegments || [])]
+                    .filter(segment => segment?.text?.trim())
+                    .sort((left, right) => (left.startMs || 0) - (right.startMs || 0));
+                listenerTranscriptEl.innerHTML = '';
+                listenerTranscriptCountEl.textContent = `${segments.length} segment${segments.length === 1 ? '' : 's'}`;
+                if (segments.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'listener-empty';
+                    empty.textContent = listenerRuntimeState === 'listening'
+                        ? 'Listening for speech...'
+                        : 'No transcript has been captured for this appointment.';
+                    listenerTranscriptEl.appendChild(empty);
+                    return;
+                }
+
+                segments.forEach(segment => {
+                    const row = document.createElement('div');
+                    row.className = `listener-segment ${segment.source === 'counselor' ? 'counselor' : 'client'}${segment.isFinal ? '' : ' volatile'}`;
+                    const speaker = document.createElement('div');
+                    speaker.className = 'listener-speaker';
+                    speaker.textContent = segment.source === 'counselor' ? 'Counselor' : 'Client';
+                    const text = document.createElement('div');
+                    text.textContent = segment.text;
+                    row.append(speaker, text);
+                    listenerTranscriptEl.appendChild(row);
+                });
+                listenerTranscriptEl.scrollTop = listenerTranscriptEl.scrollHeight;
+            };
+
+            const LISTENER_ALL_SYSTEM_AUDIO_SOURCE_ID = '__all_system_audio__';
+            let lastRenderedListenerAppointmentId = null;
+            const renderListenerSourceOptions = (listener) => {
+                if (!listenerTelehealthSourceEl || !listenerMicrophoneSourceEl) return;
+                const listenerPrefersApp = listener?.audioSourceMode === 'application';
+                const settingsPreferApp = data.listenerSettings?.audioSourceMode === 'application';
+                const preferredSource = listenerPrefersApp
+                    ? listener.telehealthBundleId
+                    : settingsPreferApp
+                        ? data.listenerSettings.telehealthBundleId
+                        : LISTENER_ALL_SYSTEM_AUDIO_SOURCE_ID;
+                listenerTelehealthSourceEl.innerHTML = '';
+                const automaticOption = document.createElement('option');
+                automaticOption.value = LISTENER_ALL_SYSTEM_AUDIO_SOURCE_ID;
+                automaticOption.textContent = 'All System Audio (Automatic)';
+                listenerTelehealthSourceEl.appendChild(automaticOption);
+                listenerSources.applications.forEach(source => {
+                    const option = document.createElement('option');
+                    option.value = source.id;
+                    option.textContent = `${source.name}${source.isProducingAudio ? ' - playing audio' : ''}`;
+                    listenerTelehealthSourceEl.appendChild(option);
+                });
+                if (preferredSource === LISTENER_ALL_SYSTEM_AUDIO_SOURCE_ID
+                    || listenerSources.applications.some(source => source.id === preferredSource)) {
+                    listenerTelehealthSourceEl.value = preferredSource;
+                }
+
+                listenerMicrophoneSourceEl.innerHTML = '';
+                const microphones = listenerSources.microphones.length
+                    ? listenerSources.microphones
+                    : [{ id: 'system-default', name: 'System Default Microphone' }];
+                microphones.forEach(source => {
+                    const option = document.createElement('option');
+                    option.value = source.id;
+                    option.textContent = source.name;
+                    listenerMicrophoneSourceEl.appendChild(option);
+                });
+            };
+
+            const renderListenerPanel = (appointment = null) => {
+                if (!listenerPanelEl) return;
+                const currentAppointment = appointment
+                    || findAppointment(findClient(selectedClientId), selectedAppointmentId);
+                const listener = currentAppointment ? ensureAppointmentListener(currentAppointment) : null;
+                const isNewAppointment = currentAppointment?.id !== lastRenderedListenerAppointmentId;
+                const bindingIsCurrent = !!activeListenerBinding
+                    && activeListenerBinding.clientId === selectedClientId
+                    && activeListenerBinding.appointmentId === selectedAppointmentId;
+                const runtimeActive = ['preparing', 'listening', 'paused', 'stopping', 'drafting'].includes(listenerRuntimeState);
+                const anotherAppointmentIsActive = !!activeListenerBinding && !bindingIsCurrent;
+
+                if (isNewAppointment) {
+                    listenerConsentCheck.checked = false;
+                    lastRenderedListenerAppointmentId = currentAppointment?.id || null;
+                    renderListenerSourceOptions(listener);
+                }
+
+                listenerPanelEl.classList.toggle('is-active', bindingIsCurrent && runtimeActive);
+                listenerTelehealthSourceEl.disabled = !currentAppointment || runtimeActive || !listenerCapabilities.supported;
+                listenerMicrophoneSourceEl.disabled = !currentAppointment || runtimeActive || !listenerCapabilities.supported;
+                listenerRefreshSourcesBtn.disabled = !currentAppointment || runtimeActive || !listenerCapabilities.supported;
+                listenerConsentCheck.disabled = !currentAppointment || runtimeActive || !listenerCapabilities.supported;
+                listenerStartBtn.disabled = !currentAppointment
+                    || !listenerCapabilities.supported
+                    || !listenerConsentCheck.checked
+                    || !listenerTelehealthSourceEl.value
+                    || !!activeListenerBinding;
+                listenerStartBtn.classList.toggle('hidden', bindingIsCurrent && runtimeActive);
+                listenerPauseBtn.classList.toggle('hidden', !bindingIsCurrent || !['listening', 'paused'].includes(listenerRuntimeState));
+                listenerPauseBtn.textContent = listenerRuntimeState === 'paused' ? 'Resume' : 'Pause';
+                listenerStopBtn.classList.toggle('hidden', !bindingIsCurrent || !['listening', 'paused'].includes(listenerRuntimeState));
+                listenerCancelBtn.classList.toggle('hidden', !bindingIsCurrent || !runtimeActive || listenerRuntimeState === 'drafting');
+                listenerMetersEl.classList.toggle('hidden', !bindingIsCurrent || !['listening', 'paused'].includes(listenerRuntimeState));
+
+                const hasTranscript = !!listener?.transcriptSegments?.some(segment => segment?.text?.trim())
+                    || !!listener?.editedTranscript?.trim();
+                const canGenerateNote = !!currentAppointment && hasTranscript && !activeListenerBinding;
+                listenerGenerateNoteBtn.classList.toggle('hidden', !canGenerateNote);
+                listenerTranscriptShellEl.classList.toggle('hidden', !currentAppointment || !hasTranscript && !bindingIsCurrent);
+                renderListenerTranscript(listener);
+
+                const showEditor = !!currentAppointment && hasTranscript && !bindingIsCurrent
+                    && !['listening', 'preparing', 'stopping'].includes(listenerRuntimeState);
+                listenerTranscriptEditorWrapEl.classList.toggle('hidden', !showEditor);
+                if (showEditor && document.activeElement !== listenerTranscriptEditorEl) {
+                    listenerTranscriptEditorEl.value = listener?.editedTranscript || formatListenerTranscript(listener);
+                }
+
+                if (!currentAppointment) {
+                    listenerStatusEl.textContent = 'Select an appointment';
+                    listenerMessageEl.textContent = 'Listener is available only for individual appointment charts.';
+                } else if (!listenerCapabilities.supported) {
+                    listenerStatusEl.textContent = 'Unavailable';
+                    listenerMessageEl.textContent = listenerCapabilities.message || 'Listener requires macOS 26 or newer.';
+                } else if (anotherAppointmentIsActive) {
+                    listenerStatusEl.textContent = 'Active on another chart';
+                    listenerMessageEl.textContent = 'Listener remains safely bound to the appointment where it started. Return to that chart to control it.';
+                } else if (bindingIsCurrent) {
+                    listenerStatusEl.textContent = listenerRuntimeState === 'listening'
+                        ? 'Listening locally'
+                        : listenerRuntimeState === 'drafting'
+                            ? 'Generating note'
+                            : listenerRuntimeState.charAt(0).toUpperCase() + listenerRuntimeState.slice(1);
+                    listenerMessageEl.textContent = listener?.statusMessage || 'Audio stays in memory and is never recorded to disk.';
+                } else if (listener?.status === 'saved') {
+                    listenerStatusEl.textContent = 'Note generated';
+                    listenerMessageEl.textContent = listener.statusMessage
+                        || 'The SOAP note and audit-proofing fields were generated and saved. You can edit them normally.';
+                } else {
+                    listenerStatusEl.textContent = hasTranscript ? 'Transcript ready' : 'Ready';
+                    listenerMessageEl.textContent = listener?.statusMessage
+                        || 'Automatic mode hears all app playback, but not the microphone. During simultaneous speech, direct client audio is prioritized to prevent speaker echo.';
+                }
+                syncListenerElapsedTicker();
+            };
+
+            const updateListenerSegment = (listener, event) => {
+                const segments = listener.transcriptSegments;
+                const nextSegment = {
+                    segmentId: event.segmentId,
+                    source: event.source === 'counselor' ? 'counselor' : 'client',
+                    text: String(event.text || '').trim(),
+                    isFinal: !!event.isFinal,
+                    startMs: Number(event.startMs) || 0,
+                    endMs: Number(event.endMs) || 0,
+                    sequenceNumber: Number(event.sequenceNumber) || 0,
+                    receivedAtMs: Date.parse(event.timestamp) || Date.now()
+                };
+                const echoResult = reconcileListenerEcho(segments, nextSegment);
+                if (echoResult.discardIncoming) {
+                    listener.editedTranscript = '';
+                    return;
+                }
+
+                const matchingIndex = segments.findIndex(segment => segment.segmentId === event.segmentId);
+                if (matchingIndex >= 0) {
+                    segments[matchingIndex] = nextSegment;
+                } else {
+                    if (nextSegment.isFinal) {
+                        for (let index = segments.length - 1; index >= 0; index -= 1) {
+                            const candidate = segments[index];
+                            const overlaps = candidate.source === nextSegment.source
+                                && !candidate.isFinal
+                                && candidate.startMs <= nextSegment.endMs
+                                && candidate.endMs >= nextSegment.startMs;
+                            if (overlaps) segments.splice(index, 1);
+                        }
+                    } else {
+                        for (let index = segments.length - 1; index >= 0; index -= 1) {
+                            if (segments[index].source === nextSegment.source && !segments[index].isFinal) {
+                                segments.splice(index, 1);
+                            }
+                        }
+                    }
+                    segments.push(nextSegment);
+                }
+                listener.editedTranscript = '';
+            };
+
+            const listenerClinicalContext = (client, appointment) => {
+                const goals = (client?.goals || []).map(goal => {
+                    const objectives = (goal.objectives || []).map(objective => objective.text || objective.description || '').filter(Boolean);
+                    return `Goal: ${goal.title || goal.text || goal.description || ''}\nObjectives: ${objectives.join('; ')}`;
+                }).join('\n');
+                return [
+                    `Diagnosis: ${client?.diagnosis || ''}`,
+                    `Presenting problem: ${client?.presentingProblem || ''}`,
+                    `Treatment goals:\n${goals}`,
+                    `Known intervention bank: ${getInterventionBankNames().join('; ')}`,
+                    `Persistent clinician instructions: ${client?.persistentInstructions || ''}`,
+                    `Session-specific instructions: ${appointment?.sessionInstructions || ''}`
+                ].join('\n\n');
+            };
+
+            const generateListenerNote = async (binding = activeListenerBinding) => {
+                if (!binding) {
+                    const selectedContext = getSelectedAppointmentContext();
+                    if (!selectedContext) return;
+                    const selectedListener = ensureAppointmentListener(selectedContext.appointment);
+                    binding = {
+                        listenerSessionId: selectedListener.listenerSessionId || crypto.randomUUID(),
+                        clientId: selectedContext.clientId,
+                        appointmentId: selectedContext.appointmentId
+                    };
+                    selectedListener.listenerSessionId = binding.listenerSessionId;
+                }
+                const context = getListenerBoundContext(binding);
+                if (!context) return;
+                const listener = ensureAppointmentListener(context.appointment);
+                const transcript = listener.editedTranscript.trim() || formatListenerTranscript(listener);
+                if (!transcript) {
+                    listener.status = 'error';
+                    listener.statusMessage = 'No speech was transcribed, so a note could not be generated.';
+                    activeListenerBinding = null;
+                    listenerRuntimeState = 'idle';
+                    renderListenerPanel();
+                    return;
+                }
+
+                listener.editedTranscript = transcript;
+                listener.status = 'drafting';
+                listener.statusMessage = 'Generating the SOAP note and audit-proofing fields on this Mac...';
+                listenerRuntimeState = 'drafting';
+                activeListenerBinding = binding;
+                markDirty();
+                renderListenerPanel();
+                try {
+                    await invoke('listener_generate_draft', {
+                        request: {
+                            ...binding,
+                            transcript,
+                            clinicalContext: listenerClinicalContext(context.client, context.appointment)
+                        }
+                    });
+                } catch (error) {
+                    listener.status = 'error';
+                    listener.statusMessage = `Note generation failed: ${String(error)}`;
+                    listenerRuntimeState = 'idle';
+                    activeListenerBinding = null;
+                    markDirty();
+                    renderListenerPanel();
+                }
+            };
+
+            const handleListenerEvent = async (event) => {
+                const binding = getListenerEventBinding(event);
+                if (!binding || !listenerBindingMatches(binding, activeListenerBinding)) return;
+                const context = getListenerBoundContext(binding);
+                if (!context) return;
+                const listener = ensureAppointmentListener(context.appointment);
+
+                if (event.type === 'level') {
+                    const meter = event.source === 'counselor' ? listenerCounselorMeterEl : listenerClientMeterEl;
+                    meter.style.width = `${Math.round(Math.max(0, Math.min(1, Number(event.level) || 0)) * 100)}%`;
+                    return;
+                }
+
+                if (event.type === 'transcript') {
+                    updateListenerSegment(listener, event);
+                    listener.status = 'listening';
+                    if (event.isFinal) markDirty();
+                    if (isCurrentAppointmentContext(context)) renderListenerPanel(context.appointment);
+                    return;
+                }
+
+                if (event.type === 'warning') {
+                    listener.warnings.push({ message: event.message || 'Listener warning', timestamp: event.timestamp || new Date().toISOString() });
+                    listener.warnings = listener.warnings.slice(-10);
+                    listener.statusMessage = event.message || 'Listener encountered a recoverable warning.';
+                    markDirty();
+                    if (isCurrentAppointmentContext(context)) renderListenerPanel(context.appointment);
+                    return;
+                }
+
+                if (event.type === 'draft') {
+                    let noteApplied = false;
+                    try {
+                        const applied = applyGeneratedListenerNote(context, event.draft || {}, formatBulletPoints);
+                        listener.generatedGoalProgress = applied.goalProgress;
+                        listener.generatedAt = new Date().toISOString();
+                        listener.status = 'saved';
+                        listener.statusMessage = 'The SOAP note and audit-proofing fields were generated and saved. You can edit them normally.';
+                        listener.draft = null;
+                        listener.transcriptDeletedAt = null;
+                        delete listener.approvedAt;
+                        noteApplied = true;
+                    } catch (error) {
+                        listener.status = 'error';
+                        listener.statusMessage = `The generated note could not be applied: ${String(error)}`;
+                    }
+                    listenerRuntimeState = 'idle';
+                    activeListenerBinding = null;
+                    markDirty();
+                    const noteIsOnCurrentAppointment = isCurrentAppointmentContext(context);
+                    if (noteIsOnCurrentAppointment) {
+                        renderDetails();
+                    } else {
+                        renderListenerPanel();
+                    }
+                    await saveDataToLocalStorage();
+                    if (noteApplied && noteIsOnCurrentAppointment) {
+                        updateSaveStatus('Listener note generated and saved to the encrypted chart.', true, 2500);
+                    }
+                    return;
+                }
+
+                if (event.type === 'error') {
+                    listener.status = 'error';
+                    listener.statusMessage = event.message || 'Listener stopped because of an error.';
+                    listenerRuntimeState = 'idle';
+                    activeListenerBinding = null;
+                    markDirty();
+                    if (isCurrentAppointmentContext(context)) renderListenerPanel(context.appointment);
+                    return;
+                }
+
+                if (event.type !== 'state') return;
+                listenerRuntimeState = event.state || listenerRuntimeState;
+                listener.status = event.state || listener.status;
+                listener.statusMessage = event.message || listener.statusMessage;
+                if (event.state === 'listening' && !listener.listeningStartedAt) {
+                    listener.listeningStartedAt = new Date().toISOString();
+                }
+                if (event.state === 'stopped') {
+                    listener.endedAt = new Date().toISOString();
+                    listener.status = 'stopped';
+                    listener.statusMessage = 'Transcript ready. Review or edit it, then press Generate Note.';
+                    listenerRuntimeState = 'idle';
+                    activeListenerBinding = null;
+                    markDirty();
+                    if (isCurrentAppointmentContext(context)) {
+                        listenerTranscriptEditorEl.value = formatListenerTranscript(listener);
+                        renderListenerPanel(context.appointment);
+                    }
+                    await saveDataToLocalStorage();
+                    return;
+                }
+                if (event.state === 'cancelled') {
+                    listener.transcriptSegments = [];
+                    listener.editedTranscript = '';
+                    listener.draft = null;
+                    listener.status = 'cancelled';
+                    activeListenerBinding = null;
+                    listenerRuntimeState = 'idle';
+                    markDirty();
+                }
+                if (isCurrentAppointmentContext(context)) renderListenerPanel(context.appointment);
+            };
+
+            const refreshListenerSources = async () => {
+                if (!listenerCapabilities.supported) return;
+                listenerRefreshSourcesBtn.disabled = true;
+                listenerMessageEl.textContent = 'Looking for apps that can produce client audio...';
+                try {
+                    const sources = await invoke('listener_sources');
+                    listenerSources = {
+                        applications: Array.isArray(sources?.applications) ? sources.applications : [],
+                        microphones: Array.isArray(sources?.microphones) ? sources.microphones : []
+                    };
+                    const appointment = findAppointment(findClient(selectedClientId), selectedAppointmentId);
+                    renderListenerSourceOptions(appointment ? ensureAppointmentListener(appointment) : null);
+                } catch (error) {
+                    listenerMessageEl.textContent = `Could not load audio sources: ${String(error)}`;
+                }
+                renderListenerPanel();
+            };
+
+            const initializeListener = async () => {
+                if (!isDesktopRuntime()) {
+                    listenerCapabilities = { supported: false, message: 'Listener requires the SmartEMR desktop app.' };
+                    renderListenerPanel();
+                    return;
+                }
+                try {
+                    listenerEventUnlisten = await listen('listener://event', ({ payload }) => {
+                        handleListenerEvent(payload).catch(error => console.error('Listener event failed:', error));
+                    });
+                    listenerCapabilities = await invoke('listener_capabilities');
+                    await refreshListenerSources();
+                } catch (error) {
+                    listenerCapabilities = { supported: false, message: `Listener initialization failed: ${String(error)}` };
+                }
+                renderListenerPanel();
+            };
+
+            const startListener = async () => {
+                const context = getSelectedAppointmentContext();
+                if (!context || activeListenerBinding) return;
+                if (!isDatabaseInitialized()) {
+                    alert('Unlock the encrypted SmartEMR database before starting Listener. Transcript text is never stored outside the encrypted chart.');
+                    return;
+                }
+                if (!listenerConsentCheck.checked) {
+                    alert('Confirm session consent before starting Listener.');
+                    return;
+                }
+                const captureAllSystemAudio = listenerTelehealthSourceEl.value === LISTENER_ALL_SYSTEM_AUDIO_SOURCE_ID;
+                const source = captureAllSystemAudio
+                    ? {
+                        id: LISTENER_ALL_SYSTEM_AUDIO_SOURCE_ID,
+                        name: 'All System Audio',
+                        bundleId: '',
+                        processIds: []
+                    }
+                    : listenerSources.applications.find(item => item.id === listenerTelehealthSourceEl.value);
+                if (!source) {
+                    alert('Select the app carrying the client audio, then try again.');
+                    return;
+                }
+
+                const listener = ensureAppointmentListener(context.appointment);
+                if (listener.transcriptSegments.length && !confirm('This appointment already has Listener transcript text. Start a new transcript and replace it?')) return;
+                const listenerSessionId = crypto.randomUUID();
+                activeListenerBinding = {
+                    listenerSessionId,
+                    clientId: context.clientId,
+                    appointmentId: context.appointmentId
+                };
+                listenerRuntimeState = 'preparing';
+                listener.listenerSessionId = listenerSessionId;
+                listener.telehealthBundleId = source.id;
+                listener.audioSourceMode = captureAllSystemAudio ? 'system' : 'application';
+                listener.consentConfirmedAt = new Date().toISOString();
+                listener.startedAt = new Date().toISOString();
+                listener.endedAt = null;
+                listener.status = 'preparing';
+                listener.statusMessage = 'Preparing private on-device transcription...';
+                listener.transcriptSegments = [];
+                listener.editedTranscript = '';
+                listener.draft = null;
+                listener.warnings = [];
+                data.listenerSettings = {
+                    ...(data.listenerSettings || {}),
+                    telehealthBundleId: source.id,
+                    audioSourceMode: listener.audioSourceMode
+                };
+                markDirty();
+                resetInactivityTimer();
+                renderListenerPanel(context.appointment);
+
+                const vocabulary = [
+                    context.appointment.sessionInfo,
+                    context.appointment.sessionInstructions,
+                    context.appointment.soap?.o,
+                    findClient(context.clientId)?.diagnosis,
+                    findClient(context.clientId)?.presentingProblem,
+                    ...getInterventionBankNames()
+                ].filter(Boolean).join(' ').split(/[^A-Za-z0-9'-]+/).filter(term => term.length > 3).slice(0, 220);
+
+                try {
+                    await invoke('listener_start', {
+                        request: {
+                            ...activeListenerBinding,
+                            telehealthBundleId: source.bundleId || source.id,
+                            telehealthProcessIds: source.processIds || [],
+                            captureAllSystemAudio,
+                            locale: 'en_US',
+                            vocabulary
+                        }
+                    });
+                } catch (error) {
+                    listener.status = 'error';
+                    listener.statusMessage = `Listener could not start: ${String(error)}`;
+                    activeListenerBinding = null;
+                    listenerRuntimeState = 'idle';
+                    markDirty();
+                    renderListenerPanel(context.appointment);
+                }
+            };
+
+            const pauseOrResumeListener = async () => {
+                if (!activeListenerBinding) return;
+                if (listenerRuntimeState === 'paused') {
+                    await invoke('listener_resume');
+                } else if (listenerRuntimeState === 'listening') {
+                    await invoke('listener_pause');
+                }
+            };
+
+            const stopListener = async () => {
+                if (!activeListenerBinding || !['listening', 'paused'].includes(listenerRuntimeState)) return;
+                listenerRuntimeState = 'stopping';
+                const context = getListenerBoundContext(activeListenerBinding);
+                if (context) {
+                    const listener = ensureAppointmentListener(context.appointment);
+                    listener.status = 'stopping';
+                    listener.statusMessage = 'Finalizing the local transcript...';
+                }
+                renderListenerPanel();
+                await invoke('listener_stop');
+            };
+
+            const cancelListener = async ({ requireConfirmation = true } = {}) => {
+                if (!activeListenerBinding) return;
+                if (requireConfirmation && !confirm('Stop listening and permanently discard this unsaved transcript?')) return;
+                await invoke('listener_cancel');
+            };
+
+            const stopListenerBeforeLock = async () => {
+                if (!activeListenerBinding) return;
+                const binding = activeListenerBinding;
+                const context = getListenerBoundContext(binding);
+                const wasCapturing = ['preparing', 'listening', 'paused', 'stopping'].includes(listenerRuntimeState);
+                activeListenerBinding = null;
+                listenerRuntimeState = 'idle';
+                if (wasCapturing) {
+                    try {
+                        await invoke('listener_cancel');
+                    } catch (error) {
+                        console.error('Failed to cancel Listener before lock:', error);
+                    }
+                }
+                if (context) {
+                    const listener = ensureAppointmentListener(context.appointment);
+                    if (wasCapturing) {
+                        listener.transcriptSegments = [];
+                        listener.editedTranscript = '';
+                        listener.draft = null;
+                        listener.status = 'cancelled';
+                        listener.statusMessage = 'Listener stopped and discarded its unsaved transcript when SmartEMR locked.';
+                    } else if (listener.status === 'drafting') {
+                        listener.status = 'stopped';
+                        listener.statusMessage = 'Note generation was detached when SmartEMR locked. Unlock and generate the note again.';
+                    }
+                    markDirty();
+                }
+            };
+
             const normalizeClientData = () => {
                 if (!Array.isArray(data.clients)) data.clients = [];
                 if (!Array.isArray(data.archivedClients)) data.archivedClients = [];
@@ -4091,6 +4978,13 @@
                             delete appt.customInstructions;
                         }
                         ensureSoapObjectiveActionState(appt);
+                        if (appt.listener && typeof appt.listener === 'object') {
+                            const listener = ensureAppointmentListener(appt);
+                            if (['preparing', 'listening', 'paused', 'stopping', 'drafting'].includes(listener.status)) {
+                                listener.status = 'interrupted';
+                                listener.statusMessage = 'The previous Listener session ended when SmartEMR closed. Review the retained encrypted transcript before generating the note.';
+                            }
+                        }
                     });
 
                     if (!client.goalGenerationLens || typeof client.goalGenerationLens !== 'object') {
@@ -6801,6 +7695,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 renderSoap();
                 
                 generateNoteBtn.disabled = !appointment || !hasAppointmentGenerationInput(appointment);
+                renderListenerPanel(appointment);
             };
 
             const renderGoals = () => {
@@ -8128,6 +9023,36 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
             });
 
+            listenerConsentCheck.addEventListener('change', () => renderListenerPanel());
+            listenerRefreshSourcesBtn.addEventListener('click', refreshListenerSources);
+            listenerTelehealthSourceEl.addEventListener('change', () => {
+                const appointment = findAppointment(findClient(selectedClientId), selectedAppointmentId);
+                if (appointment) {
+                    const listener = ensureAppointmentListener(appointment);
+                    listener.telehealthBundleId = listenerTelehealthSourceEl.value;
+                    listener.audioSourceMode = listenerTelehealthSourceEl.value === LISTENER_ALL_SYSTEM_AUDIO_SOURCE_ID
+                        ? 'system'
+                        : 'application';
+                    data.listenerSettings = {
+                        ...(data.listenerSettings || {}),
+                        telehealthBundleId: listenerTelehealthSourceEl.value,
+                        audioSourceMode: listener.audioSourceMode
+                    };
+                    markDirty();
+                }
+                renderListenerPanel(appointment);
+            });
+            listenerStartBtn.addEventListener('click', startListener);
+            listenerPauseBtn.addEventListener('click', pauseOrResumeListener);
+            listenerStopBtn.addEventListener('click', stopListener);
+            listenerCancelBtn.addEventListener('click', () => cancelListener());
+            listenerGenerateNoteBtn.addEventListener('click', () => generateListenerNote());
+            listenerTranscriptEditorEl.addEventListener('input', () => {
+                const appointment = findAppointment(findClient(selectedClientId), selectedAppointmentId);
+                if (!appointment) return;
+                ensureAppointmentListener(appointment).editedTranscript = listenerTranscriptEditorEl.value;
+                markDirty();
+            });
             auditProofSymptomsEl.addEventListener('input', () => saveAuditProofingField('symptoms', auditProofSymptomsEl.value));
             auditProofFunctionalEl.addEventListener('input', () => saveAuditProofingField('functionalImpact', auditProofFunctionalEl.value));
             auditProofProgressEl.addEventListener('input', () => saveAuditProofingField('progressResponse', auditProofProgressEl.value));
@@ -9776,45 +10701,36 @@ This error cannot be fixed within this application's code; it requires a configu
             const saveDataToLocalStorage = async () => {
                 try {
                     const state = { data, deletedItems, selectedClientId, selectedAppointmentId, selectedNoteId, selectedIntakeId };
-                    
-                    if (isDatabaseInitialized()) {
-                        const success = await saveState(state);
-                        if (!success) throw new Error("Database save failed");
-                    } else {
-                        // Fallback to localStorage if DB not ready
-                        const dataStr = JSON.stringify(state);
-                        localStorage.setItem('clientData', dataStr);
+
+                    const saved = await saveEncryptedState({
+                        state,
+                        databaseReady: isDatabaseInitialized(),
+                        saveDatabaseState: saveState,
+                        legacyStorage: localStorage
+                    });
+                    if (!saved) {
+                        console.warn('Chart save skipped because the encrypted database is locked.');
+                        return false;
                     }
-                    
+
                     isDirty = false;
                     await persistEncryptedAutoBackup();
                     return true;
                 } catch (e) {
                     console.error("Failed to save data", e);
                     updateSaveStatus('Save failed!', false, 3000);
-                    // Handle potential quota exceeded error
-                    if (e.name === 'QuotaExceededError') {
-                        alert('Failed to save data: Storage quota exceeded. Please export your data to a file and consider clearing some old records.');
-                    }
                     return false;
                 }
             };
 
             const loadDataFromLocalStorage = async () => {
                 try {
-                    let state = null;
-                    
-                    if (isDatabaseInitialized()) {
-                        state = await loadState();
-                    }
-                    
-                    // Fallback to localStorage if DB is empty or not initialized
-                    if (!state) {
-                        const dataStr = localStorage.getItem('clientData');
-                        if (dataStr) {
-                            state = JSON.parse(dataStr);
-                        }
-                    }
+                    const state = await loadEncryptedStateWithLegacyMigration({
+                        databaseReady: isDatabaseInitialized(),
+                        loadDatabaseState: loadState,
+                        saveDatabaseState: saveState,
+                        legacyStorage: localStorage
+                    });
 
                     if (state) {
                         data = state.data || getInitialData();
@@ -9851,10 +10767,8 @@ This error cannot be fixed within this application's code; it requires a configu
                     loadAutoBackupPathFromStorage();
                 } catch (e) {
                     console.error("Failed to load data", e);
-                    alert("Error loading data. Data might be corrupt or password incorrect. Starting fresh.");
-                    data = getInitialData();
-                    deletedItems = { clients: [], appointments: [], notes: [], intakes: [] };
                     loadAutoBackupPathFromStorage();
+                    throw e;
                 }
             };
 
@@ -10710,9 +11624,10 @@ This error cannot be fixed within this application's code; it requires a configu
                 e.target.value = '';
             });
 
-            manualSaveBtn.addEventListener('click', () => {
-                saveDataToLocalStorage();
-                updateSaveStatus('Data saved!', true, 2000);
+            manualSaveBtn.addEventListener('click', async () => {
+                if (await saveDataToLocalStorage()) {
+                    updateSaveStatus('Data saved!', true, 2000);
+                }
             });
 
             // Global autosave: any change to key inputs should trigger an autosave
@@ -11683,6 +12598,7 @@ This error cannot be fixed within this application's code; it requires a configu
             initializeColumnCollapsers();
             loadCollapsedStates();
             loadTheme();
+            initializeListener();
             
             makeResizable(document.getElementById('resizer1'), document.getElementById('panelClients'), document.getElementById('panelAppointments'));
             makeResizable(document.getElementById('resizer2'), document.getElementById('panelAppointments'), document.getElementById('panelSession'));
@@ -11695,7 +12611,10 @@ This error cannot be fixed within this application's code; it requires a configu
                 saveDataToLocalStorage,
                 loadDataFromLocalStorage,
                 normalizeClientData,
-                fullRender
+                fullRender,
+                stopListenerBeforeLock,
+                isListenerSessionActive: () => !!activeListenerBinding
+                    && ['preparing', 'listening', 'paused', 'stopping'].includes(listenerRuntimeState)
             };
 
         });
@@ -11724,6 +12643,10 @@ This error cannot be fixed within this application's code; it requires a configu
         }
 
         function startCountdown() {
+            if (window.__appAuthHooks?.isListenerSessionActive?.()) {
+                resetInactivityTimer();
+                return;
+            }
             const countdown = document.getElementById('autolockCountdown');
             const select    = document.getElementById('autolockSelect');
             if (select)    select.style.display    = 'none';
@@ -12100,6 +13023,13 @@ This error cannot be fixed within this application's code; it requires a configu
             stopCountdown();
             clearTimeout(inactivityTimer);
             const hooks = window.__appAuthHooks;
+            if (isAppUnlocked() && hooks?.stopListenerBeforeLock) {
+                try {
+                    await hooks.stopListenerBeforeLock();
+                } catch (error) {
+                    console.error('Failed to stop Listener before lock:', error);
+                }
+            }
             if (isAppUnlocked() && hooks?.saveDataToLocalStorage) {
                 try {
                     await hooks.saveDataToLocalStorage();

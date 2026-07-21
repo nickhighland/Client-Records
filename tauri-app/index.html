@@ -2466,7 +2466,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge">v2.0.3</span>
+                    <span class="version-badge">v2.0.4</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -3477,6 +3477,10 @@
         import { writeTextFile } from '@tauri-apps/plugin-fs';
         import { check } from '@tauri-apps/plugin-updater';
         import { relaunch } from '@tauri-apps/plugin-process';
+        import {
+            loadEncryptedStateWithLegacyMigration,
+            saveEncryptedState
+        } from '/src/state-persistence.js';
         import {
             checkFirstLogin,
             createUser,
@@ -9776,45 +9780,36 @@ This error cannot be fixed within this application's code; it requires a configu
             const saveDataToLocalStorage = async () => {
                 try {
                     const state = { data, deletedItems, selectedClientId, selectedAppointmentId, selectedNoteId, selectedIntakeId };
-                    
-                    if (isDatabaseInitialized()) {
-                        const success = await saveState(state);
-                        if (!success) throw new Error("Database save failed");
-                    } else {
-                        // Fallback to localStorage if DB not ready
-                        const dataStr = JSON.stringify(state);
-                        localStorage.setItem('clientData', dataStr);
+
+                    const saved = await saveEncryptedState({
+                        state,
+                        databaseReady: isDatabaseInitialized(),
+                        saveDatabaseState: saveState,
+                        legacyStorage: localStorage
+                    });
+                    if (!saved) {
+                        console.warn('Chart save skipped because the encrypted database is locked.');
+                        return false;
                     }
-                    
+
                     isDirty = false;
                     await persistEncryptedAutoBackup();
                     return true;
                 } catch (e) {
                     console.error("Failed to save data", e);
                     updateSaveStatus('Save failed!', false, 3000);
-                    // Handle potential quota exceeded error
-                    if (e.name === 'QuotaExceededError') {
-                        alert('Failed to save data: Storage quota exceeded. Please export your data to a file and consider clearing some old records.');
-                    }
                     return false;
                 }
             };
 
             const loadDataFromLocalStorage = async () => {
                 try {
-                    let state = null;
-                    
-                    if (isDatabaseInitialized()) {
-                        state = await loadState();
-                    }
-                    
-                    // Fallback to localStorage if DB is empty or not initialized
-                    if (!state) {
-                        const dataStr = localStorage.getItem('clientData');
-                        if (dataStr) {
-                            state = JSON.parse(dataStr);
-                        }
-                    }
+                    const state = await loadEncryptedStateWithLegacyMigration({
+                        databaseReady: isDatabaseInitialized(),
+                        loadDatabaseState: loadState,
+                        saveDatabaseState: saveState,
+                        legacyStorage: localStorage
+                    });
 
                     if (state) {
                         data = state.data || getInitialData();
@@ -9851,10 +9846,8 @@ This error cannot be fixed within this application's code; it requires a configu
                     loadAutoBackupPathFromStorage();
                 } catch (e) {
                     console.error("Failed to load data", e);
-                    alert("Error loading data. Data might be corrupt or password incorrect. Starting fresh.");
-                    data = getInitialData();
-                    deletedItems = { clients: [], appointments: [], notes: [], intakes: [] };
                     loadAutoBackupPathFromStorage();
+                    throw e;
                 }
             };
 
@@ -10710,9 +10703,10 @@ This error cannot be fixed within this application's code; it requires a configu
                 e.target.value = '';
             });
 
-            manualSaveBtn.addEventListener('click', () => {
-                saveDataToLocalStorage();
-                updateSaveStatus('Data saved!', true, 2000);
+            manualSaveBtn.addEventListener('click', async () => {
+                if (await saveDataToLocalStorage()) {
+                    updateSaveStatus('Data saved!', true, 2000);
+                }
             });
 
             // Global autosave: any change to key inputs should trigger an autosave

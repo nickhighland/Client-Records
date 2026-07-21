@@ -1,11 +1,12 @@
 {
   "name": "client-records",
   "private": true,
-  "version": "2.0.3",
+  "version": "2.0.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test:persistence": "node --test tests/state-persistence.test.js",
     "preview": "vite preview",
     "tauri": "tauri"
   },

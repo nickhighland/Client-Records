@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR</title>
+    <title>SmartEMR Listener Beta</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2277,8 +2277,8 @@
     <!-- Login Overlay -->
     <div id="loginOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-main); z-index: 9999; overflow-y: auto; display: flex; text-align: center; justify-content: center; align-items: flex-start; padding: 20px;">
         <div style="background: var(--panel-bg); padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; width: 400px; margin: auto;">
-            <h2 id="loginTitle" style="margin-bottom: 20px; color: var(--text-color-primary);">SmartEMR Login</h2>
-            <p id="loginSubtitle" style="margin-bottom: 20px; color: var(--text-color-secondary); font-size: 0.9rem;">Enter your username and password to unlock SmartEMR.</p>
+            <h2 id="loginTitle" style="margin-bottom: 20px; color: var(--text-color-primary);">SmartEMR Listener Beta Login</h2>
+            <p id="loginSubtitle" style="margin-bottom: 20px; color: var(--text-color-secondary); font-size: 0.9rem;">Enter your username and password to unlock SmartEMR Listener Beta.</p>
             <input type="text" id="loginUsernameInput" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 16px;">
             <input type="password" id="loginPasswordInput" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 16px;">
             <div id="biometricLoginPanel" style="display:none; margin-bottom: 16px; padding: 12px; border: 1px solid rgba(39, 174, 96, 0.28); border-radius: 10px; background: rgba(39, 174, 96, 0.08); text-align: left;">
@@ -2650,8 +2650,8 @@
         <div class="header">
             <div class="header-title-group">
                 <h1>
-                    SmartEMR
-                    <span class="version-badge">v2.0.4</span>
+                    SmartEMR Listener
+                    <span class="version-badge">Beta &middot; v2.0.4</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -2694,7 +2694,7 @@
                     <button id="configureBackupBtn" class="menu-item-btn">Set Secondary Backup Location</button>
                     <button id="clearBackupBtn" class="menu-item-btn">Clear Secondary Backup</button>
                     <button id="manualSaveBtn" class="menu-item-btn save">Save Now</button>
-                    <button id="checkForUpdatesBtn" class="menu-item-btn"><span>Check for Updates</span><span id="checkForUpdatesAsterisk" class="update-asterisk hidden" aria-hidden="true">*</span></button>
+                    <button id="checkForUpdatesBtn" class="menu-item-btn"><span>Listener Beta Updates</span><span id="checkForUpdatesAsterisk" class="update-asterisk hidden" aria-hidden="true">*</span></button>
                     <button id="settingsBtn" class="menu-item-btn settings">Settings</button>
                     <button id="themeToggleBtn" class="menu-item-btn theme" title="Toggle Theme">Theme</button>
                     <button id="lockScreenBtn" class="menu-item-btn" title="Lock Screen">Lock Screen</button>
@@ -3741,6 +3741,7 @@
             exportEncryptedSqlDump
         } from './src/database.js';
 
+        const IS_LISTENER_BETA = true;
         const BIOMETRIC_LOGIN_USERNAME_KEY = 'biometricLoginUsername';
         let biometricLaunchAttempted = false;
         let biometricLoginInProgress = false;
@@ -11767,6 +11768,15 @@ This error cannot be fixed within this application's code; it requires a configu
                 setAsteriskIfAvailable = false
             } = {}) => {
                 if (!isTauriRuntime()) return null;
+                if (IS_LISTENER_BETA) {
+                    if (showNoUpdateMessage) {
+                        await message('Listener Beta updates are installed manually from the Listener Beta GitHub prerelease page. Stable SmartEMR updates are intentionally disabled in this build.', {
+                            title: 'Listener Beta Updates',
+                            kind: 'info'
+                        });
+                    }
+                    return null;
+                }
                 if (updateCheckInProgress) return null;
 
                 updateCheckInProgress = true;
@@ -11802,7 +11812,7 @@ This error cannot be fixed within this application's code; it requires a configu
             };
 
             const scheduleStartupUpdateCheck = () => {
-                if (!isTauriRuntime() || startupUpdateCheckScheduled) return;
+                if (IS_LISTENER_BETA || !isTauriRuntime() || startupUpdateCheckScheduled) return;
                 startupUpdateCheckScheduled = true;
                 setTimeout(() => {
                     void checkForAvailableUpdate({
@@ -11815,7 +11825,7 @@ This error cannot be fixed within this application's code; it requires a configu
             };
 
             const startRecurringUpdateChecks = () => {
-                if (!isTauriRuntime() || updatePollingIntervalId) return;
+                if (IS_LISTENER_BETA || !isTauriRuntime() || updatePollingIntervalId) return;
                 updatePollingIntervalId = setInterval(() => {
                     void checkForAvailableUpdate({
                         promptIfAvailable: false,
@@ -13085,8 +13095,8 @@ This error cannot be fixed within this application's code; it requires a configu
                 smtpSettingsPanel.style.display = 'none';
                 deleteAccountPanel.style.display = 'none';
             } else {
-                document.getElementById('loginTitle').textContent = "SmartEMR Login";
-                document.getElementById('loginSubtitle').textContent = "Enter your username and password to unlock SmartEMR.";
+                document.getElementById('loginTitle').textContent = "SmartEMR Listener Beta Login";
+                document.getElementById('loginSubtitle').textContent = "Enter your username and password to unlock SmartEMR Listener Beta.";
                 loginBtn.textContent = "Unlock";
                 onboardingRecoverySection.style.display = 'none';
                 forgotPasswordBtn.style.display = 'block';

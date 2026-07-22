@@ -1,5 +1,5 @@
 {
-  "productName": "SmartEMR",
+  "productName": "SmartEMR Listener Beta",
   "version": "2.0.4",
   "identifier": "com.clientrecords.tauriapp",
   "build": {
@@ -12,7 +12,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "SmartEMR",
+        "title": "SmartEMR Listener Beta",
         "width": 1200,
         "height": 800
       }

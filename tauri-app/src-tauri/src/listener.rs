@@ -21,6 +21,8 @@ mod native {
         pub fn smartemr_listener_generate_draft(json: *const c_char);
         #[cfg(test)]
         pub fn smartemr_listener_vad_self_test() -> i32;
+        #[cfg(test)]
+        pub fn smartemr_listener_audio_gate_self_test() -> i32;
         pub fn smartemr_listener_shutdown();
         pub fn smartemr_listener_free_string(pointer: *mut c_char);
     }
@@ -197,5 +199,14 @@ mod tests {
     #[test]
     fn native_vad_ignores_stationary_noise_and_detects_speech() {
         assert_eq!(unsafe { super::native::smartemr_listener_vad_self_test() }, 1);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn native_audio_gate_retains_all_reference_frames_in_the_suppression_window() {
+        assert_eq!(
+            unsafe { super::native::smartemr_listener_audio_gate_self_test() },
+            1
+        );
     }
 }

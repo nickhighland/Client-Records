@@ -2651,7 +2651,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR Listener
-                    <span class="version-badge">Beta &middot; v2.0.4</span>
+                    <span class="version-badge">Beta &middot; v2.0.5</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -3706,7 +3706,7 @@
         import { writeTextFile } from '@tauri-apps/plugin-fs';
         import { check } from '@tauri-apps/plugin-updater';
         import { relaunch } from '@tauri-apps/plugin-process';
-        import { reconcileListenerEcho } from '/src/listener-echo.js';
+        import { reconcileListenerEcho, removeListenerEchoes } from '/src/listener-echo.js';
         import { applyGeneratedListenerNote } from '/src/listener-note.js';
         import {
             loadEncryptedStateWithLegacyMigration,
@@ -4544,7 +4544,7 @@
                     startMs: Number(event.startMs) || 0,
                     endMs: Number(event.endMs) || 0,
                     sequenceNumber: Number(event.sequenceNumber) || 0,
-                    receivedAtMs: Date.parse(event.timestamp) || Date.now()
+                    receivedAtMs: Number(event.timestampMs) || Date.parse(event.timestamp) || Date.now()
                 };
                 const echoResult = reconcileListenerEcho(segments, nextSegment);
                 if (echoResult.discardIncoming) {
@@ -4573,6 +4573,9 @@
                         }
                     }
                     segments.push(nextSegment);
+                }
+                if (nextSegment.isFinal) {
+                    removeListenerEchoes(segments);
                 }
                 listener.editedTranscript = '';
             };
@@ -4722,6 +4725,7 @@
                     listener.listeningStartedAt = new Date().toISOString();
                 }
                 if (event.state === 'stopped') {
+                    removeListenerEchoes(listener.transcriptSegments);
                     listener.endedAt = new Date().toISOString();
                     listener.status = 'stopped';
                     listener.statusMessage = 'Transcript ready. Review or edit it, then press Generate Note.';

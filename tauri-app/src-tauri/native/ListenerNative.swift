@@ -122,8 +122,10 @@ private struct ListenerDraftRequest: Decodable, Sendable {
 
 private func eventPayload(type: String, binding: ListenerBinding?, values: [String: Any] = [:]) -> [String: Any] {
     var payload = values
+    let emittedAt = Date()
     payload["type"] = type
-    payload["timestamp"] = ISO8601DateFormatter().string(from: Date())
+    payload["timestamp"] = ISO8601DateFormatter().string(from: emittedAt)
+    payload["timestampMs"] = Int64((emittedAt.timeIntervalSince1970 * 1_000).rounded())
     binding?.eventFields.forEach { payload[$0.key] = $0.value }
     return payload
 }
@@ -521,24 +523,83 @@ private func adaptiveSpeechDetectorSelfTest() -> Bool {
     return !detector.process(silence, capturedAt: timestamp.addingTimeInterval(0.02))
 }
 
+private struct SystemSpeechActivityHistory {
+    private var speechFrameTimes: [TimeInterval] = []
+
+    mutating func recordSpeech(at capturedAt: Date) {
+        let timestamp = capturedAt.timeIntervalSinceReferenceDate
+        speechFrameTimes.append(timestamp)
+        prune(before: timestamp - 2)
+        if speechFrameTimes.count > 256 {
+            speechFrameTimes.removeFirst(speechFrameTimes.count - 256)
+        }
+    }
+
+    mutating func containsSpeech(
+        around capturedAt: Date,
+        lookBehind: TimeInterval,
+        lookAhead: TimeInterval
+    ) -> Bool {
+        let timestamp = capturedAt.timeIntervalSinceReferenceDate
+        prune(before: timestamp - max(2, lookBehind + 1))
+        let lowerBound = timestamp - lookBehind
+        let upperBound = timestamp + lookAhead
+        return speechFrameTimes.contains { $0 >= lowerBound && $0 <= upperBound }
+    }
+
+    private mutating func prune(before threshold: TimeInterval) {
+        guard let firstRetainedIndex = speechFrameTimes.firstIndex(where: { $0 >= threshold }) else {
+            speechFrameTimes.removeAll(keepingCapacity: true)
+            return
+        }
+        if firstRetainedIndex > 0 {
+            speechFrameTimes.removeFirst(firstRetainedIndex)
+        }
+    }
+}
+
+private func systemSpeechActivityHistorySelfTest() -> Bool {
+    var history = SystemSpeechActivityHistory()
+    let microphoneFrame = Date(timeIntervalSinceReferenceDate: 100)
+
+    history.recordSpeech(at: microphoneFrame.addingTimeInterval(0.04))
+    history.recordSpeech(at: microphoneFrame.addingTimeInterval(0.9))
+
+    guard history.containsSpeech(around: microphoneFrame, lookBehind: 0.35, lookAhead: 0.55) else {
+        return false
+    }
+    guard !history.containsSpeech(
+        around: microphoneFrame.addingTimeInterval(2),
+        lookBehind: 0.35,
+        lookAhead: 0.55
+    ) else {
+        return false
+    }
+    return true
+}
+
 private final class SystemAudioActivityGate: @unchecked Sendable {
     private let lock = NSLock()
     private var detector = AdaptiveSpeechActivityDetector()
-    private var lastSpeechAt: Date?
+    private var speechHistory = SystemSpeechActivityHistory()
 
     func recordSystemAudio(_ buffer: AVAudioPCMBuffer, capturedAt: Date) {
         guard let features = audioSignalFeatures(of: buffer) else { return }
         lock.withLock {
             if detector.process(features, capturedAt: capturedAt) {
-                lastSpeechAt = capturedAt
+                speechHistory.recordSpeech(at: capturedAt)
             }
         }
     }
 
     func shouldSuppressMicrophone(capturedAt: Date) -> Bool {
-        guard let speechAt = lock.withLock({ self.lastSpeechAt }) else { return false }
-        let offset = speechAt.timeIntervalSince(capturedAt)
-        return offset >= -0.12 && offset <= 0.1
+        lock.withLock {
+            speechHistory.containsSpeech(
+                around: capturedAt,
+                lookBehind: 0.35,
+                lookAhead: 0.55
+            )
+        }
     }
 }
 
@@ -793,6 +854,8 @@ private final class SpeechChannel: @unchecked Sendable {
 
 @available(macOS 26.0, *)
 private final class MicrophoneCapture {
+    private static let clientReferenceWait = DispatchTimeInterval.milliseconds(600)
+
     private let engine = AVAudioEngine()
     private let channel: SpeechChannel
     private let systemAudioGate: SystemAudioActivityGate
@@ -803,20 +866,35 @@ private final class MicrophoneCapture {
         self.systemAudioGate = systemAudioGate
     }
 
-    func start() throws {
+    func start() throws -> Bool {
         let input = engine.inputNode
+        let voiceProcessingEnabled: Bool
+        do {
+            try input.setVoiceProcessingEnabled(true)
+            input.isVoiceProcessingBypassed = false
+            input.isVoiceProcessingAGCEnabled = true
+            input.voiceProcessingOtherAudioDuckingConfiguration = .init(
+                enableAdvancedDucking: false,
+                duckingLevel: .min
+            )
+            voiceProcessingEnabled = input.isVoiceProcessingEnabled
+        } catch {
+            voiceProcessingEnabled = false
+        }
+
         let format = input.outputFormat(forBus: 0)
         input.installTap(onBus: 0, bufferSize: 1_024, format: format) { [weak self] buffer, _ in
             self?.accept(buffer)
         }
         engine.prepare()
         try engine.start()
+        return voiceProcessingEnabled
     }
 
     private func accept(_ buffer: AVAudioPCMBuffer) {
         let capturedAt = Date()
         guard let ownedBuffer = copyAudioBuffer(buffer) else { return }
-        deliveryQueue.asyncAfter(deadline: .now() + .milliseconds(160)) { [weak self] in
+        deliveryQueue.asyncAfter(deadline: .now() + Self.clientReferenceWait) { [weak self] in
             guard let self else { return }
             if self.systemAudioGate.shouldSuppressMicrophone(capturedAt: capturedAt) {
                 silenceAudioBuffer(ownedBuffer)
@@ -1012,7 +1090,6 @@ private final class ListenerEngine {
             let systemAudioGate = SystemAudioActivityGate()
             let microphoneCapture = MicrophoneCapture(channel: micChannel, systemAudioGate: systemAudioGate)
             let processTapCapture = ProcessTapCapture(channel: clientChannel, systemAudioGate: systemAudioGate)
-            try microphoneCapture.start()
             do {
                 try processTapCapture.start(
                     bundleId: request.telehealthBundleId,
@@ -1020,13 +1097,22 @@ private final class ListenerEngine {
                     captureAllSystemAudio: request.captureAllSystemAudio ?? false
                 )
             } catch {
-                microphoneCapture.stop()
+                throw error
+            }
+            let voiceProcessingEnabled: Bool
+            do {
+                voiceProcessingEnabled = try microphoneCapture.start()
+            } catch {
+                processTapCapture.stop()
                 throw error
             }
             self.microphoneCapture = microphoneCapture
             self.processTapCapture = processTapCapture
             state = "listening"
-            emitState("listening", "Listening locally. Audio is not being recorded to disk.")
+            let isolationMode = voiceProcessingEnabled
+                ? "Acoustic echo cancellation and direct-client priority are active."
+                : "Direct-client priority isolation is active."
+            emitState("listening", "Listening locally. \(isolationMode) Audio is not being recorded to disk.")
         } catch {
             await cleanup(cancel: true)
             emitError(error.localizedDescription, binding: request.binding)
@@ -1229,6 +1315,11 @@ public func smartemrListenerSetEventCallback(_ callback: ListenerEventCallback?)
 @_cdecl("smartemr_listener_vad_self_test")
 public func smartemrListenerVADSelfTest() -> Int32 {
     adaptiveSpeechDetectorSelfTest() ? 1 : 0
+}
+
+@_cdecl("smartemr_listener_audio_gate_self_test")
+public func smartemrListenerAudioGateSelfTest() -> Int32 {
+    systemSpeechActivityHistorySelfTest() ? 1 : 0
 }
 
 @_cdecl("smartemr_listener_capabilities_json")

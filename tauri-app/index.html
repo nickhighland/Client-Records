@@ -3177,10 +3177,14 @@
                             <input type="text" id="vertexLocationInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);" value="us-central1" placeholder="e.g., us-central1">
                         </div>
                         <div>
-                            <label for="vertexModelInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Vertex Model</label>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 0.25rem;">
+                                <label for="vertexModelInput" style="font-weight: 600; display: block;">Vertex Model</label>
+                                <button id="refreshVertexModelsBtn" type="button" class="btn" style="padding: 5px 10px; font-size: 0.78rem;" disabled>Refresh Models</button>
+                            </div>
                             <select id="vertexModelInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);" disabled>
                                 <option>Connect first</option>
                             </select>
+                            <small id="vertexModelStatus" style="color: var(--text-color-secondary); display: block; margin-top: 0.35rem;">Connect to load Google&apos;s current Gemini models.</small>
                         </div>
                     </div>
                     
@@ -3709,6 +3713,18 @@
         import { reconcileListenerEcho, removeListenerEchoes } from '/src/listener-echo.js';
         import { applyGeneratedListenerNote } from '/src/listener-note.js';
         import {
+            choosePreferredVertexModel,
+            fetchVertexGeminiModelCatalog,
+            getVertexApiHost
+        } from '/src/vertex-models.js';
+        import {
+            buildVertexCachedSoapPayload,
+            buildVertexDirectSoapPayload,
+            buildVertexSoapCacheMaterial,
+            getOrCreateVertexSoapContextCache,
+            invalidateVertexContextCache
+        } from '/src/vertex-context-cache.js';
+        import {
             loadEncryptedStateWithLegacyMigration,
             saveEncryptedState
         } from '/src/state-persistence.js';
@@ -4007,6 +4023,8 @@
             const vertexKeyStatus = document.getElementById('vertexKeyStatus');
             const vertexLocationInput = document.getElementById('vertexLocationInput');
             const vertexModelInput = document.getElementById('vertexModelInput');
+            const refreshVertexModelsBtn = document.getElementById('refreshVertexModelsBtn');
+            const vertexModelStatus = document.getElementById('vertexModelStatus');
             const openaiSettings = document.getElementById('openaiSettings');
             const openaiApiKeyInput = document.getElementById('openaiApiKeyInput');
             const openaiModelInput = document.getElementById('openaiModelInput');
@@ -4057,6 +4075,7 @@
             let ollamaAddress = null;
             let vertexServiceAccount = null;
             let vertexLocation = 'us-central1';
+            let vertexModelCatalog = [];
             let openaiApiKey = null;
             let selectedModel = null;
             let persistentInstructions = '';
@@ -5498,18 +5517,22 @@
                     : [];
             };
 
-            const getInterventionContext = (appointment) => {
+            const getInterventionBankContext = () => {
                 const bank = getInterventionBankNames();
-                const selected = getObjectiveDerivedInterventions(appointment);
-                let context = '';
-                if (bank.length > 0) {
-                    context += `\n- **Intervention Bank (Allowed Interventions Only):**\n${bank.map(item => `  - ${item}`).join('\n')}`;
-                }
-                if (selected.length > 0) {
-                    context += `\n- **Previously Selected Interventions (From Bank):**\n${selected.map(item => `  - ${item}`).join('\n')}`;
-                }
-                return context;
+                return bank.length > 0
+                    ? `\n- **Intervention Bank (Allowed Interventions Only):**\n${bank.map(item => `  - ${item}`).join('\n')}`
+                    : '';
             };
+
+            const getSelectedInterventionContext = (appointment) => {
+                const selected = getObjectiveDerivedInterventions(appointment);
+                return selected.length > 0
+                    ? `\n- **Previously Selected Interventions (From Bank):**\n${selected.map(item => `  - ${item}`).join('\n')}`
+                    : '';
+            };
+
+            const getInterventionContext = (appointment) =>
+                `${getInterventionBankContext()}${getSelectedInterventionContext(appointment)}`;
 
             const normalizeInterventionText = (text) => (text || '')
                 .toString()
@@ -6839,22 +6862,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         return extractJsonObject(content);
                     };
 
-                    const primaryModel = selectedModel;
-                    const modelsToTry = primaryModel === 'gemini-2.5-pro'
-                        ? ['gemini-2.5-pro', 'gemini-1.5-pro']
-                        : [primaryModel];
-
-                    let lastError;
-                    for (const modelId of modelsToTry) {
-                        try {
-                            return await callVertexDirect(modelId);
-                        } catch (err) {
-                            lastError = err;
-                            console.warn(`Vertex goal generation failed for model ${modelId}`, err);
-                        }
-                    }
-
-                    throw lastError;
+                    return await callVertexDirect(selectedModel);
                 }
 
                 if (apiProvider === 'openai') {
@@ -6984,22 +6992,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         return extractJsonObject(content);
                     };
 
-                    const primaryModel = selectedModel;
-                    const modelsToTry = primaryModel === 'gemini-2.5-pro'
-                        ? ['gemini-2.5-pro', 'gemini-1.5-pro']
-                        : [primaryModel];
-
-                    let lastError;
-                    for (const modelId of modelsToTry) {
-                        try {
-                            return await callVertexDirect(modelId);
-                        } catch (err) {
-                            lastError = err;
-                            console.warn(`Vertex JSON request failed for model ${modelId}`, err);
-                        }
-                    }
-
-                    throw lastError;
+                    return await callVertexDirect(selectedModel);
                 }
 
                 if (apiProvider === 'openai') {
@@ -9812,7 +9805,8 @@ Requirements:
 
                 const treatmentGoalsContext = getTreatmentGoalsContext(client);
                 const selectedObjectivesContext = getSelectedObjectivesContext(client);
-                const interventionContext = getInterventionContext(appointment);
+                const interventionBankContext = getInterventionBankContext();
+                const selectedInterventionContext = getSelectedInterventionContext(appointment);
                 const modalityLensContext = getClientSoapModalityContext(client, appointment);
                 const appointmentSessionInfo = appointment.sessionInfo || '';
                 const instructionsContext = getInstructionsContext(client, appointment);
@@ -9825,27 +9819,36 @@ Requirements:
 
                 const userPrompt = `
 - **Session Information (This Session):**
-${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${interventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}
+${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${selectedInterventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}
 `;
-                const fullPrompt = `${systemPrompt}\n\n**User Input:**\n${userPrompt}`;
-
-                const payload = {
-                    contents: [{
-                        role: "user",
-                        parts: [{ text: fullPrompt }]
-                    }],
-                    generationConfig: {
-                        responseMimeType: 'application/json',
-                    }
-                };
 
                 try {
                     const accessToken = await getGoogleAccessToken(vertexServiceAccount);
                     const credentials = JSON.parse(vertexServiceAccount);
                     const projectId = credentials.project_id;
-                    
-                    const url = `https://${vertexLocation}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${vertexLocation}/publishers/google/models/${selectedModel}:generateContent`;
-                    const response = await tauriFetch(url, {
+
+                    const cacheMaterial = buildVertexSoapCacheMaterial({
+                        systemPrompt,
+                        interventionBankContext
+                    });
+                    let cacheResult = null;
+                    try {
+                        cacheResult = await getOrCreateVertexSoapContextCache({
+                            accessToken,
+                            cacheMaterial,
+                            fetchImpl: tauriFetch,
+                            location: vertexLocation,
+                            modelId: selectedModel,
+                            projectId,
+                            storage: localStorage
+                        });
+                    } catch (cacheError) {
+                        console.warn('Vertex explicit context cache unavailable; using implicit caching.', cacheError);
+                    }
+
+                    const host = getVertexApiHost(vertexLocation);
+                    const url = `https://${host}/v1/projects/${projectId}/locations/${vertexLocation}/publishers/google/models/${selectedModel}:generateContent`;
+                    const requestVertexSoap = payload => tauriFetch(url, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -9853,15 +9856,37 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
                         },
                         body: JSON.stringify(payload)
                     });
-                    
+                    const directPayload = buildVertexDirectSoapPayload({
+                        systemPrompt,
+                        interventionBankContext,
+                        userPrompt
+                    });
+                    let response = await requestVertexSoap(cacheResult?.cacheName
+                        ? buildVertexCachedSoapPayload({
+                            cacheName: cacheResult.cacheName,
+                            userPrompt
+                        })
+                        : directPayload);
+
+                    if (!response.ok && cacheResult?.cacheName && [400, 404].includes(response.status)) {
+                        invalidateVertexContextCache({
+                            storage: localStorage,
+                            storageKey: cacheResult.storageKey
+                        });
+                        console.warn('Vertex context cache expired or was rejected; retrying without explicit caching.');
+                        response = await requestVertexSoap(directPayload);
+                    }
+
                     if (!response.ok) {
                         const errorText = await response.text();
-                        const error = new Error(`Vertex API error: ${response.status} - ${errorText}`);
-                        error.response = response;
-                        throw error;
+                        throw new Error(`Vertex API error: ${response.status} - ${errorText}`);
                     }
-                    
+
                     const result = await response.json();
+                    const cachedTokens = Number(result?.usageMetadata?.cachedContentTokenCount || 0);
+                    if (cachedTokens > 0) {
+                        console.info(`Vertex reused ${cachedTokens} cached SOAP context tokens.`);
+                    }
 
                     if (!result || !result.candidates || !result.candidates[0]?.content?.parts?.[0]?.text) {
                         throw new Error('The Vertex API returned an invalid or empty response.');
@@ -10263,20 +10288,134 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
                 }
             };
 
-            const connectToVertex = async () => {
+            const VERTEX_MODEL_CACHE_VERSION = 1;
+            const getVertexModelCacheKey = (projectId, location) =>
+                `vertexGeminiModelCatalog:v${VERTEX_MODEL_CACHE_VERSION}:${projectId}:${location}`;
+
+            const loadCachedVertexModels = (projectId, location) => {
+                try {
+                    const rawCache = localStorage.getItem(getVertexModelCacheKey(projectId, location));
+                    if (!rawCache) return null;
+
+                    const cache = JSON.parse(rawCache);
+                    if (cache?.version !== VERTEX_MODEL_CACHE_VERSION
+                        || !Array.isArray(cache.models)
+                        || !cache.models.every(model => model && typeof model.id === 'string')) {
+                        return null;
+                    }
+                    return cache;
+                } catch (error) {
+                    console.warn('Failed to load the cached Vertex model catalog.', error);
+                    return null;
+                }
+            };
+
+            const saveCachedVertexModels = (projectId, location, models, refreshedAt) => {
+                try {
+                    localStorage.setItem(getVertexModelCacheKey(projectId, location), JSON.stringify({
+                        version: VERTEX_MODEL_CACHE_VERSION,
+                        refreshedAt,
+                        models
+                    }));
+                } catch (error) {
+                    console.warn('Failed to cache the Vertex model catalog.', error);
+                }
+            };
+
+            const formatVertexRefreshTime = (value) => {
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? 'an earlier refresh' : date.toLocaleString();
+            };
+
+            const renderVertexModelCatalog = (models, preferredModelId) => {
+                vertexModelInput.innerHTML = '';
+                const availableIds = new Set(models.map(model => model.id));
+                const missingPreferredModel = preferredModelId && !availableIds.has(preferredModelId);
+
+                if (missingPreferredModel) {
+                    const unavailableGroup = document.createElement('optgroup');
+                    unavailableGroup.label = 'Unavailable previous selection';
+                    const unavailableOption = document.createElement('option');
+                    unavailableOption.value = preferredModelId;
+                    unavailableOption.textContent = `${preferredModelId} (unavailable)`;
+                    unavailableOption.disabled = true;
+                    unavailableOption.selected = true;
+                    unavailableGroup.appendChild(unavailableOption);
+                    vertexModelInput.appendChild(unavailableGroup);
+                }
+
+                const addModelGroup = (label, category) => {
+                    const categoryModels = models.filter(model => model.category === category);
+                    if (categoryModels.length === 0) return;
+
+                    const group = document.createElement('optgroup');
+                    group.label = label;
+                    categoryModels.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = model.id;
+                        group.appendChild(option);
+                    });
+                    vertexModelInput.appendChild(group);
+                };
+
+                addModelGroup('Stable', 'stable');
+                addModelGroup('Preview / Experimental', 'preview');
+
+                vertexModelCatalog = models;
+                vertexModelInput.disabled = models.length === 0;
+
+                if (missingPreferredModel) {
+                    selectedModel = null;
+                    return { missingPreferredModel: true, selectedModel: null };
+                }
+
+                const nextModel = models.find(model => model.id === preferredModelId)
+                    || choosePreferredVertexModel(models);
+                selectedModel = nextModel?.id || null;
+                if (selectedModel) {
+                    vertexModelInput.value = selectedModel;
+                    localStorage.setItem('vertexModel', selectedModel);
+                }
+
+                return { missingPreferredModel: false, selectedModel };
+            };
+
+            const refreshVertexModelCatalog = async ({ serviceAccount, location, preferredModelId }) => {
+                const accessToken = await getGoogleAccessToken(serviceAccount);
+                const credentials = JSON.parse(serviceAccount);
+                const projectId = credentials.project_id;
+                const cachedCatalog = loadCachedVertexModels(projectId, location);
+
+                try {
+                    const models = await fetchVertexGeminiModelCatalog({
+                        accessToken,
+                        fetchImpl: tauriFetch,
+                        location
+                    });
+                    const refreshedAt = new Date().toISOString();
+                    saveCachedVertexModels(projectId, location, models, refreshedAt);
+                    const selection = renderVertexModelCatalog(models, preferredModelId);
+                    return { ...selection, models, refreshedAt, source: 'live' };
+                } catch (error) {
+                    if (!cachedCatalog?.models?.length) {
+                        throw error;
+                    }
+
+                    const selection = renderVertexModelCatalog(cachedCatalog.models, preferredModelId);
+                    return {
+                        ...selection,
+                        models: cachedCatalog.models,
+                        refreshedAt: cachedCatalog.refreshedAt,
+                        source: 'cache',
+                        warning: error
+                    };
+                }
+            };
+
+            const connectToVertex = async ({ isRefresh = false } = {}) => {
                 const serviceAccount = vertexServiceAccountInput.value.trim();
-                const rawLocation = vertexLocationInput.value.trim() || 'us-central1';
-                const location = rawLocation.toLowerCase();
-                const fallbackModels = [
-                    'gemini-2.5-pro',
-                    'gemini-2.5-flash',
-                    'gemini-2.0-pro-exp-02-05',
-                    'gemini-2.0-flash-001',
-                    'gemini-2.0-flash-lite-preview-02-05',
-                    'gemini-1.5-pro-002',
-                    'gemini-1.5-flash-002',
-                    'gemini-1.5-flash-8b-001'
-                ];
+                const location = (vertexLocationInput.value.trim() || 'us-central1').toLowerCase();
 
                 if (!serviceAccount) {
                     alert('Please provide a Google Cloud Service Account JSON.');
@@ -10287,88 +10426,57 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
                     return;
                 }
 
-                // Persist normalized (lowercase) location so it stays in sync with API usage.
                 vertexLocationInput.value = location;
                 vertexLocation = location;
-
-                apiStatus.textContent = 'Connecting...';
+                apiStatus.textContent = isRefresh ? 'Refreshing models...' : 'Connecting...';
                 apiStatus.style.color = 'orange';
                 vertexModelInput.innerHTML = '<option>Loading models...</option>';
                 vertexModelInput.disabled = true;
+                refreshVertexModelsBtn.disabled = true;
+                refreshVertexModelsBtn.textContent = 'Refreshing...';
+                vertexModelStatus.textContent = 'Requesting the current Gemini catalog from Google...';
+                vertexModelStatus.style.color = 'var(--text-color-secondary)';
 
                 try {
-                    let models = [...fallbackModels];
-                    let modelDiscoveryWarning = null;
-
-                    try {
-                        const accessToken = await getGoogleAccessToken(serviceAccount);
-                        const credentials = JSON.parse(serviceAccount);
-                        const projectId = credentials.project_id;
-                        
-                        const normalizedLocation = location.toLowerCase();
-                        const vertexHost = normalizedLocation === 'global'
-                            ? 'aiplatform.googleapis.com'
-                            : `${normalizedLocation}-aiplatform.googleapis.com`;
-                        const modelsUrl = `https://${vertexHost}/v1/projects/${projectId}/locations/${normalizedLocation}/publishers/google/models`;
-                        const response = await tauriFetch(modelsUrl, {
-                            method: 'GET',
-                            headers: { 'Authorization': `Bearer ${accessToken}` }
-                        });
-
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(`Failed to fetch models: ${response.status} - ${errorText}`);
-                        }
-
-                        const result = await response.json();
-                        const apiModels = (result.models || [])
-                            .map(m => (m.name || '').split('/').pop())
-                            .filter(Boolean)
-                            .filter(name => name.toLowerCase().includes('gemini'));
-
-                        if (apiModels.length > 0) {
-                            models = [...new Set([...apiModels, ...fallbackModels])];
-                        }
-                    } catch (discoveryError) {
-                        console.warn('Vertex model discovery failed; using fallback model list.', discoveryError);
-                        // We don't need to show a warning to the user if fallback models are loaded successfully.
-                        // The user can still select a model and verify the connection.
-                    }
-
-                    vertexModelInput.innerHTML = '';
-                    models.forEach(modelId => {
-                        const option = document.createElement('option');
-                        option.value = modelId;
-                        option.textContent = modelId;
-                        vertexModelInput.appendChild(option);
-                    });
-
                     vertexServiceAccount = serviceAccount;
-                    vertexLocation = location;
-
-                    const savedModel = localStorage.getItem('vertexModel');
-                    if (savedModel && models.includes(savedModel)) {
-                        vertexModelInput.value = savedModel;
-                    } else if (models.includes('gemini-2.5-flash')) {
-                        vertexModelInput.value = 'gemini-2.5-flash';
-                    } else if (models.includes('gemini-2.0-flash-001')) {
-                        vertexModelInput.value = 'gemini-2.0-flash-001';
-                    } else {
-                        vertexModelInput.value = models[0];
-                    }
-
-                    selectedModel = vertexModelInput.value;
-                    vertexModelInput.disabled = false;
+                    const preferredModelId = isRefresh
+                        && vertexModelCatalog.some(model => model.id === selectedModel)
+                        ? selectedModel
+                        : localStorage.getItem('vertexModel');
+                    const catalogResult = await refreshVertexModelCatalog({
+                        serviceAccount,
+                        location,
+                        preferredModelId
+                    });
 
                     localStorage.setItem('apiProvider', 'vertex');
                     localStorage.setItem('vertexServiceAccount', vertexServiceAccount);
                     localStorage.setItem('vertexLocation', vertexLocation);
-                    localStorage.setItem('vertexModel', selectedModel);
+                    if (selectedModel) {
+                        localStorage.setItem('vertexModel', selectedModel);
+                    }
 
-                    apiStatus.textContent = 'Connected';
-                    apiStatus.style.color = 'green';
-                    verifyApiBtn.classList.remove('hidden');
+                    const refreshTime = formatVertexRefreshTime(catalogResult.refreshedAt);
+                    const modelCountLabel = `${catalogResult.models.length} compatible model${catalogResult.models.length === 1 ? '' : 's'}`;
+                    const unavailableMessage = catalogResult.missingPreferredModel
+                        ? ' The previous selection is no longer available; choose a current model.'
+                        : '';
 
+                    if (catalogResult.source === 'cache') {
+                        apiStatus.textContent = 'Connected (cached model list)';
+                        apiStatus.style.color = '#e67e22';
+                        vertexModelStatus.textContent = `Using ${modelCountLabel} cached from ${refreshTime}; Google refresh failed.${unavailableMessage}`;
+                        vertexModelStatus.style.color = '#e67e22';
+                        console.warn('Vertex model refresh failed; using the last successful catalog.', catalogResult.warning);
+                    } else {
+                        apiStatus.textContent = 'Connected';
+                        apiStatus.style.color = 'green';
+                        vertexModelStatus.textContent = `${modelCountLabel} updated ${refreshTime}.${unavailableMessage}`;
+                        vertexModelStatus.style.color = catalogResult.missingPreferredModel
+                            ? '#e67e22'
+                            : 'var(--text-color-secondary)';
+                    }
+                    verifyApiBtn.classList.toggle('hidden', !selectedModel);
                 } catch (error) {
                     console.error('Vertex connection error:', error);
                     apiStatus.textContent = 'Failed';
@@ -10376,9 +10484,14 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${selectedObjectivesContext}${i
                     vertexModelInput.innerHTML = '<option>Connection Failed</option>';
                     vertexServiceAccount = null;
                     vertexLocation = 'us-central1';
+                    vertexModelCatalog = [];
                     selectedModel = null;
-                    alert(`Failed to connect to Vertex AI. Check your Service Account JSON, location, and network connection.\nError: ${error.message}`);
+                    vertexModelStatus.textContent = 'No current model catalog is available. Check the credentials, location, and network connection.';
+                    vertexModelStatus.style.color = '#e74c3c';
+                    alert(`Failed to ${isRefresh ? 'refresh models from' : 'connect to'} Vertex AI. Check your Service Account JSON, location, and network connection.\nError: ${error.message}`);
                 } finally {
+                    refreshVertexModelsBtn.disabled = !vertexServiceAccountInput.value.trim();
+                    refreshVertexModelsBtn.textContent = 'Refresh Models';
                     fullRender();
                 }
             };
@@ -11578,6 +11691,7 @@ This error cannot be fixed within this application's code; it requires a configu
             generateNoteBtn.addEventListener('click', generateSoapNote);
             connectApiBtn.addEventListener('click', connectToServer);
             verifyApiBtn.addEventListener('click', verifyApiConnection);
+            refreshVertexModelsBtn.addEventListener('click', () => connectToVertex({ isRefresh: true }));
             
             selectVertexKeyBtn.addEventListener('click', () => {
                 vertexKeyFileInput.click();
@@ -11589,9 +11703,16 @@ This error cannot be fixed within this application's code; it requires a configu
                 vertexKeyStatus.textContent = 'No file selected';
                 vertexKeyStatus.style.color = 'var(--text-color-secondary)';
                 clearVertexKeyBtn.classList.add('hidden');
+                refreshVertexModelsBtn.disabled = true;
                 vertexModelInput.innerHTML = '<option>Connect first</option>';
                 vertexModelInput.disabled = true;
+                vertexModelStatus.textContent = 'Connect to load Google\'s current Gemini models.';
+                vertexModelStatus.style.color = 'var(--text-color-secondary)';
+                vertexServiceAccount = null;
+                vertexModelCatalog = [];
+                selectedModel = null;
                 apiStatus.textContent = '';
+                verifyApiBtn.classList.add('hidden');
             });
             
             vertexKeyFileInput.addEventListener('change', (e) => {
@@ -11612,6 +11733,7 @@ This error cannot be fixed within this application's code; it requires a configu
                         vertexKeyStatus.textContent = file.name;
                         vertexKeyStatus.style.color = '#27ae60';
                         clearVertexKeyBtn.classList.remove('hidden');
+                        refreshVertexModelsBtn.disabled = false;
                         
                         // Auto-save to localStorage
                         localStorage.setItem('vertexServiceAccount', jsonContent);
@@ -11621,6 +11743,7 @@ This error cannot be fixed within this application's code; it requires a configu
                         vertexKeyStatus.textContent = 'Invalid file';
                         vertexKeyStatus.style.color = '#e74c3c';
                         clearVertexKeyBtn.classList.add('hidden');
+                        refreshVertexModelsBtn.disabled = true;
                         vertexServiceAccountInput.value = '';
                     }
                 };
@@ -12172,6 +12295,9 @@ This error cannot be fixed within this application's code; it requires a configu
             vertexModelInput.addEventListener('change', (e) => {
                 selectedModel = e.target.value;
                 localStorage.setItem('vertexModel', selectedModel);
+                vertexModelStatus.textContent = `${selectedModel} selected. Press Verify to confirm access in ${vertexLocation}.`;
+                vertexModelStatus.style.color = 'var(--text-color-secondary)';
+                verifyApiBtn.classList.remove('hidden');
                 fullRender();
             });
 

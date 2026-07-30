@@ -43,6 +43,32 @@ test('does not match different simultaneous speech', () => {
     ), false);
 });
 
+test('preserves a counselor response while continuous client audio is active', () => {
+    const segments = [{
+        ...segment(
+            'client',
+            'I have been feeling anxious every morning and it has been difficult to concentrate at work.',
+            1_000,
+            8_000
+        ),
+        segmentId: 'client-1000',
+        receivedAtMs: 10_000
+    }];
+    const result = reconcileListenerEcho(segments, {
+        ...segment(
+            'counselor',
+            'How has the anxiety affected your sleep and appetite?',
+            3_000,
+            5_500
+        ),
+        segmentId: 'counselor-3000',
+        receivedAtMs: 11_000
+    });
+
+    assert.deepEqual(result, { discardIncoming: false, removedCount: 0 });
+    assert.equal(segments.length, 1);
+});
+
 test('waits for at least one finalized recognition result', () => {
     assert.equal(listenerSegmentsAreEcho(
         segment('client', 'Hello', 1_000, 1_300, false),
@@ -210,4 +236,43 @@ test('does not collapse a short repeated phrase from a later turn', () => {
             receivedAtMs: 15_000
         }
     ), false);
+});
+
+test('does not compare incoming speech against stale transcript history', () => {
+    const segments = [{
+        ...segment('client', 'I have been sleeping better this week', 500, 2_000),
+        segmentId: 'client-old',
+        receivedAtMs: 10_000
+    }];
+    const result = reconcileListenerEcho(segments, {
+        ...segment('counselor', 'I have been sleeping better this week', 500, 2_000),
+        segmentId: 'counselor-new',
+        receivedAtMs: 70_000
+    });
+
+    assert.deepEqual(result, { discardIncoming: false, removedCount: 0 });
+    assert.equal(segments.length, 1);
+});
+
+test('reconciles a long transcript without repeatedly scanning its full history', () => {
+    const segments = Array.from({ length: 2_000 }, (_, index) => ({
+        ...segment(
+            'client',
+            `Client statement ${index} about a distinct event during the week`,
+            index * 1_000,
+            index * 1_000 + 800
+        ),
+        segmentId: `client-${index}`,
+        receivedAtMs: index * 1_000 + 10_000
+    }));
+    const lastClient = segments.at(-1);
+    segments.push({
+        ...segment('counselor', lastClient.text, lastClient.startMs, lastClient.endMs),
+        segmentId: 'counselor-echo',
+        receivedAtMs: lastClient.receivedAtMs + 500
+    });
+
+    assert.equal(removeListenerEchoes(segments), 1);
+    assert.equal(segments.length, 2_000);
+    assert.ok(segments.every(entry => entry.source === 'client'));
 });

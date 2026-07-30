@@ -3,6 +3,9 @@ const ECHO_START_TOLERANCE_MS = 1_500;
 const MAX_WINDOW_SEGMENTS = 4;
 const MAX_WINDOW_SPAN_MS = 20_000;
 const MAX_WINDOW_TOKENS = 100;
+const MAX_ECHO_HISTORY_MS = 45_000;
+const MAX_ECHO_HISTORY_SEGMENTS_PER_SOURCE = 24;
+const MAX_ECHO_HISTORY_SCAN_SEGMENTS = 96;
 
 const normalizeTranscriptText = (text) => String(text || '')
     .toLocaleLowerCase('en-US')
@@ -92,6 +95,39 @@ const segmentSortTime = (segment) => Number(segment.receivedAtMs)
     || Number(segment.sequenceNumber)
     || 0;
 
+const recentSegmentEntries = (
+    segments,
+    source,
+    referenceSegment,
+    { excludeSegmentId = null } = {}
+) => {
+    const referenceTime = segmentSortTime(referenceSegment);
+    const entries = [];
+    let inspectedCount = 0;
+    for (
+        let index = segments.length - 1;
+        index >= 0
+            && inspectedCount < MAX_ECHO_HISTORY_SCAN_SEGMENTS
+            && entries.length < MAX_ECHO_HISTORY_SEGMENTS_PER_SOURCE;
+        index -= 1
+    ) {
+        inspectedCount += 1;
+        const segment = segments[index];
+        if (segment?.source !== source || !segment?.text?.trim()) continue;
+        if (excludeSegmentId && segment.segmentId === excludeSegmentId) continue;
+        const candidateTime = segmentSortTime(segment);
+        if (referenceTime
+            && candidateTime
+            && Math.abs(referenceTime - candidateTime) > MAX_ECHO_HISTORY_MS) {
+            continue;
+        }
+        entries.push({ segment, index });
+    }
+    return entries
+        .sort((left, right) => segmentSortTime(left.segment) - segmentSortTime(right.segment))
+        .slice(-MAX_ECHO_HISTORY_SEGMENTS_PER_SOURCE);
+};
+
 const createWindowSegment = (entries, source) => {
     const receivedTimes = entries
         .map(entry => Number(entry.segment.receivedAtMs) || 0)
@@ -162,15 +198,10 @@ export const listenerSegmentsAreEcho = (left, right) => {
     return (rangesOverlap && boundariesAlign) || receivedNearEachOther;
 };
 
-const findCounselorEchoIndexes = (segments, authoritativeClientEntries) => {
-    const clientWindows = buildSegmentWindows(
-        authoritativeClientEntries,
-        'client',
-        { requireFinal: true }
-    );
+const findCounselorEchoIndexes = (segments, clientWindows, referenceSegment) => {
     if (!clientWindows.length) return new Set();
 
-    const counselorEntries = segments.map((segment, index) => ({ segment, index }));
+    const counselorEntries = recentSegmentEntries(segments, 'counselor', referenceSegment);
     const counselorWindows = buildSegmentWindows(counselorEntries, 'counselor')
         .sort((left, right) => left.entries.length - right.entries.length);
     const echoIndexes = new Set();
@@ -195,8 +226,21 @@ const removeIndexes = (segments, indexes) => {
 };
 
 export const removeListenerEchoes = (segments) => {
-    const clientEntries = segments.map((segment, index) => ({ segment, index }));
-    return removeIndexes(segments, findCounselorEchoIndexes(segments, clientEntries));
+    const retained = [];
+    let removedCount = 0;
+
+    for (const segment of segments) {
+        const result = reconcileListenerEcho(retained, segment);
+        removedCount += result.removedCount;
+        if (result.discardIncoming) {
+            removedCount += 1;
+        } else {
+            retained.push(segment);
+        }
+    }
+
+    segments.splice(0, segments.length, ...retained);
+    return removedCount;
 };
 
 export const reconcileListenerEcho = (segments, incomingSegment) => {
@@ -206,9 +250,12 @@ export const reconcileListenerEcho = (segments, incomingSegment) => {
         }
 
         const incomingMarker = Symbol('incoming-client');
-        const clientEntries = segments
-            .filter(segment => segment.segmentId !== incomingSegment.segmentId)
-            .map((segment, index) => ({ segment, index }));
+        const clientEntries = recentSegmentEntries(
+            segments,
+            'client',
+            incomingSegment,
+            { excludeSegmentId: incomingSegment.segmentId }
+        );
         clientEntries.push({
             segment: incomingSegment,
             index: -1,
@@ -219,26 +266,14 @@ export const reconcileListenerEcho = (segments, incomingSegment) => {
             'client',
             { requireFinal: true, requiredMarker: incomingMarker }
         );
-        const counselorEntries = segments.map((segment, index) => ({ segment, index }));
-        const counselorWindows = buildSegmentWindows(counselorEntries, 'counselor')
-            .sort((left, right) => left.entries.length - right.entries.length);
-        const echoIndexes = new Set();
-
-        for (const counselorWindow of counselorWindows) {
-            if (counselorWindow.entries.some(entry => echoIndexes.has(entry.index))) continue;
-            if (clientWindows.some(clientWindow =>
-                listenerSegmentsAreEcho(clientWindow.segment, counselorWindow.segment)
-            )) {
-                counselorWindow.entries.forEach(entry => echoIndexes.add(entry.index));
-            }
-        }
+        const echoIndexes = findCounselorEchoIndexes(segments, clientWindows, incomingSegment);
         return {
             discardIncoming: false,
             removedCount: removeIndexes(segments, echoIndexes)
         };
     }
 
-    const clientEntries = segments.map((segment, index) => ({ segment, index }));
+    const clientEntries = recentSegmentEntries(segments, 'client', incomingSegment);
     const clientWindows = buildSegmentWindows(clientEntries, 'client', { requireFinal: true });
     const duplicatesClientAudio = clientWindows.some(clientWindow =>
         listenerSegmentsAreEcho(clientWindow.segment, incomingSegment)

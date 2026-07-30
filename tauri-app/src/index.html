@@ -1582,6 +1582,14 @@
             line-height: 1.35;
         }
         .listener-consent input { margin-top: 2px; }
+        .listener-headphones {
+            background: rgba(22, 160, 133, 0.1);
+            border: 1px solid rgba(22, 160, 133, 0.24);
+        }
+        .listener-headphones strong {
+            display: block;
+            margin-bottom: 2px;
+        }
         .listener-controls {
             display: flex;
             flex-wrap: wrap;
@@ -2870,6 +2878,10 @@
                                      </div>
                                      <button id="listenerRefreshSourcesBtn" type="button" class="btn" disabled>Refresh Apps</button>
                                  </div>
+                                 <label class="listener-consent listener-headphones">
+                                     <input id="listenerHeadphonesMode" type="checkbox" disabled>
+                                     <span><strong>Using headphones</strong>Disable echo and duplicate cancellation so both isolated audio sources are transcribed without filtering.</span>
+                                 </label>
                                  <label class="listener-consent">
                                      <input id="listenerConsentCheck" type="checkbox" disabled>
                                      <span>I confirmed everyone in this session consented to live transcription. Audio stays in memory and is never saved; transcript text remains encrypted with this chart and is used to generate the note.</span>
@@ -3386,7 +3398,7 @@
                 <button id="closeConsentBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
             </div>
             <div style="max-height: 60vh; overflow-y: auto; margin-bottom: 1.5rem; line-height: 1.6;">
-                <p>What we discuss here is confidential, with legal limits. I may need to break confidentiality if there is a risk of serious harm to you or others, suspected abuse of a child, elderly, or vulnerable adult, or if records are legally required. Sessions are billed at the agreed fee, and insurance is billed when applicable. You are responsible for any copays, deductibles, or denied claims. Appointments cancelled with less than 24 hours' notice, or missed entirely, are charged the full session fee. I wait up to ten minutes for scheduled sessions before a session is considered missed. Email is used for scheduling and administrative communication only, not emergencies. If you are in crisis, please contact 988 or call 911. Do you have any questions before we continue?</p>
+                <p>What we discuss here is confidential, with legal limits. I may need to break confidentiality if there is a risk of serious harm to you or others, suspected abuse of a child, elderly, or vulnerable adult, or if records are legally required. Sessions are billed at the agreed fee, and insurance is billed when applicable. You are responsible for any copays, deductibles, or denied claims. Sessions scheduled in a one-hour appointment block include 53 minutes of direct session time; the remaining time is reserved for documentation and care coordination. Appointments cancelled with less than 24 hours' notice, or missed entirely, are charged the full session fee. I wait up to ten minutes for scheduled sessions before a session is considered missed. Email is used for scheduling and administrative communication only, not emergencies. If you are in crisis, please contact 988 or call 911. Do you have any questions before we continue?</p>
             </div>
             <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                 <button id="copyConsentNotationBtn" class="btn">Copy Notation of Conversation</button>
@@ -3862,6 +3874,7 @@
             const listenerMessageEl = document.getElementById('listenerMessage');
             const listenerTelehealthSourceEl = document.getElementById('listenerTelehealthSource');
             const listenerMicrophoneSourceEl = document.getElementById('listenerMicrophoneSource');
+            const listenerHeadphonesModeEl = document.getElementById('listenerHeadphonesMode');
             const listenerRefreshSourcesBtn = document.getElementById('listenerRefreshSourcesBtn');
             const listenerConsentCheck = document.getElementById('listenerConsentCheck');
             const listenerStartBtn = document.getElementById('listenerStartBtn');
@@ -4086,6 +4099,8 @@
             let listenerRuntimeState = 'idle';
             let listenerEventUnlisten = null;
             let listenerElapsedInterval = null;
+            let listenerTranscriptRenderTimer = null;
+            let pendingListenerTranscriptContext = null;
 
             const updateNotesTabUI = () => {
                 const activeTabMap = {
@@ -4172,7 +4187,7 @@
             appModeDsmBtn?.addEventListener('click', () => setWorkspaceMode('dsm'));
             setWorkspaceMode('emr');
             let backupWritePending = false;
-            const INFORMED_CONSENT_CONVERSATION_NOTATION = 'Reviewed limits of confidentiality, including that information shared in session is confidential with exceptions for risk of serious harm to self or others, suspected abuse or neglect of a child, elderly person, or vulnerable adult, and legal requirements such as court orders or subpoenas. Reviewed fees and billing, including that sessions are billed at the agreed-upon rate, insurance is billed when applicable, and the client is responsible for copays, deductibles, and any denied claims. Reviewed cancellation and attendance policy, including that appointments cancelled with less than 24 hours\u2019 notice or missed sessions are charged the full session fee, and that the therapist waits up to 10 minutes before a session is considered a no-show. Reviewed communication guidelines, including that email is used for scheduling and administrative purposes only and is not appropriate for emergencies. Reviewed crisis procedures, including instruction to contact 988 or call 911 in case of emergency.';
+            const INFORMED_CONSENT_CONVERSATION_NOTATION = 'Reviewed limits of confidentiality, including that information shared in session is confidential with exceptions for risk of serious harm to self or others, suspected abuse or neglect of a child, elderly person, or vulnerable adult, and legal requirements such as court orders or subpoenas. Reviewed fees and billing, including that sessions are billed at the agreed-upon rate, insurance is billed when applicable, and the client is responsible for copays, deductibles, and any denied claims. Reviewed session duration, including that sessions scheduled in a one-hour appointment block provide 53 minutes of direct session time, with the remaining time reserved for documentation and care coordination. Reviewed cancellation and attendance policy, including that appointments cancelled with less than 24 hours\u2019 notice or missed sessions are charged the full session fee, and that the therapist waits up to 10 minutes before a session is considered a no-show. Reviewed communication guidelines, including that email is used for scheduling and administrative purposes only and is not appropriate for emergencies. Reviewed crisis procedures, including instruction to contact 988 or call 911 in case of emergency.';
             const PRONOUN_PRESETS = {
                 'he/him/his': { subject: 'he', object: 'him', possessive: 'his' },
                 'she/hers': { subject: 'she', object: 'her', possessive: 'hers' },
@@ -4329,6 +4344,9 @@
                 if (!Array.isArray(listener.warnings)) listener.warnings = [];
                 if (typeof listener.status !== 'string') listener.status = 'idle';
                 if (typeof listener.editedTranscript !== 'string') listener.editedTranscript = '';
+                if (typeof listener.headphonesMode !== 'boolean') {
+                    listener.headphonesMode = !!data.listenerSettings?.headphonesMode;
+                }
                 if (listener.status === 'review') {
                     listener.status = 'stopped';
                     listener.statusMessage = 'Transcript ready. Review or edit it, then press Generate Note.';
@@ -4406,13 +4424,18 @@
                 refreshListenerElapsed();
             };
 
+            const LISTENER_MAX_RENDERED_SEGMENTS = 240;
+            const LISTENER_TRANSCRIPT_RENDER_INTERVAL_MS = 180;
             const renderListenerTranscript = (listener) => {
                 if (!listenerTranscriptEl || !listenerTranscriptCountEl) return;
-                const segments = [...(listener?.transcriptSegments || [])]
-                    .filter(segment => segment?.text?.trim())
+                const allSegments = (listener?.transcriptSegments || [])
+                    .filter(segment => segment?.text?.trim());
+                const segments = [...allSegments.slice(-LISTENER_MAX_RENDERED_SEGMENTS)]
                     .sort((left, right) => (left.startMs || 0) - (right.startMs || 0));
                 listenerTranscriptEl.innerHTML = '';
-                listenerTranscriptCountEl.textContent = `${segments.length} segment${segments.length === 1 ? '' : 's'}`;
+                listenerTranscriptCountEl.textContent = allSegments.length > LISTENER_MAX_RENDERED_SEGMENTS
+                    ? `${allSegments.length} segments · showing latest ${LISTENER_MAX_RENDERED_SEGMENTS}`
+                    : `${allSegments.length} segment${allSegments.length === 1 ? '' : 's'}`;
                 if (segments.length === 0) {
                     const empty = document.createElement('div');
                     empty.className = 'listener-empty';
@@ -4437,10 +4460,26 @@
                 listenerTranscriptEl.scrollTop = listenerTranscriptEl.scrollHeight;
             };
 
+            const scheduleListenerTranscriptRender = (appointmentContext) => {
+                pendingListenerTranscriptContext = appointmentContext;
+                if (listenerTranscriptRenderTimer !== null) return;
+                listenerTranscriptRenderTimer = setTimeout(() => {
+                    listenerTranscriptRenderTimer = null;
+                    const pendingContext = pendingListenerTranscriptContext;
+                    pendingListenerTranscriptContext = null;
+                    if (!pendingContext || !isCurrentAppointmentContext(pendingContext)) return;
+                    const listener = ensureAppointmentListener(pendingContext.appointment);
+                    listenerTranscriptShellEl.classList.remove('hidden');
+                    renderListenerTranscript(listener);
+                }, LISTENER_TRANSCRIPT_RENDER_INTERVAL_MS);
+            };
+
             const LISTENER_ALL_SYSTEM_AUDIO_SOURCE_ID = '__all_system_audio__';
             let lastRenderedListenerAppointmentId = null;
             const renderListenerSourceOptions = (listener) => {
                 if (!listenerTelehealthSourceEl || !listenerMicrophoneSourceEl) return;
+                listenerHeadphonesModeEl.checked = listener?.headphonesMode
+                    ?? !!data.listenerSettings?.headphonesMode;
                 const listenerPrefersApp = listener?.audioSourceMode === 'application';
                 const settingsPreferApp = data.listenerSettings?.audioSourceMode === 'application';
                 const preferredSource = listenerPrefersApp
@@ -4467,13 +4506,22 @@
                 listenerMicrophoneSourceEl.innerHTML = '';
                 const microphones = listenerSources.microphones.length
                     ? listenerSources.microphones
-                    : [{ id: 'system-default', name: 'System Default Microphone' }];
+                    : [];
                 microphones.forEach(source => {
                     const option = document.createElement('option');
                     option.value = source.id;
-                    option.textContent = source.name;
+                    option.textContent = `${source.name}${source.isDefault ? ' - default' : ''}`;
                     listenerMicrophoneSourceEl.appendChild(option);
                 });
+                const preferredMicrophoneId = listener?.microphoneDeviceId
+                    || data.listenerSettings?.microphoneDeviceId;
+                if (preferredMicrophoneId
+                    && microphones.some(source => source.id === preferredMicrophoneId)) {
+                    listenerMicrophoneSourceEl.value = preferredMicrophoneId;
+                } else {
+                    const defaultMicrophone = microphones.find(source => source.isDefault);
+                    listenerMicrophoneSourceEl.value = defaultMicrophone?.id || microphones[0]?.id || '';
+                }
             };
 
             const renderListenerPanel = (appointment = null) => {
@@ -4497,12 +4545,14 @@
                 listenerPanelEl.classList.toggle('is-active', bindingIsCurrent && runtimeActive);
                 listenerTelehealthSourceEl.disabled = !currentAppointment || runtimeActive || !listenerCapabilities.supported;
                 listenerMicrophoneSourceEl.disabled = !currentAppointment || runtimeActive || !listenerCapabilities.supported;
+                listenerHeadphonesModeEl.disabled = !currentAppointment || runtimeActive || !listenerCapabilities.supported;
                 listenerRefreshSourcesBtn.disabled = !currentAppointment || runtimeActive || !listenerCapabilities.supported;
                 listenerConsentCheck.disabled = !currentAppointment || runtimeActive || !listenerCapabilities.supported;
                 listenerStartBtn.disabled = !currentAppointment
                     || !listenerCapabilities.supported
                     || !listenerConsentCheck.checked
                     || !listenerTelehealthSourceEl.value
+                    || !listenerMicrophoneSourceEl.value
                     || !!activeListenerBinding;
                 listenerStartBtn.classList.toggle('hidden', bindingIsCurrent && runtimeActive);
                 listenerPauseBtn.classList.toggle('hidden', !bindingIsCurrent || !['listening', 'paused'].includes(listenerRuntimeState));
@@ -4548,7 +4598,9 @@
                 } else {
                     listenerStatusEl.textContent = hasTranscript ? 'Transcript ready' : 'Ready';
                     listenerMessageEl.textContent = listener?.statusMessage
-                        || 'Automatic mode hears all app playback, but not the microphone. During simultaneous speech, direct client audio is prioritized to prevent speaker echo.';
+                        || (listener?.headphonesMode
+                            ? 'Headphones mode keeps both isolated transcripts unchanged; echo and duplicate cancellation are off.'
+                            : 'Automatic mode captures app playback separately from the microphone. Transcript filtering removes recent client-speaker duplicates.');
                 }
                 syncListenerElapsedTicker();
             };
@@ -4565,7 +4617,9 @@
                     sequenceNumber: Number(event.sequenceNumber) || 0,
                     receivedAtMs: Number(event.timestampMs) || Date.parse(event.timestamp) || Date.now()
                 };
-                const echoResult = reconcileListenerEcho(segments, nextSegment);
+                const echoResult = listener.headphonesMode
+                    ? { discardIncoming: false, removedCount: 0 }
+                    : reconcileListenerEcho(segments, nextSegment);
                 if (echoResult.discardIncoming) {
                     listener.editedTranscript = '';
                     return;
@@ -4592,9 +4646,6 @@
                         }
                     }
                     segments.push(nextSegment);
-                }
-                if (nextSegment.isFinal) {
-                    removeListenerEchoes(segments);
                 }
                 listener.editedTranscript = '';
             };
@@ -4681,7 +4732,7 @@
                     updateListenerSegment(listener, event);
                     listener.status = 'listening';
                     if (event.isFinal) markDirty();
-                    if (isCurrentAppointmentContext(context)) renderListenerPanel(context.appointment);
+                    if (isCurrentAppointmentContext(context)) scheduleListenerTranscriptRender(context);
                     return;
                 }
 
@@ -4744,7 +4795,7 @@
                     listener.listeningStartedAt = new Date().toISOString();
                 }
                 if (event.state === 'stopped') {
-                    removeListenerEchoes(listener.transcriptSegments);
+                    if (!listener.headphonesMode) removeListenerEchoes(listener.transcriptSegments);
                     listener.endedAt = new Date().toISOString();
                     listener.status = 'stopped';
                     listener.statusMessage = 'Transcript ready. Review or edit it, then press Generate Note.';
@@ -4830,6 +4881,13 @@
                     alert('Select the app carrying the client audio, then try again.');
                     return;
                 }
+                const microphone = listenerSources.microphones.find(
+                    item => item.id === listenerMicrophoneSourceEl.value
+                );
+                if (!microphone) {
+                    alert('Select the counselor microphone, then try again.');
+                    return;
+                }
 
                 const listener = ensureAppointmentListener(context.appointment);
                 if (listener.transcriptSegments.length && !confirm('This appointment already has Listener transcript text. Start a new transcript and replace it?')) return;
@@ -4842,7 +4900,9 @@
                 listenerRuntimeState = 'preparing';
                 listener.listenerSessionId = listenerSessionId;
                 listener.telehealthBundleId = source.id;
+                listener.microphoneDeviceId = microphone.id;
                 listener.audioSourceMode = captureAllSystemAudio ? 'system' : 'application';
+                listener.headphonesMode = !!listenerHeadphonesModeEl.checked;
                 listener.consentConfirmedAt = new Date().toISOString();
                 listener.startedAt = new Date().toISOString();
                 listener.endedAt = null;
@@ -4855,7 +4915,9 @@
                 data.listenerSettings = {
                     ...(data.listenerSettings || {}),
                     telehealthBundleId: source.id,
-                    audioSourceMode: listener.audioSourceMode
+                    microphoneDeviceId: microphone.id,
+                    audioSourceMode: listener.audioSourceMode,
+                    headphonesMode: listener.headphonesMode
                 };
                 markDirty();
                 resetInactivityTimer();
@@ -4877,6 +4939,8 @@
                             telehealthBundleId: source.bundleId || source.id,
                             telehealthProcessIds: source.processIds || [],
                             captureAllSystemAudio,
+                            microphoneDeviceId: Number(microphone.id),
+                            headphonesMode: listener.headphonesMode,
                             locale: 'en_US',
                             vocabulary
                         }
@@ -9038,6 +9102,18 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     };
                     markDirty();
                 }
+                renderListenerPanel(appointment);
+            });
+            listenerHeadphonesModeEl.addEventListener('change', () => {
+                const appointment = findAppointment(findClient(selectedClientId), selectedAppointmentId);
+                if (!appointment) return;
+                const headphonesMode = listenerHeadphonesModeEl.checked;
+                ensureAppointmentListener(appointment).headphonesMode = headphonesMode;
+                data.listenerSettings = {
+                    ...(data.listenerSettings || {}),
+                    headphonesMode
+                };
+                markDirty();
                 renderListenerPanel(appointment);
             });
             listenerStartBtn.addEventListener('click', startListener);

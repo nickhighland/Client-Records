@@ -92,6 +92,8 @@ private struct ListenerStartRequest: Decodable, Sendable {
     let telehealthBundleId: String
     let telehealthProcessIds: [UInt32]?
     let captureAllSystemAudio: Bool?
+    let microphoneDeviceId: UInt32?
+    let headphonesMode: Bool?
     let locale: String?
     let vocabulary: [String]?
 
@@ -254,6 +256,108 @@ private enum CoreAudioProcesses {
     }
 }
 
+private enum CoreAudioInputDevices {
+    private static let deviceListAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDevices,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+
+    static func objectIds() throws -> [AudioDeviceID] {
+        var address = deviceListAddress
+        var size: UInt32 = 0
+        try checkStatus(
+            AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size),
+            "Reading the microphone device list"
+        )
+        guard size > 0 else { return [] }
+
+        let count = Int(size) / MemoryLayout<AudioDeviceID>.stride
+        var ids = Array(repeating: AudioDeviceID(kAudioObjectUnknown), count: count)
+        let status = ids.withUnsafeMutableBytes { buffer in
+            AudioObjectGetPropertyData(
+                AudioObjectID(kAudioObjectSystemObject),
+                &address,
+                0,
+                nil,
+                &size,
+                buffer.baseAddress!
+            )
+        }
+        try checkStatus(status, "Loading microphone devices")
+        return ids
+    }
+
+    static func hasInputStreams(_ deviceId: AudioDeviceID) -> Bool {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreams,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        return AudioObjectHasProperty(deviceId, &address)
+            && AudioObjectGetPropertyDataSize(deviceId, &address, 0, nil, &size) == noErr
+            && size >= MemoryLayout<AudioStreamID>.stride
+    }
+
+    static func name(for deviceId: AudioDeviceID) -> String {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioObjectPropertyName,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var value: CFString?
+        var size = UInt32(MemoryLayout<CFString?>.size)
+        guard AudioObjectGetPropertyData(deviceId, &address, 0, nil, &size, &value) == noErr,
+              let value else {
+            return "Microphone \(deviceId)"
+        }
+        return value as String
+    }
+
+    static func defaultDeviceId() -> AudioDeviceID {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceId = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            &size,
+            &deviceId
+        ) == noErr else {
+            return AudioDeviceID(kAudioObjectUnknown)
+        }
+        return deviceId
+    }
+
+    static func sourceList() throws -> [[String: Any]] {
+        let defaultId = defaultDeviceId()
+        return try objectIds()
+            .filter(hasInputStreams)
+            .map { deviceId in
+                [
+                    "id": String(deviceId),
+                    "name": name(for: deviceId),
+                    "isDefault": deviceId == defaultId
+                ]
+            }
+            .sorted { left, right in
+                let leftDefault = left["isDefault"] as? Bool ?? false
+                let rightDefault = right["isDefault"] as? Bool ?? false
+                if leftDefault != rightDefault { return leftDefault }
+                return (left["name"] as? String ?? "").localizedCaseInsensitiveCompare(
+                    right["name"] as? String ?? ""
+                ) == .orderedAscending
+            }
+    }
+}
+
 private func copyAudioBuffer(_ source: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
     guard let copy = AVAudioPCMBuffer(pcmFormat: source.format, frameCapacity: source.frameLength) else {
         return nil
@@ -291,318 +395,6 @@ private func copyAudioBufferList(_ source: UnsafePointer<AudioBufferList>, forma
     return copy
 }
 
-private struct AudioSignalFeatures {
-    let levelDecibels: Float
-    let crestFactor: Float
-    let zeroCrossingRate: Float
-    let envelopeRangeDecibels: Float
-}
-
-private struct AudioFeatureAccumulator {
-    var sum: Double = 0
-    var peak: Double = 0
-    var sampleCount = 0
-    var zeroCrossings = 0
-    var previousSample: Double?
-    var envelopeSums = SIMD4<Double>(repeating: 0)
-    var envelopeCounts = SIMD4<Double>(repeating: 0)
-
-    mutating func beginChannel() {
-        previousSample = nil
-    }
-
-    mutating func add(_ value: Double, index: Int, count: Int) {
-        let square = value * value
-        sum += square
-        peak = max(peak, abs(value))
-        sampleCount += 1
-        if let previousSample,
-           (previousSample < 0 && value >= 0) || (previousSample >= 0 && value < 0) {
-            zeroCrossings += 1
-        }
-        self.previousSample = value
-        let envelopeIndex = min(3, index * 4 / max(1, count))
-        envelopeSums[envelopeIndex] += square
-        envelopeCounts[envelopeIndex] += 1
-    }
-
-    func features() -> AudioSignalFeatures? {
-        guard sampleCount > 0 else { return nil }
-        let rms = sqrt(sum / Double(sampleCount))
-        let levelDecibels = 20 * log10(max(rms, 0.000_001))
-        var minimumEnvelopeLevel = Double.infinity
-        var maximumEnvelopeLevel = -Double.infinity
-        for index in 0..<4 where envelopeCounts[index] > 0 {
-            let level = 20 * log10(max(sqrt(envelopeSums[index] / envelopeCounts[index]), 0.000_001))
-            minimumEnvelopeLevel = min(minimumEnvelopeLevel, level)
-            maximumEnvelopeLevel = max(maximumEnvelopeLevel, level)
-        }
-        let envelopeRange = minimumEnvelopeLevel.isFinite && maximumEnvelopeLevel.isFinite
-            ? maximumEnvelopeLevel - minimumEnvelopeLevel
-            : 0
-        return AudioSignalFeatures(
-            levelDecibels: Float(levelDecibels),
-            crestFactor: Float(peak / max(rms, 0.000_001)),
-            zeroCrossingRate: Float(zeroCrossings) / Float(max(1, sampleCount - 1)),
-            envelopeRangeDecibels: Float(envelopeRange)
-        )
-    }
-}
-
-private func audioSignalFeatures(of buffer: AVAudioPCMBuffer) -> AudioSignalFeatures? {
-    let buffers = UnsafeMutableAudioBufferListPointer(buffer.mutableAudioBufferList)
-    var accumulator = AudioFeatureAccumulator()
-
-    for audioBuffer in buffers {
-        guard let data = audioBuffer.mData else { continue }
-        accumulator.beginChannel()
-        switch buffer.format.commonFormat {
-        case .pcmFormatFloat32:
-            let values = data.assumingMemoryBound(to: Float.self)
-            let count = Int(audioBuffer.mDataByteSize) / MemoryLayout<Float>.stride
-            for index in 0..<count {
-                accumulator.add(Double(values[index]), index: index, count: count)
-            }
-        case .pcmFormatFloat64:
-            let values = data.assumingMemoryBound(to: Double.self)
-            let count = Int(audioBuffer.mDataByteSize) / MemoryLayout<Double>.stride
-            for index in 0..<count {
-                accumulator.add(values[index], index: index, count: count)
-            }
-        case .pcmFormatInt16:
-            let values = data.assumingMemoryBound(to: Int16.self)
-            let count = Int(audioBuffer.mDataByteSize) / MemoryLayout<Int16>.stride
-            for index in 0..<count {
-                accumulator.add(
-                    Double(values[index]) / Double(Int16.max),
-                    index: index,
-                    count: count
-                )
-            }
-        case .pcmFormatInt32:
-            let values = data.assumingMemoryBound(to: Int32.self)
-            let count = Int(audioBuffer.mDataByteSize) / MemoryLayout<Int32>.stride
-            for index in 0..<count {
-                accumulator.add(
-                    Double(values[index]) / Double(Int32.max),
-                    index: index,
-                    count: count
-                )
-            }
-        case .otherFormat:
-            continue
-        @unknown default:
-            continue
-        }
-    }
-
-    return accumulator.features()
-}
-
-private func silenceAudioBuffer(_ buffer: AVAudioPCMBuffer) {
-    for audioBuffer in UnsafeMutableAudioBufferListPointer(buffer.mutableAudioBufferList) {
-        guard let data = audioBuffer.mData else { continue }
-        memset(data, 0, Int(audioBuffer.mDataByteSize))
-    }
-}
-
-private struct AdaptiveSpeechActivityDetector {
-    private var noiseFloorDecibels: Float = -58
-    private var previousLevelDecibels: Float = -120
-    private var candidateFrames = 0
-    private var speechActive = false
-    private var hangoverUntil = Date.distantPast
-
-    mutating func process(_ features: AudioSignalFeatures, capturedAt: Date) -> Bool {
-        let level = features.levelDecibels
-        let signalToNoise = level - noiseFloorDecibels
-        let frameChange = abs(level - previousLevelDecibels)
-        let voiceShaped = features.zeroCrossingRate >= 0.004
-            && features.zeroCrossingRate <= 0.34
-            && features.crestFactor >= 1.3
-            && features.crestFactor <= 12
-        let changingEnvelope = frameChange >= 0.9
-        let detailedEnvelope = frameChange >= 0.4
-            && features.envelopeRangeDecibels >= 2
-        let strongSpeech = level >= -28 && signalToNoise >= 4
-        let candidate = level >= -52
-            && signalToNoise >= 6
-            && voiceShaped
-            && (changingEnvelope || detailedEnvelope || strongSpeech)
-
-        if speechActive {
-            let continuesSpeech = level >= -55
-                && signalToNoise >= 2.5
-                && features.zeroCrossingRate <= 0.4
-            if candidate || continuesSpeech {
-                hangoverUntil = capturedAt.addingTimeInterval(0.22)
-            } else if capturedAt > hangoverUntil {
-                speechActive = false
-                candidateFrames = 0
-            }
-        } else {
-            candidateFrames = candidate ? candidateFrames + 1 : 0
-            if candidateFrames >= 2 {
-                speechActive = true
-                hangoverUntil = capturedAt.addingTimeInterval(0.22)
-            }
-        }
-
-        if !speechActive && !candidate {
-            let targetLevel = min(-20, max(-90, level))
-            let adaptation: Float = targetLevel < noiseFloorDecibels ? 0.12 : 0.025
-            noiseFloorDecibels += adaptation * (targetLevel - noiseFloorDecibels)
-        }
-        previousLevelDecibels = level
-        return speechActive
-    }
-}
-
-private func adaptiveSpeechDetectorSelfTest() -> Bool {
-    let hum = AudioSignalFeatures(
-        levelDecibels: -25,
-        crestFactor: 1.42,
-        zeroCrossingRate: 0.001,
-        envelopeRangeDecibels: 0.1
-    )
-    let whiteNoise = AudioSignalFeatures(
-        levelDecibels: -30,
-        crestFactor: 3.2,
-        zeroCrossingRate: 0.48,
-        envelopeRangeDecibels: 0.3
-    )
-    let speechFrames = [-28.0, -22.0, -26.0].map { level in
-        AudioSignalFeatures(
-            levelDecibels: Float(level),
-            crestFactor: 2.8,
-            zeroCrossingRate: 0.09,
-            envelopeRangeDecibels: 2.1
-        )
-    }
-    let silence = AudioSignalFeatures(
-        levelDecibels: -90,
-        crestFactor: 1,
-        zeroCrossingRate: 0,
-        envelopeRangeDecibels: 0
-    )
-
-    func staysInactive(for feature: AudioSignalFeatures) -> Bool {
-        var detector = AdaptiveSpeechActivityDetector()
-        var timestamp = Date(timeIntervalSince1970: 0)
-        for _ in 0..<40 {
-            timestamp = timestamp.addingTimeInterval(0.02)
-            if detector.process(feature, capturedAt: timestamp) { return false }
-        }
-        return true
-    }
-
-    guard staysInactive(for: hum), staysInactive(for: whiteNoise) else { return false }
-
-    var detector = AdaptiveSpeechActivityDetector()
-    var timestamp = Date(timeIntervalSince1970: 0)
-    for index in 0..<40 {
-        timestamp = timestamp.addingTimeInterval(0.02)
-        let backgroundNoise = AudioSignalFeatures(
-            levelDecibels: index.isMultiple(of: 2) ? -33.75 : -34.25,
-            crestFactor: 2.4,
-            zeroCrossingRate: 0.12,
-            envelopeRangeDecibels: 0.5
-        )
-        if detector.process(backgroundNoise, capturedAt: timestamp) { return false }
-    }
-    var detectedSpeech = false
-    for feature in speechFrames {
-        timestamp = timestamp.addingTimeInterval(0.02)
-        detectedSpeech = detector.process(feature, capturedAt: timestamp) || detectedSpeech
-    }
-    guard detectedSpeech else { return false }
-    for _ in 0..<20 {
-        timestamp = timestamp.addingTimeInterval(0.02)
-        _ = detector.process(silence, capturedAt: timestamp)
-    }
-    return !detector.process(silence, capturedAt: timestamp.addingTimeInterval(0.02))
-}
-
-private struct SystemSpeechActivityHistory {
-    private var speechFrameTimes: [TimeInterval] = []
-
-    mutating func recordSpeech(at capturedAt: Date) {
-        let timestamp = capturedAt.timeIntervalSinceReferenceDate
-        speechFrameTimes.append(timestamp)
-        prune(before: timestamp - 2)
-        if speechFrameTimes.count > 256 {
-            speechFrameTimes.removeFirst(speechFrameTimes.count - 256)
-        }
-    }
-
-    mutating func containsSpeech(
-        around capturedAt: Date,
-        lookBehind: TimeInterval,
-        lookAhead: TimeInterval
-    ) -> Bool {
-        let timestamp = capturedAt.timeIntervalSinceReferenceDate
-        prune(before: timestamp - max(2, lookBehind + 1))
-        let lowerBound = timestamp - lookBehind
-        let upperBound = timestamp + lookAhead
-        return speechFrameTimes.contains { $0 >= lowerBound && $0 <= upperBound }
-    }
-
-    private mutating func prune(before threshold: TimeInterval) {
-        guard let firstRetainedIndex = speechFrameTimes.firstIndex(where: { $0 >= threshold }) else {
-            speechFrameTimes.removeAll(keepingCapacity: true)
-            return
-        }
-        if firstRetainedIndex > 0 {
-            speechFrameTimes.removeFirst(firstRetainedIndex)
-        }
-    }
-}
-
-private func systemSpeechActivityHistorySelfTest() -> Bool {
-    var history = SystemSpeechActivityHistory()
-    let microphoneFrame = Date(timeIntervalSinceReferenceDate: 100)
-
-    history.recordSpeech(at: microphoneFrame.addingTimeInterval(0.04))
-    history.recordSpeech(at: microphoneFrame.addingTimeInterval(0.9))
-
-    guard history.containsSpeech(around: microphoneFrame, lookBehind: 0.35, lookAhead: 0.55) else {
-        return false
-    }
-    guard !history.containsSpeech(
-        around: microphoneFrame.addingTimeInterval(2),
-        lookBehind: 0.35,
-        lookAhead: 0.55
-    ) else {
-        return false
-    }
-    return true
-}
-
-private final class SystemAudioActivityGate: @unchecked Sendable {
-    private let lock = NSLock()
-    private var detector = AdaptiveSpeechActivityDetector()
-    private var speechHistory = SystemSpeechActivityHistory()
-
-    func recordSystemAudio(_ buffer: AVAudioPCMBuffer, capturedAt: Date) {
-        guard let features = audioSignalFeatures(of: buffer) else { return }
-        lock.withLock {
-            if detector.process(features, capturedAt: capturedAt) {
-                speechHistory.recordSpeech(at: capturedAt)
-            }
-        }
-    }
-
-    func shouldSuppressMicrophone(capturedAt: Date) -> Bool {
-        lock.withLock {
-            speechHistory.containsSpeech(
-                around: capturedAt,
-                lookBehind: 0.35,
-                lookAhead: 0.55
-            )
-        }
-    }
-}
-
 private final class ListenerSequenceCounter: @unchecked Sendable {
     private let lock = NSLock()
     private var value: UInt64 = 0
@@ -617,6 +409,7 @@ private final class ListenerSequenceCounter: @unchecked Sendable {
 
 @available(macOS 26.0, *)
 private final class SpeechChannel: @unchecked Sendable {
+    private static let maximumPendingBuffers = 12
     private let source: String
     private let binding: ListenerBinding
     private let queue: DispatchQueue
@@ -625,6 +418,8 @@ private final class SpeechChannel: @unchecked Sendable {
     private var stopped = false
     private var lastLevelEvent = Date.distantPast
     private var lastDropWarning = Date.distantPast
+    private var lastQueueDropWarning = Date.distantPast
+    private var pendingBufferCount = 0
     private let sequenceCounter = ListenerSequenceCounter()
     private var converter: AVAudioConverter?
     private var converterSourceFormat: AVAudioFormat?
@@ -677,7 +472,7 @@ private final class SpeechChannel: @unchecked Sendable {
         try await analyzer.prepareToAnalyze(in: audioFormat)
 
         var streamContinuation: AsyncStream<AnalyzerInput>.Continuation?
-        let stream = AsyncStream<AnalyzerInput>(bufferingPolicy: .bufferingNewest(64)) { continuation in
+        let stream = AsyncStream<AnalyzerInput>(bufferingPolicy: .bufferingNewest(32)) { continuation in
             streamContinuation = continuation
         }
         self.targetFormat = audioFormat
@@ -737,23 +532,61 @@ private final class SpeechChannel: @unchecked Sendable {
     }
 
     func accept(_ buffer: AVAudioPCMBuffer) {
-        stateLock.lock()
-        let shouldDrop = paused || stopped
-        stateLock.unlock()
-        guard !shouldDrop, let ownedBuffer = copyAudioBuffer(buffer) else { return }
+        guard reserveBufferSlot() else { return }
+        guard let ownedBuffer = copyAudioBuffer(buffer) else {
+            releaseBufferSlot()
+            return
+        }
 
         queue.async { [weak self] in
-            self?.convertAndYield(ownedBuffer)
+            guard let self else { return }
+            defer { self.releaseBufferSlot() }
+            self.convertAndYield(ownedBuffer)
         }
     }
 
     func acceptOwned(_ buffer: AVAudioPCMBuffer) {
-        stateLock.lock()
-        let shouldDrop = paused || stopped
-        stateLock.unlock()
-        guard !shouldDrop else { return }
+        guard reserveBufferSlot() else { return }
         queue.async { [weak self] in
-            self?.convertAndYield(buffer)
+            guard let self else { return }
+            defer { self.releaseBufferSlot() }
+            self.convertAndYield(buffer)
+        }
+    }
+
+    private func reserveBufferSlot() -> Bool {
+        let now = Date()
+        var shouldWarn = false
+        let accepted = stateLock.withLock {
+            guard !paused, !stopped else { return false }
+            guard pendingBufferCount < Self.maximumPendingBuffers else {
+                if now.timeIntervalSince(lastQueueDropWarning) >= 5 {
+                    lastQueueDropWarning = now
+                    shouldWarn = true
+                }
+                return false
+            }
+            pendingBufferCount += 1
+            return true
+        }
+        if shouldWarn {
+            queue.async { [source, binding] in
+                ListenerEventHub.shared.emit(eventPayload(
+                    type: "warning",
+                    binding: binding,
+                    values: [
+                        "source": source,
+                        "message": "Listener discarded stale \(source) audio to prevent a processing backlog. Check this portion of the transcript carefully."
+                    ]
+                ))
+            }
+        }
+        return accepted
+    }
+
+    private func releaseBufferSlot() {
+        stateLock.withLock {
+            pendingBufferCount = max(0, pendingBufferCount - 1)
         }
     }
 
@@ -829,6 +662,7 @@ private final class SpeechChannel: @unchecked Sendable {
 
     func finish() async {
         stateLock.withLock { stopped = true }
+        queue.sync {}
         continuation?.finish()
         if let analyzer {
             try? await analyzer.finalizeAndFinishThroughEndOfInput()
@@ -842,6 +676,7 @@ private final class SpeechChannel: @unchecked Sendable {
 
     func cancel() async {
         stateLock.withLock { stopped = true }
+        queue.sync {}
         continuation?.finish()
         if let analyzer { await analyzer.cancelAndFinishNow() }
         analysisTask?.cancel()
@@ -854,53 +689,46 @@ private final class SpeechChannel: @unchecked Sendable {
 
 @available(macOS 26.0, *)
 private final class MicrophoneCapture {
-    private static let clientReferenceWait = DispatchTimeInterval.milliseconds(600)
-
     private let engine = AVAudioEngine()
     private let channel: SpeechChannel
-    private let systemAudioGate: SystemAudioActivityGate
-    private let deliveryQueue = DispatchQueue(label: "com.smartemr.listener.microphone-gate", qos: .userInitiated)
 
-    init(channel: SpeechChannel, systemAudioGate: SystemAudioActivityGate) {
+    init(channel: SpeechChannel) {
         self.channel = channel
-        self.systemAudioGate = systemAudioGate
     }
 
-    func start() throws -> Bool {
+    func start(deviceId requestedDeviceId: AudioDeviceID?) throws {
         let input = engine.inputNode
-        let voiceProcessingEnabled: Bool
-        do {
-            try input.setVoiceProcessingEnabled(true)
-            input.isVoiceProcessingBypassed = false
-            input.isVoiceProcessingAGCEnabled = true
-            input.voiceProcessingOtherAudioDuckingConfiguration = .init(
-                enableAdvancedDucking: false,
-                duckingLevel: .min
+        if let requestedDeviceId,
+           requestedDeviceId != AudioDeviceID(kAudioObjectUnknown) {
+            guard CoreAudioInputDevices.hasInputStreams(requestedDeviceId) else {
+                throw ListenerNativeError.message("The selected counselor microphone is no longer available. Refresh sources and select it again.")
+            }
+            guard let audioUnit = input.audioUnit else {
+                throw ListenerNativeError.message("The counselor microphone audio unit is unavailable.")
+            }
+            var deviceId = requestedDeviceId
+            try checkStatus(
+                AudioUnitSetProperty(
+                    audioUnit,
+                    kAudioOutputUnitProperty_CurrentDevice,
+                    kAudioUnitScope_Global,
+                    0,
+                    &deviceId,
+                    UInt32(MemoryLayout<AudioDeviceID>.size)
+                ),
+                "Selecting the counselor microphone"
             )
-            voiceProcessingEnabled = input.isVoiceProcessingEnabled
-        } catch {
-            voiceProcessingEnabled = false
         }
 
         let format = input.outputFormat(forBus: 0)
-        input.installTap(onBus: 0, bufferSize: 1_024, format: format) { [weak self] buffer, _ in
-            self?.accept(buffer)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            throw ListenerNativeError.message("The selected counselor microphone did not provide a usable audio format.")
+        }
+        input.installTap(onBus: 0, bufferSize: 1_024, format: format) { [channel = self.channel] buffer, _ in
+            channel.accept(buffer)
         }
         engine.prepare()
         try engine.start()
-        return voiceProcessingEnabled
-    }
-
-    private func accept(_ buffer: AVAudioPCMBuffer) {
-        let capturedAt = Date()
-        guard let ownedBuffer = copyAudioBuffer(buffer) else { return }
-        deliveryQueue.asyncAfter(deadline: .now() + Self.clientReferenceWait) { [weak self] in
-            guard let self else { return }
-            if self.systemAudioGate.shouldSuppressMicrophone(capturedAt: capturedAt) {
-                silenceAudioBuffer(ownedBuffer)
-            }
-            self.channel.acceptOwned(ownedBuffer)
-        }
     }
 
     func stop() {
@@ -912,15 +740,13 @@ private final class MicrophoneCapture {
 @available(macOS 26.0, *)
 private final class ProcessTapCapture: @unchecked Sendable {
     private let channel: SpeechChannel
-    private let systemAudioGate: SystemAudioActivityGate
     private let queue = DispatchQueue(label: "com.smartemr.listener.process-tap", qos: .userInitiated)
     private var tapId = AudioObjectID(kAudioObjectUnknown)
     private var aggregateDeviceId = AudioObjectID(kAudioObjectUnknown)
     private var ioProcId: AudioDeviceIOProcID?
 
-    init(channel: SpeechChannel, systemAudioGate: SystemAudioActivityGate) {
+    init(channel: SpeechChannel) {
         self.channel = channel
-        self.systemAudioGate = systemAudioGate
     }
 
     func start(bundleId: String, requestedProcessIds: [UInt32], captureAllSystemAudio: Bool) throws {
@@ -981,7 +807,6 @@ private final class ProcessTapCapture: @unchecked Sendable {
                 AudioDeviceCreateIOProcIDWithBlock(&ioProcId, aggregateDeviceId, queue) { [weak self] _, inputData, _, _, _ in
                     guard let self,
                           let copy = copyAudioBufferList(inputData, format: format) else { return }
-                    self.systemAudioGate.recordSystemAudio(copy, capturedAt: Date())
                     self.channel.acceptOwned(copy)
                 },
                 "Connecting the telehealth audio stream"
@@ -1087,9 +912,8 @@ private final class ListenerEngine {
             try await micChannel.prepare(localeIdentifier: locale, vocabulary: vocabulary)
             try await clientChannel.prepare(localeIdentifier: locale, vocabulary: vocabulary)
 
-            let systemAudioGate = SystemAudioActivityGate()
-            let microphoneCapture = MicrophoneCapture(channel: micChannel, systemAudioGate: systemAudioGate)
-            let processTapCapture = ProcessTapCapture(channel: clientChannel, systemAudioGate: systemAudioGate)
+            let microphoneCapture = MicrophoneCapture(channel: micChannel)
+            let processTapCapture = ProcessTapCapture(channel: clientChannel)
             do {
                 try processTapCapture.start(
                     bundleId: request.telehealthBundleId,
@@ -1099,9 +923,9 @@ private final class ListenerEngine {
             } catch {
                 throw error
             }
-            let voiceProcessingEnabled: Bool
             do {
-                voiceProcessingEnabled = try microphoneCapture.start()
+                let microphoneDeviceId = request.microphoneDeviceId.map { AudioDeviceID($0) }
+                try microphoneCapture.start(deviceId: microphoneDeviceId)
             } catch {
                 processTapCapture.stop()
                 throw error
@@ -1109,10 +933,10 @@ private final class ListenerEngine {
             self.microphoneCapture = microphoneCapture
             self.processTapCapture = processTapCapture
             state = "listening"
-            let isolationMode = voiceProcessingEnabled
-                ? "Acoustic echo cancellation and direct-client priority are active."
-                : "Direct-client priority isolation is active."
-            emitState("listening", "Listening locally. \(isolationMode) Audio is not being recorded to disk.")
+            let listeningMessage = request.headphonesMode == true
+                ? "Listening locally in headphones mode. Both isolated transcripts are unfiltered. Audio is not being recorded to disk."
+                : "Listening locally. Separate microphone capture and bounded transcript echo filtering are active. Audio is not being recorded to disk."
+            emitState("listening", listeningMessage)
         } catch {
             await cleanup(cancel: true)
             emitError(error.localizedDescription, binding: request.binding)
@@ -1312,16 +1136,6 @@ public func smartemrListenerSetEventCallback(_ callback: ListenerEventCallback?)
     ListenerEventHub.shared.setCallback(callback)
 }
 
-@_cdecl("smartemr_listener_vad_self_test")
-public func smartemrListenerVADSelfTest() -> Int32 {
-    adaptiveSpeechDetectorSelfTest() ? 1 : 0
-}
-
-@_cdecl("smartemr_listener_audio_gate_self_test")
-public func smartemrListenerAudioGateSelfTest() -> Int32 {
-    systemSpeechActivityHistorySelfTest() ? 1 : 0
-}
-
 @_cdecl("smartemr_listener_capabilities_json")
 public func smartemrListenerCapabilitiesJson() -> UnsafeMutablePointer<CChar>? {
     guard #available(macOS 26.0, *) else {
@@ -1351,9 +1165,10 @@ public func smartemrListenerCapabilitiesJson() -> UnsafeMutablePointer<CChar>? {
 public func smartemrListenerSourcesJson() -> UnsafeMutablePointer<CChar>? {
     do {
         let applications = try CoreAudioProcesses.sourceList()
+        let microphones = try CoreAudioInputDevices.sourceList()
         return jsonCString([
             "applications": applications,
-            "microphones": [["id": "system-default", "name": "System Default Microphone"]]
+            "microphones": microphones
         ])
     } catch {
         return jsonCString(["error": error.localizedDescription, "applications": [], "microphones": []])

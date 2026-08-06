@@ -3,10 +3,11 @@ on:
   workflow_run:
     workflows: ["Release"]
     types: [completed]
+  workflow_dispatch:
 
 jobs:
   publish-updater:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -27,56 +28,53 @@ jobs:
       - name: Generate updater JSON
         id: generate_updater
         run: |
-          # Fetch the latest release data
-          RELEASE_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/${{ github.repository }}/releases/latest)
-          
+          set -euo pipefail
+
+          # The stable channel must ignore deprecated beta releases, even if
+          # GitHub currently considers one of them the repository's "latest".
+          RELEASES_DATA=$(curl -fsSL --retry 3 \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100")
+          RELEASE_DATA=$(echo "$RELEASES_DATA" | jq -cer '[.[] | select(.draft == false and .prerelease == false and (.tag_name | startswith("v")))] | sort_by(.published_at) | last')
+
           VERSION=$(echo "$RELEASE_DATA" | jq -r .tag_name | sed 's/^v//')
           TAG_NAME=$(echo "$RELEASE_DATA" | jq -r .tag_name)
           NOTES=$(echo "$RELEASE_DATA" | jq -r .body)
           PUB_DATE=$(echo "$RELEASE_DATA" | jq -r .published_at)
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
-          
-          # Find the signed .app.tar.gz and its .sig for macOS ARM
+
           ASSETS_JSON=$(echo "$RELEASE_DATA" | jq -c '.assets')
 
-          SIG_NAME=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | endswith(".app.tar.gz.sig")) | .name' | head -1)
-          SIG_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | endswith(".app.tar.gz.sig")) | .browser_download_url' | head -1)
+          SIG_NAME="SmartEMR_${VERSION}_aarch64.app.tar.gz.sig"
+          BUNDLE_NAME="${SIG_NAME%.sig}"
+          SIG_URL=$(echo "$ASSETS_JSON" | jq -r --arg name "$SIG_NAME" '.[] | select(.name == $name) | .browser_download_url')
+          BUNDLE_URL=$(echo "$ASSETS_JSON" | jq -r --arg name "$BUNDLE_NAME" '.[] | select(.name == $name) | .browser_download_url')
 
-          if [ -n "$SIG_NAME" ]; then
-            BUNDLE_NAME="${SIG_NAME%.sig}"
-            BUNDLE_URL=$(echo "$ASSETS_JSON" | jq -r --arg name "$BUNDLE_NAME" '.[] | select(.name == $name) | .browser_download_url' | head -1)
-          else
-            BUNDLE_URL=""
-          fi
-
-          if [ -z "$BUNDLE_URL" ] || [ -z "$SIG_URL" ]; then
-            echo "ERROR: Could not find signed .app.tar.gz bundle or signature in release assets"
+          if [ "$SIG_URL" = "null" ] || [ "$BUNDLE_URL" = "null" ]; then
+            echo "ERROR: Stable release $TAG_NAME is missing its signed Apple Silicon updater assets"
             echo "Assets found:"
             echo "$ASSETS_JSON" | jq -r '.[].name'
             exit 1
           fi
-          
-          SIGNATURE=$(curl -fsSL "$SIG_URL" | tr -d '\n')
-          
-          cat > latest.json << EOF
-          {
-            "version": "$VERSION",
-            "notes": $(echo "$NOTES" | jq -R -s .),
-            "pub_date": "$PUB_DATE",
-            "platforms": {
-              "darwin-aarch64": {
-                "signature": "$SIGNATURE",
-                "url": "$BUNDLE_URL"
-              }
-            }
-          }
-          EOF
-          
-          # Clean up indentation from heredoc
-          python3 -c "import json,sys; d=json.load(open('latest.json')); json.dump(d,open('latest.json','w'),indent=2)"
-          
+
+          SIGNATURE=$(curl -fsSL --retry 3 "$SIG_URL" | tr -d '\r\n')
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg notes "$NOTES" \
+            --arg pub_date "$PUB_DATE" \
+            --arg signature "$SIGNATURE" \
+            --arg url "$BUNDLE_URL" \
+            '{version: $version, notes: $notes, pub_date: $pub_date, platforms: {"darwin-aarch64": {signature: $signature, url: $url}}}' \
+            > latest.json
+
           cat latest.json
+
+      - name: Mark stable release as latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ steps.generate_updater.outputs.tag_name }}" --repo "${{ github.repository }}" --latest
 
       - name: Upload latest.json to release
         uses: softprops/action-gh-release@v2

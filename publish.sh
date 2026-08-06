@@ -20,6 +20,7 @@ fi
 
 VERSION="$1"
 TAG="v$VERSION"
+TARGET="aarch64-apple-darwin"
 
 echo "==> Publishing SmartEMR $TAG"
 
@@ -68,9 +69,9 @@ done
 echo "==> Building Tauri app..."
 export TAURI_SIGNING_PRIVATE_KEY=$(cat "$KEY_PATH")
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$KEY_PASSWORD"
-npm run tauri build
+npm run tauri -- build --target "$TARGET"
 
-BUNDLE_DIR="src-tauri/target/release/bundle/macos"
+BUNDLE_DIR="src-tauri/target/$TARGET/release/bundle/macos"
 DMG_DIR="src-tauri/target/release/bundle/dmg"
 APP_NAME="SmartEMR.app"
 TARGZ="SmartEMR_${VERSION}_aarch64.app.tar.gz"

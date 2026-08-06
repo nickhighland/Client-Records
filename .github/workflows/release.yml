@@ -35,6 +35,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
 
       - name: Validate release tag
         if: ${{ github.event_name == 'workflow_dispatch' && !startsWith(inputs.release_tag || github.ref_name, 'v') }}
@@ -54,11 +56,27 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: ./tauri-app
+          args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: false
           prerelease: false
+
+      - name: Verify native Apple Silicon bundle
+        run: |
+          set -euo pipefail
+          APP_BINARY=$(find "$GITHUB_WORKSPACE/tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/SmartEMR.app/Contents/MacOS" -type f -print | head -1)
+          if [ -z "$APP_BINARY" ]; then
+            echo "ERROR: Native SmartEMR executable was not found"
+            exit 1
+          fi
+          ARCHES=$(lipo -archs "$APP_BINARY")
+          echo "SmartEMR executable architectures: $ARCHES"
+          if [ "$ARCHES" != "arm64" ]; then
+            echo "ERROR: Release executable is not arm64-only and may require Rosetta"
+            exit 1
+          fi
 
       - name: Create signed updater bundle
         id: updater_bundle
@@ -69,7 +87,7 @@ jobs:
           set -euo pipefail
           TAG_NAME="${{ inputs.release_tag || github.ref_name }}"
           VERSION="${TAG_NAME#v}"
-          BUNDLE_DIR="$GITHUB_WORKSPACE/tauri-app/src-tauri/target/release/bundle/macos"
+          BUNDLE_DIR="$GITHUB_WORKSPACE/tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos"
           APP_NAME="SmartEMR.app"
           TARGZ="SmartEMR_${VERSION}_aarch64.app.tar.gz"
           KEY_FILE="$RUNNER_TEMP/tauri-signing.key"
@@ -79,7 +97,7 @@ jobs:
 
           unset TAURI_SIGNING_PRIVATE_KEY
 
-          if [ ! -d "$BUNDLE_DIR" ]; then
+          if [ ! -d "$BUNDLE_DIR/$APP_NAME" ]; then
             echo "ERROR: Bundle directory not found at $BUNDLE_DIR"
             exit 1
           fi

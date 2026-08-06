@@ -16,8 +16,6 @@ jobs:
         include:
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
           - platform: 'windows-latest'
             args: ''
 
@@ -36,7 +34,7 @@ jobs:
         if: matrix.platform == 'macos-latest'
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          targets: aarch64-apple-darwin
 
       - name: install Rust stable (Windows)
         if: matrix.platform == 'windows-latest'
@@ -55,6 +53,22 @@ jobs:
       - name: Build Tauri App
         run: npx tauri build ${{ matrix.args }}
         working-directory: tauri-app
+
+      - name: Verify native Apple Silicon bundle
+        if: matrix.platform == 'macos-latest'
+        run: |
+          set -euo pipefail
+          APP_BINARY=$(find "$GITHUB_WORKSPACE/tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/SmartEMR.app/Contents/MacOS" -type f -print | head -1)
+          if [ -z "$APP_BINARY" ]; then
+            echo "ERROR: Native SmartEMR executable was not found"
+            exit 1
+          fi
+          ARCHES=$(lipo -archs "$APP_BINARY")
+          echo "SmartEMR executable architectures: $ARCHES"
+          if [ "$ARCHES" != "arm64" ]; then
+            echo "ERROR: Build executable is not arm64-only and may require Rosetta"
+            exit 1
+          fi
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

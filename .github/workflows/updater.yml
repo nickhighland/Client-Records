@@ -77,9 +77,10 @@ jobs:
         run: gh release edit "${{ steps.generate_updater.outputs.tag_name }}" --repo "${{ github.repository }}" --latest
 
       - name: Upload latest.json to release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: latest.json
-          tag_name: ${{ steps.generate_updater.outputs.tag_name }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.generate_updater.outputs.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --clobber \
+            latest.json

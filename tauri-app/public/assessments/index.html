@@ -1,0 +1,2161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>SmartEMR Assessment Suite</title>
+  <style>
+    :root {
+      --bg-main: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border-color: #cbd5e1;
+      --border-focus: #0284c7;
+
+      --primary-dark: #0f172a;
+      --accent-teal: #0284c7;
+      --accent-gradient: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      --accent-soft: #f0f9ff;
+      --accent-border: #bae6fd;
+
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+
+      --severity-green: #059669;
+      --severity-green-bg: #ecfdf5;
+      --severity-blue: #0284c7;
+      --severity-blue-bg: #f0f9ff;
+      --severity-yellow: #d97706;
+      --severity-yellow-bg: #fffbeb;
+      --severity-orange: #ea580c;
+      --severity-orange-bg: #fff7ed;
+      --severity-red: #dc2626;
+      --severity-red-bg: #fef2f2;
+
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 4px 14px -2px rgba(15, 23, 42, 0.08);
+      --shadow-lg: 0 10px 25px -5px rgba(15, 23, 42, 0.12);
+      --shadow-glow: 0 0 20px rgba(2, 132, 199, 0.2);
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top App Navigation Bar */
+    .app-header {
+      background: var(--primary-dark);
+      color: #ffffff;
+      padding: 16px 24px;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.15);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+    }
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      margin: 0;
+      color: #ffffff;
+    }
+    .brand-tag {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: rgba(255,255,255,0.12);
+      color: #7dd3fc;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-header {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.16);
+      color: #f1f5f9;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .btn-header:hover {
+      background: rgba(255,255,255,0.16);
+      color: #ffffff;
+    }
+    .btn-header.active {
+      background: var(--accent-teal);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Main Container */
+    .app-container {
+      max-width: 1400px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+
+    /* Assessment Selection Bar */
+    .controls-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .filter-pills {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--bg-subtle);
+      scrollbar-width: thin;
+    }
+    .pill {
+      background: var(--bg-subtle);
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition);
+    }
+    .pill:hover {
+      background: #e2e8f0;
+      color: var(--text-main);
+    }
+    .pill.active {
+      background: var(--primary-dark);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+    }
+
+    .selector-grid {
+      display: grid;
+      grid-template-columns: minmax(300px, 1fr) auto auto;
+      gap: 12px;
+      align-items: center;
+    }
+    .field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    select, input[type="text"], input[type="date"] {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: #ffffff;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    .btn {
+      height: 44px;
+      padding: 0 18px;
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: var(--transition);
+      border: 1.5px solid transparent;
+    }
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+    }
+    .btn-primary:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: #ffffff;
+      border-color: var(--border-color);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      background: var(--bg-subtle);
+      border-color: #cbd5e1;
+    }
+
+    .screen-share-banner {
+      display: none;
+      background: linear-gradient(135deg, #0f172a 0%, #0284c7 100%);
+      color: #ffffff;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 14px;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.2);
+    }
+
+    /* Split Workspace Layout */
+    .layout-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 24px;
+    }
+
+    .sticky-panel {
+      position: sticky;
+      top: 84px;
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 1fr 180px;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--bg-subtle);
+    }
+
+    /* Assessment Header Styling */
+    .assessment-header {
+      margin-bottom: 18px;
+    }
+    .assessment-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin: 0 0 8px;
+      letter-spacing: -0.4px;
+    }
+    .assessment-purpose {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .timeframe-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary-dark);
+      color: #7dd3fc;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .instruction-box {
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-border);
+      border-left: 4px solid var(--accent-teal);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      margin: 16px 0 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #0369a1;
+      line-height: 1.55;
+    }
+
+    .source-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Question Cards & Radio Option Tiles */
+    .question-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin-bottom: 14px;
+      transition: var(--transition);
+    }
+    .question-card:hover {
+      border-color: #94a3b8;
+      box-shadow: var(--shadow-sm);
+    }
+    .q-number {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--accent-teal);
+      background: var(--accent-soft);
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .qtext {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.45;
+      margin-bottom: 12px;
+    }
+    .qsub {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+    }
+
+    .option-tile {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #ffffff;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      transition: var(--transition);
+      user-select: none;
+    }
+    .option-tile:hover {
+      background: var(--bg-subtle);
+      border-color: #94a3b8;
+    }
+    .option-tile input[type="radio"] {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #94a3b8;
+      border-radius: 50%;
+      margin: 0;
+      display: grid;
+      place-content: center;
+      transition: var(--transition);
+    }
+    .option-tile input[type="radio"]::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      transform: scale(0);
+      transition: 0.15s transform ease-in-out;
+      background-color: #ffffff;
+    }
+    .option-tile input[type="radio"]:checked {
+      background-color: var(--accent-teal);
+      border-color: var(--accent-teal);
+    }
+    .option-tile input[type="radio"]:checked::before {
+      transform: scale(1);
+    }
+    .option-tile:has(input[type="radio"]:checked) {
+      background: var(--primary-dark);
+      border-color: var(--primary-dark);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+    }
+
+    /* ASRS v1.1 Shaded Zone Indicator */
+    .option-tile.shaded-option {
+      background: #fffbeb;
+      border-color: #fcd34d;
+    }
+    .option-tile.shaded-option:has(input[type="radio"]:checked) {
+      background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+      border-color: #b45309;
+      color: #ffffff;
+    }
+
+    /* C-SSRS Matrix Table */
+    .cssrs-table {
+      border: 2px solid var(--primary-dark);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-top: 14px;
+    }
+    .cssrs-row {
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      border-bottom: 1.5px solid var(--border-color);
+    }
+    .cssrs-row:last-child { border-bottom: 0; }
+    .cssrs-cell-q {
+      padding: 14px;
+      background: #ffffff;
+    }
+    .cssrs-cell-ans {
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cssrs-cell-ans.yellow { background: var(--severity-yellow-bg); }
+    .cssrs-cell-ans.orange { background: var(--severity-orange-bg); }
+    .cssrs-cell-ans.red { background: var(--severity-red-bg); }
+    .cssrs-cell-ans select {
+      height: 38px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .risk-line {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: var(--radius-md);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+    }
+    .risk-pill {
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .risk-pill.low { background: var(--severity-yellow); color: #78350f; }
+    .risk-pill.mod { background: var(--severity-orange); }
+    .risk-pill.high { background: var(--severity-red); }
+
+    /* EMR Summary Side Panel */
+    .summary-card {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .summary-header-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      margin: 0;
+      color: var(--text-main);
+    }
+
+    .result-display-box {
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+    .score-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent-teal);
+      margin-bottom: 4px;
+    }
+    .severity-text {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.4;
+    }
+
+    .flag-box {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      background: var(--severity-yellow-bg);
+      border: 1px solid #fde68a;
+      color: #92400e;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .flag-box.high {
+      background: var(--severity-red-bg);
+      border-color: #fca5a5;
+      color: #991b1b;
+      box-shadow: 0 0 12px rgba(220, 38, 38, 0.2);
+    }
+
+    .summary-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .summary-options label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    textarea#summary {
+      width: 100%;
+      min-height: 320px;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-md);
+      font-family: 'Fira Code', monospace, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-main);
+      background: #ffffff;
+      resize: vertical;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .status-msg {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      min-height: 20px;
+    }
+
+    /* Screen Share Mode Overrides */
+    .app-container.screen-share-mode .layout-grid {
+      grid-template-columns: 1fr;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .app-container.screen-share-mode aside.sticky-panel {
+      display: none !important;
+    }
+    .app-container.screen-share-mode .risk-line {
+      display: none !important;
+    }
+    .app-container.screen-share-mode .screen-share-banner {
+      display: block;
+    }
+
+    /* Source Library Grid */
+    .library-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .library-item {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+    .library-item h4 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      color: var(--text-main);
+    }
+    .library-item p {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .hidden { display: none !important; }
+
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg-main: #2d3748;
+      --bg-surface: #283141;
+      --bg-subtle: #232b38;
+      --border-color: #4a5568;
+      --border-focus: #63b3ed;
+      --primary-dark: #1a2533;
+      --accent-teal: #63b3ed;
+      --accent-gradient: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+      --accent-soft: #334155;
+      --accent-border: #4a5568;
+      --text-main: #e2e8f0;
+      --text-muted: #a0aec0;
+      --text-light: #718096;
+      --severity-green-bg: #1c3a2e;
+      --severity-blue-bg: #243b53;
+      --severity-yellow-bg: #4a3a1a;
+      --severity-orange-bg: #4a2e1c;
+      --severity-red-bg: #4c3030;
+    }
+
+    [data-theme="dark"] body {
+      background: var(--bg-main);
+    }
+
+    [data-theme="dark"] .controls-card,
+    [data-theme="dark"] .panel-card,
+    [data-theme="dark"] .question-card,
+    [data-theme="dark"] .option-tile,
+    [data-theme="dark"] .cssrs-cell-q,
+    [data-theme="dark"] .library-item,
+    [data-theme="dark"] textarea#summary {
+      background: var(--bg-surface);
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] select,
+    [data-theme="dark"] input[type="text"],
+    [data-theme="dark"] input[type="date"] {
+      background: #4a5568;
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .pill:hover,
+    [data-theme="dark"] .btn-outline:hover,
+    [data-theme="dark"] .option-tile:hover {
+      background: #4a5568;
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .instruction-box {
+      color: #bee3f8;
+    }
+
+    [data-theme="dark"] .flag-box {
+      color: #fbd38d;
+    }
+
+    [data-theme="dark"] .flag-box.high {
+      color: #fed7d7;
+    }
+
+    /* Responsive Adapters */
+    @media (max-width: 1024px) {
+      .layout-grid { grid-template-columns: 1fr; }
+      .sticky-panel { position: static; }
+    }
+    @media (max-width: 768px) {
+      .app-header { padding: 12px 16px; }
+      .header-inner { flex-direction: column; align-items: flex-start; }
+      .top-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+      .selector-grid { grid-template-columns: 1fr; }
+      .meta-row { grid-template-columns: 1fr; }
+      .options-grid { grid-template-columns: 1fr; }
+      .action-buttons { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- App Header Bar -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div>
+          <h1 class="brand-title">SmartEMR Assessment Suite</h1>
+          <span class="brand-tag">30 Open-Access Clinical Instruments</span>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="screenShareBtn" class="btn-header" type="button">
+          <span>📺</span> <span>Screen Share mode</span>
+        </button>
+        <button id="clearBtn" class="btn-header" type="button">
+          <span>🧹</span> <span>Clear current</span>
+        </button>
+        <button id="clearAllBtn" class="btn-header" type="button">
+          <span>🗑️</span> <span>Clear all</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div id="appContainer" class="app-container">
+
+    <!-- Controls & Selection Card -->
+    <div class="controls-card">
+      <div class="filter-pills">
+        <button class="pill active" data-cat="all">All (30)</button>
+        <button class="pill" data-cat="dsm5">DSM-5 Cross-Cutting</button>
+        <button class="pill" data-cat="broadband">Transdiagnostic</button>
+        <button class="pill" data-cat="mood">Mood & Perinatal</button>
+        <button class="pill" data-cat="pediatric">Pediatric & Youth</button>
+        <button class="pill" data-cat="substance">Substance & Function</button>
+      </div>
+      <div class="selector-grid">
+        <div>
+          <label class="field-label" for="assessmentSelect">Select Assessment Instrument</label>
+          <select id="assessmentSelect">
+            <optgroup label="DSM-5 Cross-Cutting Measures (Level 1 Broadband & Level 2 In-Depth)">
+              <option value="dsm5level1">DSM-5 Level 1 | Adult Broadband Cross-Cutting Measure</option>
+              <option value="dsm5level2_depression">DSM-5 Level 2 | Depression (PROMIS Short Form)</option>
+              <option value="dsm5level2_anxiety">DSM-5 Level 2 | Anxiety (PROMIS Short Form)</option>
+              <option value="dsm5level2_anger">DSM-5 Level 2 | Anger (PROMIS Short Form)</option>
+              <option value="dsm5level2_mania">DSM-5 Level 2 | Mania (Altman ASRMS Scale)</option>
+              <option value="dsm5level2_sleep">DSM-5 Level 2 | Sleep Disturbance (PROMIS Short Form)</option>
+            </optgroup>
+            <optgroup label="Transdiagnostic & broadband screeners">
+              <option value="phq4">PHQ-4 | Brief 4-item mood & anxiety screener</option>
+              <option value="k6">K6 | Psychological Distress Scale</option>
+              <option value="dass21">DASS-21 | Depression, Anxiety, & Stress Scales</option>
+              <option value="pq16">PQ-16 | Psychosis / Attenuated Psychosis screen</option>
+              <option value="ucla3">UCLA-3 | Loneliness & Social Isolation screen</option>
+            </optgroup>
+            <optgroup label="Core mood, perinatal, and geriatric">
+              <option value="phq9">PHQ-9 | Depression</option>
+              <option value="epds">EPDS | Perinatal depression</option>
+              <option value="gds15">GDS-15 | Geriatric depression screen</option>
+              <option value="gad7">GAD-7 | Anxiety</option>
+              <option value="phq15">PHQ-15 | Somatic symptoms (Level 2 Somatic)</option>
+              <option value="cssrs">C-SSRS Screen Version | Suicide risk</option>
+            </optgroup>
+            <optgroup label="Pediatric, adolescent & cognitive screening">
+              <option value="psc17">PSC-17 | Pediatric Symptom Checklist</option>
+              <option value="crafft21">CRAFFT 2.1 | Adolescent substance screen</option>
+              <option value="ad8">AD8 | Cognitive impairment / Dementia screen</option>
+            </optgroup>
+            <optgroup label="Trauma and differential diagnosis">
+              <option value="pcl5">PCL-5 | PTSD symptoms</option>
+              <option value="pcptsd5">PC-PTSD-5 | Brief PTSD screen</option>
+              <option value="asrs6">ASRS v1.1, 6-item | Adult ADHD screen</option>
+            </optgroup>
+            <optgroup label="Neurodevelopmental and personality screening">
+              <option value="aq10">AQ-10 | Adult Autism Spectrum screen</option>
+              <option value="msibpd">MSI-BPD | Borderline Personality screen</option>
+            </optgroup>
+            <optgroup label="Substance, eating, and functional concerns">
+              <option value="auditc">AUDIT-C | Alcohol screen (Level 2 Substance)</option>
+              <option value="cageaid">CAGE-AID | Alcohol & drug screen (Level 2 Substance)</option>
+              <option value="dast10">DAST-10 | Drug use screen (Level 2 Drug)</option>
+              <option value="scoff">SCOFF | Eating disorder screen</option>
+              <option value="whodas12">WHODAS 2.0, 12-item | Functioning</option>
+            </optgroup>
+            <option value="library">Source Library & Citations</option>
+          </select>
+        </div>
+      </div>
+      <div class="screen-share-banner">
+        Screen Share Mode Active
+      </div>
+    </div>
+
+    <!-- Workspace Grid -->
+    <div class="layout-grid">
+
+      <!-- Main Instrument Panel -->
+      <main class="panel-card">
+        <div class="meta-row" style="grid-template-columns: 1fr;">
+          <div>
+            <label class="field-label" for="adminDate">Administration Date</label>
+            <input id="adminDate" type="date">
+          </div>
+        </div>
+
+        <div id="assessmentArea"></div>
+      </main>
+
+      <!-- Sticky EMR Summary Side Panel -->
+      <aside class="panel-card sticky-panel summary-card">
+        <h3 class="summary-header-title">EMR Summary & Real-Time Score</h3>
+
+        <div class="result-display-box">
+          <div id="scoreText" class="score-value">Incomplete</div>
+          <div id="severityText" class="severity-text">Complete all required fields.</div>
+          <div id="flagText" class="flag-box hidden"></div>
+        </div>
+
+        <div class="summary-options">
+          <label><input id="includeResponses" type="checkbox" checked> Include item responses</label>
+          <label><input id="includeInterpretation" type="checkbox" checked> Include clinical interpretation</label>
+        </div>
+
+        <textarea id="summary" readonly placeholder="Complete assessment items to generate EMR text..."></textarea>
+
+        <div class="action-buttons">
+          <button id="copyBtn" class="btn btn-primary" type="button">📋 Copy Summary</button>
+          <button id="selectBtn" class="btn btn-outline" type="button">Select Text</button>
+        </div>
+
+        <div id="status" class="status-msg" aria-live="polite"></div>
+      </aside>
+
+    </div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (value) => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]));
+  const SMARTEMR_THEME_MESSAGE = "smartemr-theme";
+  const responseState = {};
+  let currentKey = "phq9";
+
+  function applySmartEmrTheme(theme) {
+    const activeTheme = theme === "dark" ? "dark" : "light";
+    document.documentElement.dataset.theme = activeTheme;
+  }
+
+  window.addEventListener("message", (event) => {
+    const isParentMessage =
+      window.parent === window ? event.source === window : event.source === window.parent;
+    const expectedOrigin = window.location.origin;
+    const isExpectedOrigin = !event.origin || expectedOrigin === "null" || event.origin === expectedOrigin;
+    const theme = event.data?.theme;
+
+    if (
+      !isParentMessage ||
+      !isExpectedOrigin ||
+      event.data?.type !== SMARTEMR_THEME_MESSAGE ||
+      (theme !== "light" && theme !== "dark")
+    ) {
+      return;
+    }
+
+    applySmartEmrTheme(theme);
+  });
+
+  applySmartEmrTheme(
+    typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light"
+  );
+
+  const sourceLibrary = {
+    phq9:{name:"PHQ-9", status:"Reproduction permitted", url:"https://www.phqscreeners.com/images/sites/g/files/g10060481/f/201412/PHQ-9_English.pdf", note:"Pfizer made PHQ instruments available without copyright restriction and at no charge. Preserve attribution."},
+    gad7:{name:"GAD-7", status:"Reproduction permitted", url:"https://integrationacademy.ahrq.gov/sites/default/files/2020-07/GAD-7.pdf", note:"The PHQ/GAD family is available for reproduction, translation, display, and distribution with attribution."},
+    cssrs:{name:"C-SSRS Screen Version", status:"Clinical use available; commercial integration should be confirmed", url:"https://www.cms.gov/files/document/cssrs-screen-version-instrument.pdf", note:"This implementation follows the user-supplied CMS form and skip logic. Confirm Columbia Lighthouse licensing and training requirements before product release."},
+    whodas12:{name:"WHODAS 2.0, 12-item", status:"WHO instrument; confirm product licensing", url:"https://www.psychiatry.org/File%20Library/Psychiatrists/Practice/DSM/APA_DSM5_WHODAS-2-Self-Administered.pdf", note:"WHO publishes the instrument and simple scoring guidance. Confirm authorization for commercial software distribution."},
+    pcl5:{name:"PCL-5", status:"Public domain", url:"https://www.ptsd.va.gov/professional/assessment/documents/PCL5_Standard_form.pdf", note:"Developed by the VA National Center for PTSD. Use by qualified clinicians; a positive score is not a standalone diagnosis."},
+    pcptsd5:{name:"PC-PTSD-5", status:"Public domain", url:"https://www.ptsd.va.gov/professional/assessment/documents/pc-ptsd5-screen.pdf", note:"The VA states that this measure is public domain and not copyrighted."},
+    asrs6:{name:"ASRS v1.1, 6-question screener", status:"Free use with required notice; do not alter", url:"https://add.org/wp-content/uploads/2015/03/adhd-questionnaire-ASRS111.pdf", note:"Harvard states that the 6-question v1.1 screener may be recreated electronically if unchanged and the copyright notice/citation are retained."},
+    auditc:{name:"AUDIT-C", status:"WHO-derived; confirm product attribution/licensing", url:"https://nida.nih.gov/sites/default/files/files/AUDIT.pdf", note:"AUDIT-C uses the first three AUDIT items. Thresholds vary by setting and population."},
+    dast10:{name:"DAST-10", status:"Noncommercial reproduction allowed with credit; commercial permission needed", url:"https://www.asam.org/docs/default-source/education-docs/drug-abuse-screening-test_dast10_8-28-2017.pdf", infoUrl:"https://nida.nih.gov/nidamed-medical-health-professionals/screening-tools-resources/chart-screening-tools", note:"NIDA directs users to the copyright holder. The prototype includes the scoring workflow; obtain commercial authorization before release."},
+    epds:{name:"Edinburgh Postnatal Depression Scale (EPDS)", status:"Reproduction permitted with credit", url:"https://www.perinatology.com/calculators/Edinburgh%20Depression%20Scale.htm", note:"Cox, Holden, & Sagovsky (1987). Widely available for clinical screening; retain copyright/attribution statement."},
+    aq10:{name:"AQ-10 (Autism Spectrum Quotient 10-Item)", status:"Open access / free clinical use", url:"https://www.autismresearchcentre.com/tests/autism-spectrum-quotient-10-items-aq-10-adult/", note:"Developed by Allison, Auyeung, & Baron-Cohen (2012). Recommended by UK NICE guidelines for initial adult autism screening."},
+    scoff:{name:"SCOFF Questionnaire", status:"Open clinical use with credit", url:"https://www.nationaleatingdisorders.org/", note:"Morgan, Reid, & Lacey (1999). 5-item screening tool for eating disorders."},
+    msibpd:{name:"McLean Screening Instrument for BPD (MSI-BPD)", status:"Noncommercial clinical use permitted with attribution", url:"https://pubmed.ncbi.nlm.nih.gov/14686459/", note:"Zanarini et al. (2003). 10-item screening tool for Borderline Personality Disorder features."},
+    phq15:{name:"PHQ-15 (Somatic Symptom Scale)", status:"Reproduction permitted", url:"https://www.phqscreeners.com/", note:"Pfizer made PHQ instruments available without copyright restriction and at no charge. Preserve attribution."},
+    cageaid:{name:"CAGE-AID Questionnaire", status:"Public domain / open clinical use", url:"https://www.hiv.uw.edu/page/substance-use/cage-aid", note:"Adapted from Ewing (1984) by Brown & Rounds (1995) to include both alcohol and drug use."},
+    dsm5level1:{name:"DSM-5-TR Level 1 Adult Cross-Cutting Symptom Measure", status:"Reproduction permitted for clinical/educational use", url:"https://www.psychiatry.org/getmedia/e0b4b299-95b3-407b-b8c2-caa871ca218d/APA-DSM5TR-Level1MeasureAdult.pdf", note:"American Psychiatric Association (APA). 23-item broadband multi-domain screener across 13 psychiatric domains."},
+    phq4:{name:"PHQ-4 (Patient Health Questionnaire-4)", status:"Reproduction permitted", url:"https://www.phqscreeners.com/", note:"Kroenke, Spitzer, Williams, & Lowe (2009). 4-item ultra-brief transdiagnostic screener combining PHQ-2 and GAD-2."},
+    k6:{name:"Kessler 6 Psychological Distress Scale (K6)", status:"Public domain", url:"https://pubmed.ncbi.nlm.nih.gov/12457677/", note:"Kessler et al. (2002). Broadband 6-item general psychiatric distress screener for Serious Mental Illness (SMI) risk."},
+    dass21:{name:"Depression Anxiety Stress Scales-21 (DASS-21)", status:"Public domain / Open access", url:"https://www.psychology.org.au/", note:"Lovibond & Lovibond (1995). 21-item transdiagnostic symptom inventory evaluating Depression, Anxiety, and Stress subscales."},
+    pq16:{name:"Prodromal Questionnaire-16 (PQ-16)", status:"Open access clinical screener", url:"https://pmc.ncbi.nlm.nih.gov/articles/PMC3449336/", note:"Ising et al. (2012). 16-item screener for attenuated psychosis symptoms and psychosis risk."},
+    dsm5level2_depression:{name:"DSM-5 Level 2 — Depression (PROMIS)", status:"Reproduction permitted for clinical/educational use", url:"https://www.psychiatry.org/getmedia/4326c940-f414-4f2c-acec-bd8299a3cf14/APA-DSM5TR-Level2DepressionAdult.pdf", note:"PROMIS Emotional Distress - Depression - Short Form (8a). Administered when Level 1 Depression domain threshold is met."},
+    dsm5level2_anxiety:{name:"DSM-5 Level 2 — Anxiety (PROMIS)", status:"Reproduction permitted for clinical/educational use", url:"https://www.psychiatry.org/getmedia/f284f967-ed9e-4754-99fc-b32765b1c4a0/APA-DSM5TR-Level2AnxietyAdult.pdf", note:"PROMIS Emotional Distress - Anxiety - Short Form (7a). Administered when Level 1 Anxiety domain threshold is met."},
+    dsm5level2_anger:{name:"DSM-5 Level 2 — Anger (PROMIS)", status:"Reproduction permitted for clinical/educational use", url:"https://www.psychiatry.org/getmedia/a56cc2a0-3818-4975-bbcb-4a047e1ffbea/APA-DSM5TR-Level2AngerAdult.pdf", note:"PROMIS Emotional Distress - Anger - Short Form (5a). Administered when Level 1 Anger domain threshold is met."},
+    dsm5level2_mania:{name:"DSM-5 Level 2 — Mania (Altman ASRMS)", status:"Reproduction permitted for clinical/educational use", url:"https://www.psychiatry.org/getmedia/c1783d55-268a-47b2-9932-a549b21c8d64/APA-DSM5TR-Level2ManiaAdult.pdf", note:"Altman Self-Rating Mania Scale (ASRMS). 5-item scale administered when Level 1 Mania domain threshold is met (cutoff ≥ 6)."},
+    dsm5level2_sleep:{name:"DSM-5 Level 2 — Sleep Disturbance (PROMIS)", status:"Reproduction permitted for clinical/educational use", url:"https://www.psychiatry.org/getmedia/c606b335-f087-4358-9c8d-f233313d9d04/APA-DSM5TR-Level2SleepDisturbanceAdult.pdf", note:"PROMIS Sleep Disturbance - Short Form (8a). Administered when Level 1 Sleep domain threshold is met."},
+    psc17:{name:"Pediatric Symptom Checklist-17 (PSC-17)", status:"Public domain / free clinical use", url:"https://pubmed.ncbi.nlm.nih.gov/17581453/", note:"Jellinek et al. (Mass General / Harvard). 17-item pediatric/youth behavioral health screener (Internalizing, Externalizing, Attention)."},
+    crafft21:{name:"CRAFFT 2.1 Adolescent Substance Screener", status:"Open access for clinical use with credit", url:"https://crafft.org/", note:"Knight et al. (Center for Adolescent Behavioral Health, Boston Children's Hospital). 6-item screener for adolescent alcohol/drug risk."},
+    gds15:{name:"Geriatric Depression Scale (GDS-15)", status:"Public domain", url:"https://www.apa.org/pi/aging/resources/", note:"Yesavage et al. (1986). 15-item depression screening tool validated for older adults, omitting physical somatic overlap."},
+    ucla3:{name:"UCLA Loneliness Scale (3-Item Short Form)", status:"Open access / free clinical use", url:"https://pmc.ncbi.nlm.nih.gov/articles/PMC2394670/", note:"Hughes et al. (2004). 3-item screener measuring social isolation and loneliness."},
+    ad8:{name:"AD8 Dementia Screening Interview", status:"Open access / free clinical use with credit", url:"https://alzheimer.wustl.edu/", note:"Galvin et al. (Washington University School of Medicine). 8-item informant/self-report cognitive impairment screener."}
+  };
+
+  const scales = {
+    phq9:{
+      title:"Patient Health Questionnaire-9 (PHQ-9)",
+      purpose:"Depressive symptom screening and severity monitoring. Supports, but does not independently establish, a depressive disorder diagnosis.",
+      instructions:"Over the last 2 weeks, how often has the client been bothered by the following problems?",
+      timeframe:"Past 2 weeks",
+      items:[
+        "Little interest or pleasure in doing things",
+        "Feeling down, depressed, or hopeless",
+        "Trouble falling or staying asleep, or sleeping too much",
+        "Feeling tired or having little energy",
+        "Poor appetite or overeating",
+        "Feeling bad about yourself, or that you are a failure or have let yourself or your family down",
+        "Trouble concentrating on things, such as reading the newspaper or watching television",
+        "Moving or speaking so slowly that other people could have noticed? Or the opposite—being so fidgety or restless that you have been moving around a lot more than usual",
+        "Thoughts that you would be better off dead, or of hurting yourself in some way"
+      ],
+      options:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<=4?"Minimal or no depression":total<=9?"Mild depression":total<=14?"Moderate depression":total<=19?"Moderately severe depression":"Severe depression";
+        const flag=values[8]>0?"Item 9 endorsed (thoughts of self-harm or being better off dead). Perform and document a comprehensive suicide risk assessment.":"";
+        return {score:`${total}/27`,severity,flag,total};
+      }
+    },
+    gad7:{
+      title:"Generalized Anxiety Disorder-7 (GAD-7)",
+      purpose:"Anxiety symptom screening and severity monitoring.",
+      instructions:"Over the last 2 weeks, how often has the client been bothered by the following problems?",
+      timeframe:"Past 2 weeks",
+      items:[
+        "Feeling nervous, anxious, or on edge",
+        "Not being able to stop or control worrying",
+        "Worrying too much about different things",
+        "Trouble relaxing",
+        "Being so restless that it is hard to sit still",
+        "Becoming easily annoyed or irritable",
+        "Feeling afraid as if something awful might happen"
+      ],
+      options:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<=4?"Minimal anxiety":total<=9?"Mild anxiety":total<=14?"Moderate anxiety":"Severe anxiety";
+        return {score:`${total}/21`,severity,flag:total>=10?"Score of 10 or higher is a common clinical threshold for further diagnostic evaluation.":"",total};
+      }
+    },
+    whodas12:{
+      title:"WHODAS 2.0 (12-item Self-Administered)",
+      purpose:"General disability and functional impairment assessment across major life domains.",
+      instructions:"In the past 30 days, how much difficulty did the client have doing the following activities?",
+      timeframe:"Past 30 days",
+      items:[
+        "Standing for long periods such as 30 minutes?",
+        "Taking care of your household responsibilities?",
+        "Learning a new task (e.g., learning how to get to a new place)?",
+        "How much of a problem did you have in joining in community activities?",
+        "How much have you been emotionally affected by your health problems?",
+        "Concentrating on doing something for ten minutes?",
+        "Walking a long distance such as a kilometer (or half a mile)?",
+        "Washing your whole body?",
+        "Getting dressed?",
+        "Dealing with people you do not know?",
+        "Maintaining a friendship?",
+        "Your day-to-day work?"
+      ],
+      options:[["None",0],["Mild",1],["Moderate",2],["Severe",3],["Extreme or cannot do",4]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const pct=((total/48)*100).toFixed(1);
+        const severity=total<=12?"Mild functional difficulty":total<=24?"Moderate functional difficulty":total<=36?"Severe functional difficulty":"Extreme functional difficulty";
+        return {score:`${total}/48 (${pct}% raw disability score)`,severity,flag:total>=25?"High level of reported functional impairment across daily living domains.":"",total};
+      }
+    },
+    pcl5:{
+      title:"PTSD Checklist for DSM-5 (PCL-5)",
+      purpose:"Assesses DSM-5 PTSD symptom severity.",
+      instructions:"In the past month, how much has the client been bothered by the following problems related to a stressful experience?",
+      timeframe:"Past month",
+      traumaGate:true,
+      items:[
+        "Repeated, disturbing, and unwanted memories of the stressful experience?",
+        "Repeated, disturbing dreams of the stressful experience?",
+        "Suddenly feeling or acting as if the stressful experience were actually happening again?",
+        "Feeling very upset when something reminded you of the stressful experience?",
+        "Having strong physical reactions when something reminded you of the stressful experience?",
+        "Avoiding memories, thoughts, or feelings related to the stressful experience?",
+        "Avoiding external reminders of the stressful experience (e.g., people, places, conversations)?",
+        "Trouble remembering important parts of the stressful experience?",
+        "Having strong negative beliefs about yourself, other people, or the world?",
+        "Blaming yourself or someone else for the stressful experience or what happened after it?",
+        "Having strong negative feelings such as fear, horror, anger, guilt, or shame?",
+        "Loss of interest in activities that you used to enjoy?",
+        "Feeling distant or cut off from other people?",
+        "Trouble experiencing positive feelings?",
+        "Irritable behavior, angry outbursts, or acting aggressively?",
+        "Taking too many risks or doing things that could cause you harm?",
+        "Being 'superalert' or watchful or on guard?",
+        "Feeling jumpy or easily startled?",
+        "Having difficulty concentrating?",
+        "Trouble falling or staying asleep?"
+      ],
+      options:[["Not at all",0],["A little bit",1],["Moderately",2],["Quite a bit",3],["Extremely",4]],
+      calculate(values,extra){
+        if(extra.traumaExposure==="no") return {score:"0/80 (No Criterion A trauma reported)",severity:"Trauma exposure criterion not reported on screener gate.",flag:""};
+        const total=values.reduce((a,b)=>a+b,0);
+        const provisionalCutoff=31;
+        const severity=total>=provisionalCutoff?"Provisional PTSD threshold met (Score ≥ 31)":"Below provisional PTSD threshold (Score < 31)";
+        return {score:`${total}/80`,severity,flag:total>=provisionalCutoff?"PCL-5 score meets or exceeds the provisional clinical cutoff (31-33). Comprehensive trauma clinical evaluation indicated.":"",total};
+      }
+    },
+    pcptsd5:{
+      title:"Primary Care PTSD Screen for DSM-5 (PC-PTSD-5)",
+      purpose:"Brief 5-item PTSD screener for primary care and general clinical intake.",
+      instructions:"If the client has experienced a traumatic event, answer the following questions regarding the past month.",
+      timeframe:"Past month",
+      traumaGate:true,
+      items:[
+        "Had nightmares about the event(s) or thought about the event(s) when you did not want to?",
+        "Tried hard not to think about the event(s) or went out of your way to avoid situations that reminded you of the event(s)?",
+        "Been constantly on guard, watchful, or easily startled?",
+        "Felt numb or detached from people, activities, or your surroundings?",
+        "Felt guilty or unable to stop blaming yourself or others for the event(s) or any problems the event(s) may have caused?"
+      ],
+      options:[["No",0],["Yes",1]],
+      calculate(values,extra){
+        if(extra.traumaExposure==="no") return {score:"0/5 (No traumatic event reported)",severity:"Trauma exposure screen negative.",flag:""};
+        const total=values.reduce((a,b)=>a+b,0);
+        const positive=total>=3;
+        return {score:`${total}/5`,severity:positive?"Positive PTSD screen (Score ≥ 3)":"Negative PTSD screen (Score < 3)",flag:positive?"A score of 3 or higher indicates a positive PC-PTSD-5 screen. Administer full PCL-5 or conduct a structured clinical interview.":"",total};
+      }
+    },
+    asrs6:{
+      title:"Adult ADHD Self-Report Scale (ASRS v1.1) 6-Question Screener",
+      purpose:"Brief 6-question screener for adult ADHD symptoms.",
+      instructions:"Answer the questions below based on how the client has felt and conducted themselves over the past 6 months.",
+      timeframe:"Past 6 months",
+      items:[
+        "How often does the client have trouble wrapping up the final details of a project, once the challenging parts have been done?",
+        "How often does the client have difficulty getting things in order when operating a task that requires organization?",
+        "How often does the client have problems remembering appointments or obligations?",
+        "When the client has a task that requires a lot of thought, how often do they avoid or delay getting started?",
+        "How often does the client fidget or squirm with their hands or feet when they have to sit down for a long time?",
+        "How often does the client feel overly active and compelled to do things, like they were driven by a motor?"
+      ],
+      options:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Very often",4]],
+      calculate(values){
+        const significantThresholds=[2,2,2,3,3,3];
+        let shadedCount=0;
+        values.forEach((val,idx)=>{ if(val>=significantThresholds[idx]) shadedCount++; });
+        const positive=shadedCount>=4;
+        const severity=positive?`Positive screener result (${shadedCount}/6 items in shaded zone)`:`Negative screener result (${shadedCount}/6 items in shaded zone)`;
+        return {score:`${shadedCount}/6 shaded responses`,severity,flag:positive?"Four or more responses are in the WHO screener shaded zone. Complete clinical evaluation for adult ADHD is recommended.":"",total:shadedCount};
+      }
+    },
+    auditc:{
+      title:"Alcohol Use Disorders Identification Test-Concise (AUDIT-C)",
+      purpose:"Brief 3-item alcohol screening tool to identify hazardous drinking or active alcohol use disorders.",
+      instructions:"Answer the questions based on alcohol consumption patterns over the past year.",
+      timeframe:"Past year",
+      customItems:[
+        {prompt:"How often does the client have a drink containing alcohol?", options:[["Never",0],["Monthly or less",1],["2-4 times a month",2],["2-3 times a week",3],["4 or more times a week",4]]},
+        {prompt:"How many drinks containing alcohol does the client have on a typical day when drinking?", options:[["1 or 2",0],["3 or 4",1],["5 or 6",2],["7 to 9",3],["10 or more",4]]},
+        {prompt:"How often does the client have 5 or more drinks on one occasion?", options:[["Never",0],["Less than monthly",1],["Monthly",2],["Weekly",3],["Daily or almost daily",4]]}
+      ],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total>=4?"Positive screen for hazardous drinking (Score ≥ 4 / ≥3 depending on risk profile)":"Negative screen for hazardous drinking";
+        return {score:`${total}/12`,severity,flag:total>=4?"AUDIT-C score meets or exceeds general thresholds for hazardous drinking. Provide brief counseling and evaluate full AUDIT scale.":"",total};
+      }
+    },
+    dast10:{
+      title:"Drug Abuse Screening Test-10 (DAST-10)",
+      purpose:"Brief 10-item tool assessing drug use problems (excluding alcohol and tobacco).",
+      instructions:"These questions refer to the past 12 months. Answer Yes or No.",
+      timeframe:"Past 12 months",
+      items:[
+        "Has the client used drugs other than those required for medical reasons?",
+        "Does the client abuse more than one drug at a time?",
+        "Is the client always able to stop using drugs when they want to? (Reversed)",
+        "Has the client had 'blackouts' or 'flashbacks' as a result of drug use?",
+        "Does the client ever feel bad or guilty about their drug use?",
+        "Does the client's spouse (or parents) ever complain about their involvement with drugs?",
+        "Has the client neglected their family because of their use of drugs?",
+        "Has the client engaged in illegal acts in order to obtain drugs?",
+        "Has the client ever experienced withdrawal symptoms (felt sick) when they stopped taking drugs?",
+        "Has the client had medical problems as a result of their drug use (e.g., memory loss, hepatitis, convulsions, bleeding)?"
+      ],
+      options:[["No",0],["Yes",1]],
+      calculate(values){
+        const rawValues=values.map((v,i)=>i===2?(v===1?0:1):v);
+        const total=rawValues.reduce((a,b)=>a+b,0);
+        let severity="No problem reported (0)";
+        if(total>=1&&total<=2) severity="Low level / Monitor (1-2)";
+        else if(total>=3&&total<=5) severity="Moderate level / Investigation recommended (3-5)";
+        else if(total>=6&&total<=8) severity="Substantial level / Intensive assessment recommended (6-8)";
+        else if(total>=9) severity="Severe level / Intensive assessment and intervention required (9-10)";
+        return {score:`${total}/10`,severity,flag:total>=3?"DAST-10 score indicates moderate to severe drug-related problems. Detailed substance evaluation recommended.":"",total};
+      }
+    },
+    epds:{
+      title:"Edinburgh Postnatal Depression Scale (EPDS)",
+      purpose:"Perinatal and postpartum depression screening tool.",
+      instructions:"Select the response that best describes how the client felt over the past 7 days.",
+      timeframe:"Past 7 days",
+      customItems:[
+        {prompt:"1. I have been able to laugh and see the funny side of things", options:[["As much as I always could",0],["Not quite so much now",1],["Definitely not so much now",2],["Not at all",3]]},
+        {prompt:"2. I have looked forward with enjoyment to things", options:[["As much as I ever did",0],["Rather less than I used to",1],["Definitely less than I used to",2],["Hardly at all",3]]},
+        {prompt:"3. I have blamed myself unnecessarily when things went wrong", options:[["Yes, most of the time",3],["Yes, some of the time",2],["Not very often",1],["No, never",0]]},
+        {prompt:"4. I have been anxious or worried for no good reason", options:[["No, not at all",0],["Hardly ever",1],["Yes, sometimes",2],["Yes, very often",3]]},
+        {prompt:"5. I have felt scared or panicky for no very good reason", options:[["Yes, quite a lot",3],["Yes, sometimes",2],["No, not much",1],["No, not at all",0]]},
+        {prompt:"6. Things have been getting on top of me", options:[["Yes, most of the time I haven't been able to cope at all",3],["Yes, sometimes I haven't been coping as well as usual",2],["No, most of the time I have coped quite well",1],["No, I have been coping as well as ever",0]]},
+        {prompt:"7. I have been so unhappy that I have had difficulty sleeping", options:[["Yes, most of the time",3],["Yes, sometimes",2],["Not very often",1],["No, not at all",0]]},
+        {prompt:"8. I have felt sad or miserable", options:[["Yes, most of the time",3],["Yes, sometimes",2],["Not very often",1],["No, not at all",0]]},
+        {prompt:"9. I have been so unhappy that I have been crying", options:[["Yes, most of the time",3],["Yes, quite often",2],["Only occasionally",1],["No, never",0]]},
+        {prompt:"10. The thought of harming myself has occurred to me", options:[["Yes, quite often",3],["Sometimes",2],["Hardly ever",1],["Never",0]]}
+      ],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<=9?"Low risk of depression (0-9)":total<=12?"Possible depression / Monitor (10-12)":"Fairly high possibility of depression (13+)";
+        const selfHarmFlag=values[9]>0?"Item 10 endorsed (self-harm thoughts reported). Perform immediate suicide and self-harm risk assessment.":"";
+        const flag=selfHarmFlag||(total>=10?"EPDS score ≥ 10 suggests perinatal depressive symptoms. Clinical evaluation indicated.":"");
+        return {score:`${total}/30`,severity,flag,total};
+      }
+    },
+    aq10:{
+      title:"Autism Spectrum Quotient 10-Item Adult Version (AQ-10)",
+      purpose:"Brief 10-item screener recommended by UK NICE guidelines to evaluate whether an adult should be referred for full autism assessment.",
+      instructions:"Select how strongly the statement applies to the client.",
+      timeframe:"General / Baseline",
+      customItems:[
+        {prompt:"1. I often notice small sounds when others do not", options:[["Definitely Agree",1],["Slightly Agree",1],["Slightly Disagree",0],["Definitely Disagree",0]]},
+        {prompt:"2. I usually concentrate more on the whole picture, rather than on the small details", options:[["Definitely Agree",0],["Slightly Agree",0],["Slightly Disagree",1],["Definitely Disagree",1]]},
+        {prompt:"3. I find it easy to do more than one thing at once", options:[["Definitely Agree",0],["Slightly Agree",0],["Slightly Disagree",1],["Definitely Disagree",1]]},
+        {prompt:"4. If there is an interruption, I can go back to what I was doing very quickly", options:[["Definitely Agree",0],["Slightly Agree",0],["Slightly Disagree",1],["Definitely Disagree",1]]},
+        {prompt:"5. I find it easy to 'read between the lines' when someone is talking to me", options:[["Definitely Agree",0],["Slightly Agree",0],["Slightly Disagree",1],["Definitely Disagree",1]]},
+        {prompt:"6. I know how to tell if someone listening to me is getting bored", options:[["Definitely Agree",0],["Slightly Agree",0],["Slightly Disagree",1],["Definitely Disagree",1]]},
+        {prompt:"7. When I'm reading a story, I find it difficult to work out the characters' intentions", options:[["Definitely Agree",1],["Slightly Agree",1],["Slightly Disagree",0],["Definitely Disagree",0]]},
+        {prompt:"8. I like to collect information about categories of things", options:[["Definitely Agree",1],["Slightly Agree",1],["Slightly Disagree",0],["Definitely Disagree",0]]},
+        {prompt:"9. I find it easy to work out what someone is thinking or feeling just by looking at their face", options:[["Definitely Agree",0],["Slightly Agree",0],["Slightly Disagree",1],["Definitely Disagree",1]]},
+        {prompt:"10. I find it difficult to make new friends", options:[["Definitely Agree",1],["Slightly Agree",1],["Slightly Disagree",0],["Definitely Disagree",0]]}
+      ],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const positive=total>=6;
+        const severity=positive?"Positive screen for Autism Spectrum referral (Score ≥ 6)":"Negative screen for referral (Score < 6)";
+        const flag=positive?"Score is 6 or higher. Consider referral for a comprehensive diagnostic assessment for Autism Spectrum Disorder (ASD).":"";
+        return {score:`${total}/10`,severity,flag,total};
+      }
+    },
+    scoff:{
+      title:"SCOFF Eating Disorders Questionnaire",
+      purpose:"Ultra-brief 5-item screening tool for eating disorders.",
+      instructions:"Answer Yes or No based on eating patterns and body image concerns.",
+      timeframe:"Recent / Current",
+      items:[
+        "Do you make yourself Sick because you feel uncomfortably full?",
+        "Do you worry you have lost Control over how much you eat?",
+        "Have you recently lost more than One month's weight (14 lbs/6kg) in a 3-month period?",
+        "Do you believe yourself to be Fat when others say you are too thin?",
+        "Would you say that Food dominates your life?"
+      ],
+      options:[["No",0],["Yes",1]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const positive=total>=2;
+        const severity=positive?"Positive screen for eating disorder (Score ≥ 2)":"Negative screen (Score < 2)";
+        const flag=positive?"Answering 'Yes' to 2 or more questions indicates a positive screen for an eating disorder (anorexia nervosa or bulimia nervosa). Clinical evaluation recommended.":"";
+        return {score:`${total}/5`,severity,flag,total};
+      }
+    },
+    msibpd:{
+      title:"McLean Screening Instrument for Borderline Personality Disorder (MSI-BPD)",
+      purpose:"10-item screening tool for Borderline Personality Disorder (BPD) features.",
+      instructions:"Answer Yes or No based on long-term personality patterns.",
+      timeframe:"Long-term / Baseline",
+      items:[
+        "Have any of your relationships been extremely troubled or stormy?",
+        "Have you deliberately hurt yourself physically (e.g., cut, burned) or made a suicide attempt?",
+        "Have you had at least two other problems with impulsivity (e.g., overeating, spending, frequent sex, reckless driving)?",
+        "Have you been extremely moody or experienced rapid mood changes?",
+        "Have you often felt extremely angry or acted in an extremely angry way?",
+        "Have you frequently been distrustful or suspicious of other people?",
+        "Have you frequently felt unreal, detached, or as if you were outside your body?",
+        "Have you frequently felt chronically empty or hollow inside?",
+        "Have you often felt like you didn't know who you really were or lacked a clear sense of identity?",
+        "Have you made frantic efforts to avoid feeling abandoned by people close to you?"
+      ],
+      options:[["No",0],["Yes",1]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const positive=total>=7;
+        const severity=positive?"Positive screen for BPD features (Score ≥ 7)":"Negative screen for BPD features (Score < 7)";
+        const flag=positive?"Score of 7 or higher indicates significant features of Borderline Personality Disorder. Further structured clinical diagnostic assessment indicated.":"";
+        return {score:`${total}/10`,severity,flag,total};
+      }
+    },
+    phq15:{
+      title:"Patient Health Questionnaire-15 (PHQ-15)",
+      purpose:"Somatic symptom severity screener and functional somatization monitor.",
+      instructions:"Over the last 2 weeks, how much has the client been bothered by any of the following problems?",
+      timeframe:"Past 2 weeks",
+      items:[
+        "Stomach pain",
+        "Back pain",
+        "Pain in your arms, legs, or joints (knees, hips, etc.)",
+        "Menstrual cramps or other problems with your periods (if applicable)",
+        "Headaches",
+        "Chest pain",
+        "Dizziness",
+        "Fainting spells",
+        "Feeling your heart pound or race",
+        "Shortness of breath",
+        "Pain or problems during sexual intercourse",
+        "Constipation, loose bowels, or diarrhea",
+        "Nausea, gas, or indigestion",
+        "Feeling tired or having low energy",
+        "Trouble sleeping"
+      ],
+      options:[["Not bothered at all",0],["Bothered a little",1],["Bothered a lot",2]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<=4?"Minimal somatic symptom severity":total<=9?"Low somatic symptom severity":total<=14?"Medium somatic symptom severity":"High somatic symptom severity";
+        return {score:`${total}/30`,severity,flag:total>=10?"Medium to high somatic symptom burden. Evaluate medical causes, pain management, and co-occurring anxiety/depression.":"",total};
+      }
+    },
+    cageaid:{
+      title:"CAGE Questionnaire Adapted to Include Drugs (CAGE-AID)",
+      purpose:"Brief universal screener for alcohol and substance use disorders.",
+      instructions:"Answer Yes or No regarding lifetime or recent alcohol and drug use.",
+      timeframe:"Lifetime / Recent",
+      items:[
+        "Has the client ever felt they ought to Cut down on drinking or drug use?",
+        "Have people Annoyed the client by criticizing drinking or drug use?",
+        "Has the client ever felt bad or Guilty about drinking or drug use?",
+        "Has the client ever taken a drink or used drugs first thing in the morning to steady nerves or get rid of a hangover (Eye-opener)?"
+      ],
+      options:[["No",0],["Yes",1]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total>=2?"Positive screen for substance use disorder (Score ≥ 2)":"Negative screen (Score < 2)";
+        const flag=total>=2?"A score of 2 or more is considered clinically significant. Further evaluation of alcohol and drug use, patterns, dependence, and safety is recommended.":"";
+        return {score:`${total}/4`,severity,flag,total};
+      }
+    },
+    dsm5level1:{
+      title:"DSM-5-TR Level 1 Adult Cross-Cutting Symptom Measure",
+      purpose:"Broadband multidomain mental health screener evaluating 13 psychiatric domains to identify symptoms requiring in-depth Level 2 follow-up.",
+      instructions:"During the PAST TWO (2) WEEKS, how much has the client been bothered by any of the following problems?",
+      timeframe:"Past 2 weeks",
+      items:[
+        "[Depression] Little interest or pleasure in doing things?",
+        "[Depression] Feeling down, depressed, or hopeless?",
+        "[Anger] Feeling more annoyed, irritable, or angry than usual?",
+        "[Mania] Feeling less sleep needed than usual?",
+        "[Mania] Starting many more projects than usual or doing unusual/risky things?",
+        "[Anxiety] Feeling nervous, anxious, frightened, worried, or on edge?",
+        "[Anxiety] Feeling panic or being frightened?",
+        "[Anxiety] Avoiding situations that make you anxious?",
+        "[Somatic] Unexplained aches and pains (e.g. head, back, joints, abdomen)?",
+        "[Somatic] Feeling your illnesses are not being taken seriously enough?",
+        "[Suicidal Ideation] Thoughts of hurting yourself or that you would be better off dead?",
+        "[Psychosis] Hearing things or seeing things that other people cannot hear or see?",
+        "[Psychosis] Feeling that people are reading your mind or controlling your thoughts?",
+        "[Sleep] Problems with sleep quality or staying asleep?",
+        "[Memory] Problems with memory (learning new info) or finding your way around?",
+        "[Repetitive Thoughts] Unpleasant thoughts, urges, or images entering your mind repeatedly?",
+        "[Repetitive Thoughts] Feeling driven to perform certain behaviors or mental acts over and over?",
+        "[Dissociation] Feeling detached or distant from yourself, body, surroundings, or memories?",
+        "[Personality] Feeling that you don't know who you really are or what you want out of life?",
+        "[Personality] Feeling not close to other people or unable to enjoy relationships?",
+        "[Substance Use] Drinking alcohol or using drugs more than intended?",
+        "[Substance Use] Using prescription drugs or OTC meds in larger amounts or longer than prescribed?",
+        "[Substance Use] Smoking tobacco or using nicotine products?"
+      ],
+      options:[["Not at all",0],["Slight",1],["Mild",2],["Moderate",3],["Severe",4]],
+      calculate(values){
+        const domainThresholds=[
+          {name:"Depression", items:[0,1], threshold:2},
+          {name:"Anger", items:[2], threshold:2},
+          {name:"Mania", items:[3,4], threshold:2},
+          {name:"Anxiety", items:[5,6,7], threshold:2},
+          {name:"Somatic Symptoms", items:[8,9], threshold:2},
+          {name:"Suicidal Ideation", items:[10], threshold:1},
+          {name:"Psychosis", items:[11,12], threshold:1},
+          {name:"Sleep Problems", items:[13], threshold:2},
+          {name:"Memory", items:[14], threshold:2},
+          {name:"Repetitive Thoughts", items:[15,16], threshold:2},
+          {name:"Dissociation", items:[17], threshold:2},
+          {name:"Personality Functioning", items:[18,19], threshold:2},
+          {name:"Substance Use", items:[20,21,22], threshold:1}
+        ];
+        const triggeredDomains=[];
+        domainThresholds.forEach(d=>{
+          const maxVal=Math.max(...d.items.map(i=>values[i]));
+          if(maxVal>=d.threshold) triggeredDomains.push(d.name);
+        });
+        const totalEndorsed=values.filter(v=>v>0).length;
+        const severity=triggeredDomains.length>0?`Threshold met in ${triggeredDomains.length} domain(s): ${triggeredDomains.join(", ")}`:"No domain thresholds exceeded";
+        const flag=values[10]>0?"DSM-5 Item 11 (Suicidal Ideation) was endorsed. Perform and document an immediate suicide risk evaluation.":triggeredDomains.length>0?`Follow up with domain-specific Level 2 measures for: ${triggeredDomains.join(", ")}.`:"";
+        return {score:`${totalEndorsed}/23 symptoms endorsed`,severity,flag,total:totalEndorsed};
+      }
+    },
+    phq4:{
+      title:"Patient Health Questionnaire-4 (PHQ-4)",
+      purpose:"Ultra-brief 4-item transdiagnostic screening tool combining PHQ-2 and GAD-2 for rapid triage of depression and anxiety.",
+      instructions:"Over the last 2 weeks, how often has the client been bothered by the following problems?",
+      timeframe:"Past 2 weeks",
+      items:[
+        "Feeling nervous, anxious, or on edge",
+        "Not being able to stop or control worrying",
+        "Little interest or pleasure in doing things",
+        "Feeling down, depressed, or hopeless"
+      ],
+      options:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const gad2=values[0]+values[1];
+        const phq2=values[2]+values[3];
+        const severity=total<=2?"Normal (0-2)":total<=5?"Mild distress (3-5)":total<=8?"Moderate distress (6-8)":"Severe distress (9-12)";
+        const subFlags=[];
+        if(gad2>=3) subFlags.push(`GAD-2 anxiety screen positive (${gad2}/6)`);
+        if(phq2>=3) subFlags.push(`PHQ-2 depression screen positive (${phq2}/6)`);
+        const flag=subFlags.length>0?`Positive triage: ${subFlags.join("; ")}. Follow with full GAD-7 and/or PHQ-9.`:"";
+        return {score:`${total}/12`,severity,flag,total};
+      }
+    },
+    k6:{
+      title:"Kessler 6 Psychological Distress Scale (K6)",
+      purpose:"Broadband 6-item general psychiatric symptom inventory measuring global psychological distress and Serious Mental Illness (SMI) risk.",
+      instructions:"During the past 30 days, about how often did the client feel...",
+      timeframe:"Past 30 days",
+      items:[
+        "Nervous?",
+        "Hopeless?",
+        "Restless or fidgety?",
+        "So depressed that nothing could cheer you up?",
+        "That everything was an effort?",
+        "Worthless?"
+      ],
+      options:[["None of the time",0],["A little of the time",1],["Some of the time",2],["Most of the time",3],["All of the time",4]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<5?"Low psychological distress":total<13?"Moderate psychological distress":"Severe psychological distress (Probable SMI)";
+        const flag=total>=13?"Score is at or above the validated cutoff of 13 for Serious Mental Illness (SMI). Comprehensive psychiatric and functional assessment indicated.":"";
+        return {score:`${total}/24`,severity,flag,total};
+      }
+    },
+    dass21:{
+      title:"Depression Anxiety Stress Scales-21 (DASS-21)",
+      purpose:"Transdiagnostic symptom inventory measuring emotional states of depression, anxiety, and stress.",
+      instructions:"Select how much each statement applied to the client over the past week.",
+      timeframe:"Past week",
+      items:[
+        "Found it hard to wind down",
+        "Aware of dryness of mouth",
+        "Couldn't seem to experience any positive feeling at all",
+        "Experienced breathing difficulty (e.g. excessively rapid breathing, breathlessness)",
+        "Found it difficult to work up the initiative to do things",
+        "Tended to over-react to situations",
+        "Experienced trembling (e.g. in the hands)",
+        "Felt using a lot of nervous energy",
+        "Worried about situations in which I might panic and make a fool of myself",
+        "Felt that I had nothing to look forward to",
+        "Found myself getting agitated",
+        "Found it difficult to relax",
+        "Felt down-hearted and blue",
+        "Intolerant of anything keeping me from getting on with what I was doing",
+        "Felt close to panic",
+        "Unable to become enthusiastic about anything",
+        "Felt I wasn't worth much as a person",
+        "Felt that I was rather touchy",
+        "Aware of the action of my heart in the absence of exertion (e.g. heart rate increase/missing a beat)",
+        "Felt scared without any good reason",
+        "Felt that life was meaningless"
+      ],
+      options:[["Did not apply",0],["Applied to some degree",1],["Applied to a considerable degree",2],["Applied very much",3]],
+      calculate(values){
+        const depIndices=[2,4,9,12,15,16,20];
+        const anxIndices=[1,3,6,8,14,18,19];
+        const strIndices=[0,5,7,10,11,13,17];
+        const depRaw=depIndices.reduce((s,i)=>s+values[i],0)*2;
+        const anxRaw=anxIndices.reduce((s,i)=>s+values[i],0)*2;
+        const strRaw=strIndices.reduce((s,i)=>s+values[i],0)*2;
+        const depSev=depRaw<=9?"Normal":depRaw<=13?"Mild":depRaw<=20?"Moderate":depRaw<=27?"Severe":"Extremely Severe";
+        const anxSev=anxRaw<=7?"Normal":anxRaw<=9?"Mild":anxRaw<=14?"Moderate":anxRaw<=19?"Severe":"Extremely Severe";
+        const strSev=strRaw<=14?"Normal":strRaw<=18?"Mild":strRaw<=25?"Moderate":strRaw<=33?"Severe":"Extremely Severe";
+        const total=values.reduce((a,b)=>a+b,0);
+        return {
+          score:`Dep: ${depRaw}/42, Anx: ${anxRaw}/42, Str: ${strRaw}/42`,
+          severity:`Depression: ${depSev} | Anxiety: ${anxSev} | Stress: ${strSev}`,
+          flag:depRaw>=14||anxRaw>=10||strRaw>=19?"Moderate or higher distress detected on one or more DASS-21 transdiagnostic subscales.":"",
+          total
+        };
+      }
+    },
+    pq16:{
+      title:"Prodromal Questionnaire-16 (PQ-16)",
+      purpose:"Brief 16-item screener for attenuated psychotic symptoms and psychosis risk.",
+      instructions:"Indicate Yes or No for each experience over the past month.",
+      timeframe:"Past month / General",
+      items:[
+        "Do familiar surroundings ever seem strange, confusing, threatening, or unreal?",
+        "Have you heard unusual sounds like banging, clicking, hissing, clapping, or ringing?",
+        "Do things that you see ever look different, distorted, brighter, or darker than usual?",
+        "Have you ever felt that you have special powers or abilities that other people don't have?",
+        "Do you ever feel that people are talking about you or taking special notice of you?",
+        "Have you ever seen things that other people could not see or that didn't seem to be there?",
+        "Do you ever feel that your mind is playing tricks on you?",
+        "Have you felt that you are being watched, followed, or plotted against by others?",
+        "Do you ever feel that your thoughts are being controlled or read by external forces?",
+        "Do you ever feel a strong sense of unreality, as if dreaming while awake?",
+        "Have you ever heard voices or whispering when no one else was around?",
+        "Do you ever feel confused about whether something really happened or if you dreamed it?",
+        "Do you ever find yourself feeling suspicious or distrustful of people for no clear reason?",
+        "Do everyday ideas, news stories, or songs ever seem to contain special hidden messages?",
+        "Do you ever feel like your body or body parts have changed size or shape unexpectedly?",
+        "Have you felt unusually detached from your own body, thoughts, or feelings?"
+      ],
+      options:[["No",0],["Yes",1]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total>=6?"Positive screen for attenuated psychosis symptoms (Score ≥ 6)":"Negative screen (Score < 6)";
+        const flag=total>=6?"Score is at or above the validated cutoff (≥6). Comprehensive clinical evaluation for psychosis risk and specialized interview (e.g. SIPS/CAARMS) recommended.":"";
+        return {score:`${total}/16`,severity,flag,total};
+      }
+    },
+    dsm5level2_depression:{
+      title:"DSM-5 Level 2 Measure — Depression (Adult, PROMIS Short Form)",
+      purpose:"In-depth evaluation of depressive symptom severity when triggered by the Level 1 Cross-Cutting screen.",
+      instructions:"Over the past 7 days, how often did the client experience the following?",
+      timeframe:"Past 7 days",
+      items:[
+        "I felt worthless",
+        "I felt helpless",
+        "I felt depressed",
+        "I felt hopeless",
+        "I felt like a failure",
+        "I felt unhappy",
+        "I felt I had nothing to look forward to",
+        "I felt sad"
+      ],
+      options:[["Never",1],["Rarely",2],["Sometimes",3],["Often",4],["Always",5]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<=15?"Mild or no depression (8-15)":total<=24?"Moderate depression (16-24)":"Severe depression (25-40)";
+        return {score:`Raw Score: ${total}/40`,severity,flag:total>=16?"Moderate to severe depressive symptoms detected. Perform full clinical interview and risk assessment.":"",total};
+      }
+    },
+    dsm5level2_anxiety:{
+      title:"DSM-5 Level 2 Measure — Anxiety (Adult, PROMIS Short Form)",
+      purpose:"In-depth evaluation of anxiety symptom severity when triggered by the Level 1 Cross-Cutting screen.",
+      instructions:"Over the past 7 days, how often did the client experience the following?",
+      timeframe:"Past 7 days",
+      items:[
+        "I felt fearful",
+        "I found it hard to focus on anything other than my anxiety",
+        "My worries overwhelmed me",
+        "I felt uneasy",
+        "I felt nervous",
+        "I felt like something awful might happen",
+        "I felt tense"
+      ],
+      options:[["Never",1],["Rarely",2],["Sometimes",3],["Often",4],["Always",5]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<=14?"Mild or no anxiety (7-14)":total<=22?"Moderate anxiety (15-22)":"Severe anxiety (23-35)";
+        return {score:`Raw Score: ${total}/35`,severity,flag:total>=15?"Moderate to severe anxiety symptoms detected. Clinical assessment indicated.":"",total};
+      }
+    },
+    dsm5level2_anger:{
+      title:"DSM-5 Level 2 Measure — Anger (Adult, PROMIS Short Form)",
+      purpose:"In-depth evaluation of anger and irritability when triggered by the Level 1 Cross-Cutting screen.",
+      instructions:"Over the past 7 days, how often did the client experience the following?",
+      timeframe:"Past 7 days",
+      items:[
+        "I felt irritable",
+        "I felt angry",
+        "I felt like I was ready to explode",
+        "I felt grouchy",
+        "I felt annoyed"
+      ],
+      options:[["Never",1],["Rarely",2],["Sometimes",3],["Often",4],["Always",5]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<=10?"Mild or no anger (5-10)":total<=16?"Moderate anger (11-16)":"Severe anger (17-25)";
+        return {score:`Raw Score: ${total}/25`,severity,flag:total>=11?"Moderate to severe anger/irritability reported. Assess impulse control and underlying triggers.":"",total};
+      }
+    },
+    dsm5level2_mania:{
+      title:"DSM-5 Level 2 Measure — Mania (Adult, Altman Self-Rating Mania Scale)",
+      purpose:"In-depth evaluation of manic/hypomanic symptom severity when triggered by the Level 1 Cross-Cutting screen.",
+      instructions:"Select the statement for each question that best describes the client over the past week.",
+      timeframe:"Past week",
+      customItems:[
+        {prompt:"Happiness / Elation", options:[["Do not feel happier/more cheerful than usual",0],["Feel happier/more cheerful than usual",1],["Feel happier/more cheerful most of the time",2],["Feel happier/more cheerful all of the time",3],["Feel extremely happy or cheerful all of the time",4]]},
+        {prompt:"Self-Confidence", options:[["Do not feel more self-confident than usual",0],["Feel more self-confident than usual",1],["Feel much more self-confident than usual",2],["Feel extremely self-confident most of the time",3],["Feel invincible or overwhelmingly confident",4]]},
+        {prompt:"Sleep Need", options:[["Do not need less sleep than usual",0],["Need less sleep than usual",1],["Need at least 1-2 hours less sleep than usual",2],["Need very little sleep and still feel energetic",3],["Do not feel the need to sleep at all",4]]},
+        {prompt:"Talkativeness", options:[["Do not talk more than usual",0],["Talk more than usual",1],["Talk much more than usual",2],["Talk constantly and hard to interrupt",3],["Talk so fast/continuously others cannot understand",4]]},
+        {prompt:"Activity & Restlessness", options:[["Not more active or restless than usual",0],["More active than usual",1],["Constantly active or moving around",2],["Extremely active or busy with many projects",3],["Hyperactive and cannot sit still at all",4]]}
+      ],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total>=6?"Positive screen for manic or hypomanic symptoms (Score ≥ 6)":"Negative screen for manic symptoms (Score < 6)";
+        const flag=total>=6?"Score is at or above the validated cutoff (≥6). Evaluate for Bipolar I/II, hypomania, substance/medication effects, or psychosis.":"";
+        return {score:`${total}/20`,severity,flag,total};
+      }
+    },
+    dsm5level2_sleep:{
+      title:"DSM-5 Level 2 Measure — Sleep Disturbance (Adult, PROMIS Short Form)",
+      purpose:"In-depth evaluation of sleep quality and sleep problems when triggered by the Level 1 Cross-Cutting screen.",
+      instructions:"Over the past 7 days, how would the client rate each aspect of sleep?",
+      timeframe:"Past 7 days",
+      customItems:[
+        {prompt:"My sleep was refreshing", options:[["Very much",1],["Quite a bit",2],["Somewhat",3],["A little bit",4],["Not at all",5]]},
+        {prompt:"My sleep quality was", options:[["Very good",1],["Good",2],["Fair",3],["Poor",4],["Very poor",5]]},
+        {prompt:"I was satisfied with my sleep", options:[["Very much",1],["Quite a bit",2],["Somewhat",3],["A little bit",4],["Not at all",5]]},
+        {prompt:"I got enough sleep", options:[["Very much",1],["Quite a bit",2],["Somewhat",3],["A little bit",4],["Not at all",5]]},
+        {prompt:"I had a hard time falling asleep", options:[["Not at all",1],["A little bit",2],["Somewhat",3],["Quite a bit",4],["Very much",5]]},
+        {prompt:"I had trouble staying asleep", options:[["Not at all",1],["A little bit",2],["Somewhat",3],["Quite a bit",4],["Very much",5]]},
+        {prompt:"I had trouble sleeping", options:[["Not at all",1],["A little bit",2],["Somewhat",3],["Quite a bit",4],["Very much",5]]},
+        {prompt:"I had a hard time getting to sleep", options:[["Not at all",1],["A little bit",2],["Somewhat",3],["Quite a bit",4],["Very much",5]]}
+      ],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<=16?"Mild or no sleep disturbance (8-16)":total<=25?"Moderate sleep disturbance (17-25)":"Severe sleep disturbance (26-40)";
+        return {score:`Raw Score: ${total}/40`,severity,flag:total>=17?"Moderate to severe sleep disturbance reported. Evaluate insomnia, sleep apnea, mood, and circadian factors.":"",total};
+      }
+    },
+    psc17:{
+      title:"Pediatric Symptom Checklist-17 (PSC-17)",
+      purpose:"Brief pediatric and adolescent behavioral health screener assessing Internalizing, Externalizing, and Attention concerns.",
+      instructions:"Select how often each behavior occurs for the child/adolescent (parent-report or youth self-report).",
+      timeframe:"Past 30 days",
+      items:[
+        "[Internalizing] Feels sad, unhappy",
+        "[Internalizing] Feels hopeless",
+        "[Internalizing] Is down on self",
+        "[Internalizing] Seems to be having less fun",
+        "[Internalizing] Worries a lot",
+        "[Attention] Fidgets, unable to sit still",
+        "[Attention] Daydreams too much",
+        "[Attention] Has trouble paying attention",
+        "[Attention] Is distractible, easily distracted",
+        "[Attention] Has trouble concentrating in class",
+        "[Externalizing] Fights with other children",
+        "[Externalizing] Does not listen to rules",
+        "[Externalizing] Does not understand other people's feelings",
+        "[Externalizing] Teases others",
+        "[Externalizing] Blames others for mistakes",
+        "[Externalizing] Takes things that do not belong to them",
+        "[Externalizing] Refuses to share"
+      ],
+      options:[["Never",0],["Sometimes",1],["Often",2]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const intScore=values.slice(0,5).reduce((a,b)=>a+b,0);
+        const attScore=values.slice(5,10).reduce((a,b)=>a+b,0);
+        const extScore=values.slice(10,17).reduce((a,b)=>a+b,0);
+        const subFlags=[];
+        if(intScore>=5) subFlags.push(`Internalizing subscale elevated (${intScore}/10, Cutoff ≥ 5)`);
+        if(attScore>=7) subFlags.push(`Attention subscale elevated (${attScore}/10, Cutoff ≥ 7)`);
+        if(extScore>=7) subFlags.push(`Externalizing subscale elevated (${extScore}/14, Cutoff ≥ 7)`);
+        const overallPositive=total>=15;
+        const severity=overallPositive?`Positive pediatric screen (Total: ${total}/34, Cutoff ≥ 15)`:`Negative screen (Total: ${total}/34, Cutoff < 15)`;
+        const flag=subFlags.length>0?`Elevated subscale(s): ${subFlags.join("; ")}. Further developmental and psychological evaluation recommended.`:"";
+        return {score:`Total: ${total}/34 (Int: ${intScore}, Att: ${attScore}, Ext: ${extScore})`,severity,flag,total};
+      }
+    },
+    crafft21:{
+      title:"CRAFFT 2.1 Adolescent Substance Screener",
+      purpose:"Behavioral health screening tool for alcohol and substance use risk in adolescents and young adults (ages 12-21).",
+      instructions:"Answer Yes or No regarding alcohol, marijuana, or drug use over the past 12 months.",
+      timeframe:"Past 12 months",
+      items:[
+        "[C - Car] Driven or ridden in a Car driven by someone (including self) who was high or using alcohol/drugs?",
+        "[R - Relax] Ever use alcohol or drugs to Relax, feel better about yourself, or fit in?",
+        "[A - Alone] Ever use alcohol or drugs while by yourself, Alone?",
+        "[F - Forget] Ever Forget things you did while using alcohol or drugs?",
+        "[F - Family/Friends] Do Family or Friends ever tell you to cut down on drinking or drug use?",
+        "[T - Trouble] Ever gotten into Trouble while using alcohol or drugs?"
+      ],
+      options:[["No",0],["Yes",1]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const carRisk=values[0]===1;
+        const severity=total>=2?"Positive screen for adolescent substance use disorder risk (Score ≥ 2)":total===1?"Low risk / Caution (Score 1)":"Low risk (Score 0)";
+        const flags=[];
+        if(carRisk) flags.push("Riding/driving with impaired driver endorsed. Provide immediate driving risk counseling and safety planning.");
+        if(total>=2) flags.push("Score ≥ 2 indicates significant risk for substance use disorder. Brief intervention (e.g. FRAMES/MI) and diagnostic evaluation recommended.");
+        return {score:`${total}/6`,severity,flag:flags.join(" "),total};
+      }
+    },
+    gds15:{
+      title:"Geriatric Depression Scale (GDS-15)",
+      purpose:"Depression screening scale validated for older adults, omitting physical/somatic items overlapping with physical aging.",
+      instructions:"Answer Yes or No based on how the client felt over the past week.",
+      timeframe:"Past week",
+      customItems:[
+        {prompt:"Are you basically satisfied with your life?", options:[["Yes",0],["No",1]]},
+        {prompt:"Have you dropped many of your activities and interests?", options:[["No",0],["Yes",1]]},
+        {prompt:"Do you feel that your life is empty?", options:[["No",0],["Yes",1]]},
+        {prompt:"Do you often get bored?", options:[["No",0],["Yes",1]]},
+        {prompt:"Are you in good spirits most of the time?", options:[["Yes",0],["No",1]]},
+        {prompt:"Are you afraid that something bad is going to happen to you?", options:[["No",0],["Yes",1]]},
+        {prompt:"Do you feel happy most of the time?", options:[["Yes",0],["No",1]]},
+        {prompt:"Do you often feel helpless?", options:[["No",0],["Yes",1]]},
+        {prompt:"Do you prefer to stay at home, rather than going out and doing new things?", options:[["No",0],["Yes",1]]},
+        {prompt:"Do you feel you have more problems with memory than most?", options:[["No",0],["Yes",1]]},
+        {prompt:"Do you think it is wonderful to be alive now?", options:[["Yes",0],["No",1]]},
+        {prompt:"Do you feel pretty worthless the way you are now?", options:[["No",0],["Yes",1]]},
+        {prompt:"Do you feel full of energy?", options:[["Yes",0],["No",1]]},
+        {prompt:"Do you feel that your situation is hopeless?", options:[["No",0],["Yes",1]]},
+        {prompt:"Do you think that most people are better off than you are?", options:[["No",0],["Yes",1]]}
+      ],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<=4?"Normal / No depression (0-4)":total<=8?"Mild depression (5-8)":total<=11?"Moderate depression (9-11)":"Severe depression (12-15)";
+        return {score:`${total}/15`,severity,flag:total>=5?"Score of 5 or higher suggests geriatric depression. Comprehensive clinical evaluation indicated.":"",total};
+      }
+    },
+    ucla3:{
+      title:"UCLA Loneliness Scale (3-Item Short Form)",
+      purpose:"Brief screener measuring loneliness and social isolation, a major social determinant of mental health.",
+      instructions:"Indicate how often the client feels each experience.",
+      timeframe:"Current / General",
+      items:[
+        "How often do you feel that you lack companionship?",
+        "How often do you feel left out?",
+        "How often do you feel isolated from others?"
+      ],
+      options:[["Hardly ever",1],["Some of the time",2],["Often",3]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total<=5?"Low loneliness / Well-connected (3-5)":"Moderate to high loneliness / Social isolation risk (6-9)";
+        return {score:`${total}/9`,severity,flag:total>=6?"Significant social isolation or loneliness reported. Consider evaluating community connections, support systems, and social determinants of health.":"",total};
+      }
+    },
+    ad8:{
+      title:"AD8 Dementia Screening Interview",
+      purpose:"Brief 8-item informant or self-report screener to differentiate non-demented aging from early cognitive impairment.",
+      instructions:"Indicate whether there has been a change in memory or thinking abilities over the past few years.",
+      timeframe:"Past few years",
+      items:[
+        "Problems with judgment (e.g. problems making decisions, bad financial decisions, safety concerns)?",
+        "Less interest in hobbies, activities, or social pursuits?",
+        "Repeats the same things over and over (questions, stories, or statements)?",
+        "Trouble learning how to use a tool, appliance, or gadget (e.g. TV remote, microwave, phone)?",
+        "Forgets correct month or year?",
+        "Trouble handling complicated financial affairs (e.g. balancing checkbook, paying bills)?",
+        "Trouble remembering appointments?",
+        "Daily problems with thinking and/or memory?"
+      ],
+      options:[["No change",0],["Yes, a change",1]],
+      calculate(values){
+        const total=values.reduce((a,b)=>a+b,0);
+        const severity=total>=2?"Positive screen for cognitive impairment (Score ≥ 2)":"Normal cognitive screen (Score 0-1)";
+        const flag=total>=2?"Score ≥ 2 suggests cognitive decline. Formal medical, neurological, and neuropsychological evaluation recommended.":"";
+        return {score:`${total}/8`,severity,flag,total};
+      }
+    }
+  };
+
+  function binaryHtml(name){
+    return `<div class="options-grid"><label class="option-tile"><input type="radio" name="${name}" value="yes"><span>Yes</span></label><label class="option-tile"><input type="radio" name="${name}" value="no"><span>No</span></label></div>`;
+  }
+
+  function questionHtml(key, index, prompt, options, selected){
+    let formattedPrompt = esc(prompt);
+    if(prompt.startsWith('[')){
+      const match = prompt.match(/^\[(.*?)\]\s*(.*)$/);
+      if(match){
+        if(screenShareActive){
+          formattedPrompt = esc(match[2]);
+        } else {
+          formattedPrompt = `<span style="display:inline-block;background:var(--bg-subtle);color:var(--text-muted);border:1px solid var(--border-color);font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;margin-right:6px">${esc(match[1])}</span>` + esc(match[2]);
+        }
+      }
+    }
+    return `<div class="question-card">
+      <span class="q-number">Item ${index+1}</span>
+      <div class="qtext">${formattedPrompt}</div>
+      <div class="options-grid">
+        ${options.map((opt, optIdx) => {
+          const isChecked = selected === opt[1];
+          const isAsrsShaded = (key === "asrs6" && ((index < 3 && optIdx >= 2) || (index >= 3 && optIdx >= 3)));
+          const shadedClass = isAsrsShaded ? "shaded-option" : "";
+          return `<label class="option-tile ${shadedClass}">
+            <input type="radio" name="${key}_q${index+1}" value="${opt[1]}" ${isChecked ? "checked" : ""}>
+            <span>${esc(opt[0])}${isAsrsShaded ? " ⚡" : ""}</span>
+          </label>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }
+
+  function getState(key){
+    if(!responseState[key]) responseState[key] = { items: [], extra: {} };
+    return responseState[key];
+  }
+
+  function renderHeader(key, title, purpose, instructions, timeframe){
+    const source = sourceLibrary[key];
+    const badgeText = source ? source.status : "";
+    const badgeClass = "source-badge";
+    const timeframeHtml = timeframe ? `<div class="timeframe-badge">⏱️ TIMEFRAME: ${esc(timeframe)}</div>` : "";
+    const infoLink = source && source.infoUrl ? `<a href="${source.infoUrl}" target="_blank" rel="noopener">Additional Citation Info</a>` : "";
+    const sourceRow = source ? `<div class="source-row"><span class="${badgeClass}">✓ ${esc(badgeText)}</span><a href="${source.url}" target="_blank" rel="noopener">Source / Official PDF</a>${infoLink}</div>` : "";
+    return `<div class="assessment-header">
+      ${timeframeHtml}
+      <h2 class="assessment-title">${esc(title)}</h2>
+      <p class="assessment-purpose">${esc(purpose)}</p>
+      ${sourceRow}
+    </div>
+    ${instructions ? `<div class="instruction-box">💡 <strong>Administration Instructions:</strong> ${esc(instructions)}</div>` : ""}`;
+  }
+
+  function renderGenericScale(key, scale){
+    const state = getState(key);
+    let html = renderHeader(key, scale.title, scale.purpose, scale.instructions, scale.timeframe);
+
+    if(scale.traumaGate){
+      const exp = state.extra.traumaExposure || "";
+      html += `<div class="question-card" style="border-left: 4px solid var(--accent-teal);">
+        <div class="qtext">Criterion A Trauma Gate: Has the client experienced or witnessed a traumatic event involving actual or threatened death, serious injury, or sexual violence?</div>
+        ${binaryHtml("traumaExposure")}
+      </div>`;
+      if(exp === "no"){
+        html += `<div class="question-card"><div class="qtext">Screener complete (Trauma Criterion A negative). PCL-5 / PC-PTSD-5 items skipped.</div></div>`;
+        $("assessmentArea").innerHTML = html;
+        bindTraumaGate(key, scale);
+        updateSummary();
+        return;
+      }
+    }
+
+    const items = scale.customItems || scale.items;
+    items.forEach((item, index) => {
+      if(scale.customItems){
+        html += questionHtml(key, index, item.prompt, item.options, state.items[index]);
+      } else {
+        html += questionHtml(key, index, item, scale.options, state.items[index]);
+      }
+    });
+
+    $("assessmentArea").innerHTML = html;
+    if(scale.traumaGate) bindTraumaGate(key, scale);
+
+    items.forEach((_, index) => {
+      document.querySelectorAll(`[name="${key}_q${index+1}"]`).forEach(input => {
+        input.addEventListener("change", e => {
+          state.items[index] = Number(e.target.value);
+          updateSummary();
+        });
+      });
+    });
+
+    updateSummary();
+  }
+
+  function bindTraumaGate(key, scale){
+    const state = getState(key);
+    document.querySelectorAll('[name="traumaExposure"]').forEach(input => {
+      if(state.extra.traumaExposure === input.value) input.checked = true;
+      input.addEventListener("change", e => {
+        state.extra.traumaExposure = e.target.value;
+        renderGenericScale(key, scale);
+      });
+    });
+  }
+
+  function renderCssrs(){
+    const key = "cssrs";
+    const state = getState(key);
+    const q = [
+      "Have you wished you were dead or wished you could go to sleep and not wake up?",
+      "Have you actually had any thoughts about killing yourself?",
+      "Have you been thinking about how you might do this?",
+      "Have you had these thoughts and had some intention of acting on them?",
+      "Have you started to work out or worked out the details of how to kill yourself? Did you intend to carry out this plan?",
+      "Have you done anything, started to do anything, or prepared to do anything to end your life?"
+    ];
+    let html = renderHeader(key, "Columbia-Suicide Severity Rating Scale (C-SSRS)", "Brief recent suicidal ideation and behavior screen.", "CLINICAL ADMINISTRATION NOTE: The C-SSRS is a semi-structured interview requiring direct clinician probing. Always ask questions 1 and 2. If question 2 is yes, ask questions 3 through 5. Always ask question 6. Probe to differentiate passive thoughts from active intent and plan.", "Past month; behavior lifetime and past 3 months");
+    html += `<div class="cssrs-table">`;
+    q.forEach((text, index) => {
+      const riskClass = index < 2 ? "yellow" : index === 2 || index === 5 ? "orange" : "red";
+      html += `<div class="cssrs-row">
+        <div class="cssrs-cell-q"><div class="qtext">${index+1}. ${esc(text)}</div>${index===5 ? `<div class="qsub">Examples include an actual attempt, an interrupted or aborted attempt, or preparatory behavior.</div>`:""}</div>
+        <div class="cssrs-cell-ans ${riskClass}">
+          <select id="cssrs_q${index+1}"><option value=""></option><option value="yes">YES</option><option value="no">NO</option></select>
+        </div>
+      </div>`;
+    });
+    html += `</div>
+    <div id="q6RecentWrap" class="question-card" style="margin-top: 14px;">
+      <div class="qtext">If question 6 is yes, was this within the past 3 months?</div>
+      ${binaryHtml("cssrs_q6recent")}
+    </div>
+    <div class="risk-line">
+      <strong>Computed Risk Level:</strong>
+      <div id="cssrsRiskPill" class="risk-pill">Not set</div>
+      <div id="cssrsRiskNote" style="font-size: 13px; font-weight: 600;"></div>
+    </div>`;
+
+    $("assessmentArea").innerHTML = html;
+    for(let i=0; i<6; i++){
+      const node = $(`cssrs_q${i+1}`);
+      node.value = state.items[i] || "";
+      node.addEventListener("change", e => { state.items[i] = e.target.value; applyCssrsSkip(); updateSummary(); });
+    }
+    document.querySelectorAll(`[name="cssrs_q6recent"]`).forEach(input => {
+      if(state.extra.q6recent === input.value) input.checked = true;
+      input.addEventListener("change", e => { state.extra.q6recent = e.target.value; updateSummary(); });
+    });
+    applyCssrsSkip();
+    updateSummary();
+  }
+
+  function applyCssrsSkip(){
+    const state = getState("cssrs");
+    const q2 = state.items[1];
+    [2,3,4].forEach(i => {
+      const node = $(`cssrs_q${i+1}`);
+      if(q2 === "no"){
+        state.items[i] = "no";
+        node.value = "no";
+        node.disabled = true;
+      } else {
+        node.disabled = false;
+      }
+    });
+    const q6Wrap = $("q6RecentWrap");
+    if(state.items[5] === "yes"){
+      q6Wrap.classList.remove("hidden");
+    } else {
+      q6Wrap.classList.add("hidden");
+      state.extra.q6recent = "";
+    }
+  }
+
+  function calculateCssrs(){
+    const s = getState("cssrs");
+    const answers = s.items;
+    if(answers.length < 6) return null;
+    for(let i=0; i<6; i++){
+      if(!answers[i]) return null;
+    }
+    if(answers[1] === "no"){
+      answers[2] = "no"; answers[3] = "no"; answers[4] = "no";
+    }
+    if(answers[5] === "yes" && !s.extra.q6recent) return null;
+
+    const yes = (idx) => answers[idx-1] === "yes";
+    let level = "Low", cls = "low", note = "No recent suicidal ideation reported.";
+    if(yes(1)) { level = "Low"; cls = "low"; note = "Passive suicidal ideation endorsed without plan or intent."; }
+    if(yes(2)) { level = "Moderate"; cls = "mod"; note = "Active suicidal ideation endorsed without intent or specific plan."; }
+    if(yes(3) || (yes(6) && s.extra.q6recent === "no")) { level = "Moderate"; cls = "mod"; note = "Ideation with method or non-recent suicidal behavior."; }
+    if(yes(4) || yes(5) || (yes(6) && s.extra.q6recent === "yes")) {
+      level = "High"; cls = "high"; note = "Active ideation with intent/plan or recent suicidal behavior (past 3 months).";
+    }
+    return {
+      score: `C-SSRS Risk Level: ${level}`,
+      severity: note,
+      flag: level === "High" ? "HIGH SUICIDE RISK: Immediate safety planning, clinical consultation, and risk management protocol required." : "",
+      level, cls, note
+    };
+  }
+
+  function renderLibrary(){
+    let html = `<div class="assessment-header">
+      <h2 class="assessment-title">Source Library & License Compliance</h2>
+      <p class="assessment-purpose">Official references, open-access status, and distribution terms for all 30 assessment instruments.</p>
+    </div>
+    <div class="library-grid">`;
+
+    Object.keys(sourceLibrary).forEach(key => {
+      const item = sourceLibrary[key];
+      html += `<div class="library-item">
+        <h4>${esc(item.name)}</h4>
+        <p><strong>Status:</strong> ${esc(item.status)}</p>
+        <p>${esc(item.note)}</p>
+        <div style="margin-top:8px;"><a href="${item.url}" target="_blank" rel="noopener" style="font-weight:700; color:var(--accent-teal);">Open Official PDF / Reference →</a></div>
+      </div>`;
+    });
+    html += `</div>`;
+    $("assessmentArea").innerHTML = html;
+    setResult(null, "Reference Library Active");
+    $("summary").value = "Source library active. Select a clinical scale to begin assessment.";
+  }
+
+  function renderCurrent(){
+    currentKey = $("assessmentSelect").value;
+    $("status").textContent = "";
+    if(currentKey === "library") return renderLibrary();
+    if(currentKey === "cssrs") return renderCssrs();
+    if(scales[currentKey]) return renderGenericScale(currentKey, scales[currentKey]);
+  }
+
+  function isCompleteGeneric(key, scale){
+    const s = getState(key);
+    if(scale.traumaGate && s.extra.traumaExposure !== "yes") return Boolean(s.extra.traumaExposure);
+    const expected = (scale.customItems || scale.items).length;
+    if(s.items.length < expected) return false;
+    for(let i=0; i<expected; i++) if(s.items[i] === undefined || s.items[i] === null || s.items[i] === "") return false;
+    return true;
+  }
+
+  function setResult(result, override){
+    const flag = $("flagText");
+    if(!result){
+      $("scoreText").textContent = override || "Incomplete";
+      $("severityText").textContent = override ? "" : "Complete all required fields.";
+      flag.classList.add("hidden");
+      flag.textContent = "";
+      return;
+    }
+    $("scoreText").textContent = result.score;
+    $("severityText").textContent = result.severity;
+    if(result.flag){
+      flag.textContent = result.flag;
+      flag.classList.remove("hidden");
+      const isHighRisk = (currentKey === "cssrs" && result.level === "High") ||
+                         (currentKey === "epds" && getState("epds").items[9] > 0) ||
+                         (currentKey === "phq9" && getState("phq9").items[8] > 0) ||
+                         (currentKey === "dsm5level1" && getState("dsm5level1").items[10] > 0) ||
+                         (currentKey === "crafft21" && getState("crafft21").items[0] === 1);
+      flag.classList.toggle("high", isHighRisk);
+    } else {
+      flag.textContent = "";
+      flag.classList.add("hidden");
+      flag.classList.remove("high");
+    }
+    if(currentKey === "cssrs" && $("cssrsRiskPill")){
+      const pill = $("cssrsRiskPill");
+      pill.textContent = result.level;
+      pill.className = `risk-pill ${result.cls}`;
+      $("cssrsRiskNote").textContent = result.note;
+    }
+  }
+
+  function updateSummary(){
+    if(currentKey === "library") return;
+    let result = null, complete = false, definition = null;
+
+    if(currentKey === "cssrs"){
+      result = calculateCssrs();
+      complete = Boolean(result);
+    } else if(scales[currentKey]){
+      definition = scales[currentKey];
+      complete = isCompleteGeneric(currentKey, definition);
+      if(complete) result = definition.calculate(getState(currentKey).items, getState(currentKey).extra);
+    }
+
+    if(!complete){
+      setResult(null);
+      $("summary").value = "Complete all required fields to generate an EMR summary.";
+      return;
+    }
+
+    setResult(result);
+    $("summary").value = buildSummaryText(result, definition);
+  }
+
+  function buildSummaryText(result, definition){
+    const adminDate = $("adminDate").value || "Unspecified";
+    const includeResponses = $("includeResponses").checked;
+    const includeInterpretation = $("includeInterpretation").checked;
+
+    let title = currentKey === "cssrs" ? "Columbia-Suicide Severity Rating Scale (C-SSRS)" : definition.title;
+    let lines = [];
+    lines.push(`CLINICAL ASSESSMENT SUMMARY: ${title.toUpperCase()}`);
+    lines.push(`Administration Date: ${adminDate}`);
+    lines.push(`Score / Result: ${result.score}`);
+    lines.push(`Severity / Interpretation: ${result.severity}`);
+
+    if(includeResponses){
+      lines.push("");
+      lines.push("ITEM RESPONSES:");
+      if(currentKey === "cssrs"){
+        const qText = [
+          "1. Wish to be dead", "2. Suicidal thoughts", "3. Thoughts with method",
+          "4. Intent to act", "5. Specific plan and intent", "6. Suicidal behavior"
+        ];
+        const state = getState("cssrs");
+        qText.forEach((t, i) => lines.push(`- ${t}: ${state.items[i] ? state.items[i].toUpperCase() : "N/A"}`));
+        if(state.items[5] === "yes") lines.push(`  - Behavior in past 3 months: ${state.extra.q6recent ? state.extra.q6recent.toUpperCase() : "N/A"}`);
+      } else {
+        const state = getState(currentKey);
+        if(definition.traumaGate) lines.push(`- Criterion A Trauma Gate: ${state.extra.traumaExposure ? state.extra.traumaExposure.toUpperCase() : "N/A"}`);
+        const items = definition.customItems || definition.items;
+        items.forEach((item, index) => {
+          const prompt = definition.customItems ? item.prompt : item;
+          const val = state.items[index];
+          let label = "Unanswered";
+          if(definition.customItems){
+            const found = item.options.find(o => o[1] === val);
+            if(found) label = `${found[0]} (${val})`;
+          } else {
+            const found = definition.options.find(o => o[1] === val);
+            if(found) label = `${found[0]} (${val})`;
+          }
+          lines.push(`- ${prompt}: ${label}`);
+        });
+      }
+    }
+
+    if(includeInterpretation && result.flag){
+      lines.push("");
+      lines.push(`CLINICAL ALERT / NOTE: ${result.flag}`);
+    }
+    lines.push("");
+    lines.push("This screening result was interpreted with the clinical interview and does not independently establish or exclude a diagnosis.");
+    return lines.join("\n");
+  }
+
+  function clearCurrent(){
+    if(currentKey !== "library") delete responseState[currentKey];
+    $("status").textContent = "Current assessment cleared.";
+    renderCurrent();
+  }
+
+  function clearEverything(){
+    Object.keys(responseState).forEach(k => delete responseState[k]);
+    $("status").textContent = "All entered information cleared.";
+    renderCurrent();
+  }
+
+  async function copySummary(){
+    const text = $("summary").value;
+    if(!text || text.startsWith("Complete all")){
+      $("status").textContent = "Complete the assessment before copying.";
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      $("status").textContent = "✓ Summary copied to clipboard!";
+    } catch(err) {
+      $("summary").focus();
+      $("summary").select();
+      $("status").textContent = "Clipboard blocked. Text selected (press Ctrl/Cmd+C).";
+    }
+  }
+
+  let screenShareActive = false;
+  function toggleScreenShare(){
+    screenShareActive = !screenShareActive;
+    $("appContainer").classList.toggle("screen-share-mode", screenShareActive);
+    const btn = $("screenShareBtn");
+    btn.classList.toggle("active", screenShareActive);
+    btn.innerHTML = screenShareActive ? "<span>Exit Screen Share</span>" : "<span>Screen Share mode</span>";
+    $("status").textContent = screenShareActive ? "Screen Share mode active." : "Exited Screen Share mode.";
+    renderCurrent();
+  }
+
+  /* Category Filter Pill Logic */
+  const categoryMap = {
+    all: null,
+    dsm5: ["dsm5level1", "dsm5level2_depression", "dsm5level2_anxiety", "dsm5level2_anger", "dsm5level2_mania", "dsm5level2_sleep"],
+    broadband: ["phq4", "k6", "dass21", "pq16", "ucla3"],
+    mood: ["phq9", "epds", "gds15", "gad7", "phq15", "cssrs"],
+    pediatric: ["psc17", "crafft21", "ad8"],
+    substance: ["auditc", "cageaid", "dast10", "scoff", "whodas12"]
+  };
+
+  document.querySelectorAll(".pill").forEach(pill => {
+    pill.addEventListener("click", () => {
+      document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      const cat = pill.dataset.cat;
+      const allowed = categoryMap[cat];
+      const select = $("assessmentSelect");
+      let firstVal = null;
+
+      Array.from(select.options).forEach(opt => {
+        if(opt.value === "library") return;
+        if(!allowed || allowed.includes(opt.value)){
+          opt.style.display = "";
+          if(!firstVal) firstVal = opt.value;
+        } else {
+          opt.style.display = "none";
+        }
+      });
+
+      if(firstVal){
+        select.value = firstVal;
+        renderCurrent();
+      }
+    });
+  });
+
+  const now = new Date();
+  $("adminDate").value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  $("assessmentSelect").addEventListener("change", renderCurrent);
+  $("screenShareBtn").addEventListener("click", toggleScreenShare);
+  $("clearBtn").addEventListener("click", clearCurrent);
+  $("clearAllBtn").addEventListener("click", clearEverything);
+  $("copyBtn").addEventListener("click", copySummary);
+  $("selectBtn").addEventListener("click", () => {
+    $("summary").focus();
+    $("summary").select();
+    $("status").textContent = "Summary selected.";
+  });
+  $("adminDate").addEventListener("change", updateSummary);
+  $("includeResponses").addEventListener("change", updateSummary);
+  $("includeInterpretation").addEventListener("change", updateSummary);
+
+  renderCurrent();
+})();
+</script>
+</body>
+</html>

@@ -32,16 +32,15 @@
         }
 
         .header-row {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(120px, 0.5fr) minmax(0, 1fr);
             margin-bottom: 20px;
-            flex-wrap: wrap; /* Allow wrapping on smaller screens */
             gap: 1rem;
+            align-items: end;
         }
 
         .header-row > div {
-            flex: 1;
-            min-width: 200px; /* Ensure inputs don't get too crushed */
+            min-width: 0;
         }
 
         .form-label {
@@ -55,6 +54,13 @@
             padding: 8px;
             border-radius: 4px;
             width: 100%;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 680px) {
+            .header-row {
+                grid-template-columns: 1fr;
+            }
         }
 
         .form-group {
@@ -108,6 +114,28 @@
             margin-top: 20px;
             padding: 10px 15px;
             font-size: 16px;
+        }
+
+        .save-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .save-status {
+            min-height: 1.4em;
+            color: var(--smart-muted, #7f8c8d);
+            font-size: 0.95rem;
+        }
+
+        .save-status[data-state="success"] {
+            color: #218c5a;
+        }
+
+        .save-status[data-state="error"] {
+            color: #c0392b;
         }
 
         :root {
@@ -190,10 +218,16 @@
             color: #ffffff;
             cursor: pointer;
             box-shadow: 0 2px 8px rgba(52, 152, 219, 0.28);
+            margin-top: 0;
         }
 
         #saveBtn:hover {
             filter: brightness(1.06);
+        }
+
+        #saveBtn:disabled {
+            cursor: wait;
+            opacity: 0.7;
         }
     </style>
 </head>
@@ -223,7 +257,7 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">Internal coping strategies — Things I can do to take my mind off my problems without contacting another person (relaxation techniques, physical activities, distractions):</label>
+            <label class="form-label">Internal coping strategies - Things I can do to take my mind off my problems without contacting another person (relaxation techniques, physical activities, distractions):</label>
                 <div id="copingStrategiesList"></div>
             </div>
 
@@ -279,17 +313,35 @@
                 <div id="additional-resources-list"></div>
             </div>
 
-            <button id="saveBtn" class="mt-2 px-6 py-2 bg-indigo-600 text-white font-semibold rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Save as PDF</button>
+            <div class="save-row">
+                <button id="saveBtn" class="mt-2 px-6 py-2 bg-indigo-600 text-white font-semibold rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Save as PDF...</button>
+                <span id="saveStatus" class="save-status" role="status" aria-live="polite"></span>
+            </div>
         </div>
     </div>
 
     <script src="./app/vendor/jspdf.umd.min.js"></script>
     <script>
-     const { jsPDF } = window.jspdf;
+    const { jsPDF } = window.jspdf;
     const SMARTEMR_THEME_MESSAGE = 'smartemr-theme';
+    const SAFETY_PLAN_SAVE_MESSAGE = 'smartemr-safety-plan-save';
+    const SAFETY_PLAN_SAVE_RESULT_MESSAGE = 'smartemr-safety-plan-save-result';
+    let pendingNativeSave = null;
+    let pendingNativeSaveTimeout = null;
 
     function applySmartEmrTheme(theme) {
         document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+    }
+
+    function setSaveStatus(message, state = '') {
+        const status = document.getElementById('saveStatus');
+        if (!status) return;
+        status.textContent = message;
+        if (state) {
+            status.dataset.state = state;
+        } else {
+            delete status.dataset.state;
+        }
     }
 
     window.addEventListener('message', (event) => {
@@ -297,18 +349,26 @@
             window.parent === window ? event.source === window : event.source === window.parent;
         const expectedOrigin = window.location.origin;
         const isExpectedOrigin = !event.origin || expectedOrigin === 'null' || event.origin === expectedOrigin;
-        const theme = event.data?.theme;
 
-        if (
-            !isParentMessage ||
-            !isExpectedOrigin ||
-            event.data?.type !== SMARTEMR_THEME_MESSAGE ||
-            (theme !== 'light' && theme !== 'dark')
-        ) {
+        if (!isParentMessage || !isExpectedOrigin) {
             return;
         }
 
-        applySmartEmrTheme(theme);
+        if (event.data?.type === SMARTEMR_THEME_MESSAGE) {
+            const theme = event.data?.theme;
+            if (theme === 'light' || theme === 'dark') {
+                applySmartEmrTheme(theme);
+            }
+            return;
+        }
+
+        if (event.data?.type === SAFETY_PLAN_SAVE_RESULT_MESSAGE && pendingNativeSave) {
+            const resolve = pendingNativeSave;
+            pendingNativeSave = null;
+            window.clearTimeout(pendingNativeSaveTimeout);
+            pendingNativeSaveTimeout = null;
+            resolve(event.data);
+        }
     });
 
     applySmartEmrTheme(
@@ -320,7 +380,71 @@
     /**
      * PDF Generation Function
      */
-    function generatePDF() {
+    function requestNativeSave(filename, pdfData) {
+        if (window.parent === window) {
+            return Promise.resolve({ handled: false });
+        }
+
+        return new Promise((resolve) => {
+            const finish = (result) => {
+                if (!pendingNativeSave) return;
+                pendingNativeSave = null;
+                window.clearTimeout(pendingNativeSaveTimeout);
+                pendingNativeSaveTimeout = null;
+                resolve(result);
+            };
+
+            pendingNativeSave = finish;
+            pendingNativeSaveTimeout = window.setTimeout(
+                () => finish({ handled: false }),
+                10000
+            );
+
+            const targetOrigin = window.location.origin && window.location.origin !== 'null'
+                ? window.location.origin
+                : '*';
+
+            try {
+                window.parent.postMessage(
+                    { type: SAFETY_PLAN_SAVE_MESSAGE, filename, bytes: pdfData },
+                    targetOrigin
+                );
+            } catch (error) {
+                finish({ handled: false, error: error?.message || String(error) });
+            }
+        });
+    }
+
+    function savePdfInBrowser(pdfData, suggestedFilename) {
+        const requestedName = window.prompt('Name this Safety Plan PDF', suggestedFilename);
+        if (requestedName === null) {
+            return { cancelled: true };
+        }
+
+        const trimmedName = requestedName.trim();
+        if (!trimmedName) {
+            return { cancelled: true };
+        }
+
+        const filename = /\.pdf$/i.test(trimmedName) ? trimmedName : `${trimmedName}.pdf`;
+        const blob = new Blob([pdfData], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        return { ok: true, filename };
+    }
+
+    async function generatePDF() {
+        const saveButton = document.getElementById('saveBtn');
+        if (saveButton) saveButton.disabled = true;
+        setSaveStatus('Preparing PDF...');
+
+        try {
         const doc = new jsPDF();
         const pageHeight = doc.internal.pageSize.height;
         const pageWidth = doc.internal.pageSize.width;
@@ -337,6 +461,12 @@
             }
         }
 
+        function drawLines(lines, x, startY, options = {}) {
+            lines.forEach((line, index) => {
+                doc.text(line, x, startY + (index * lineHeight), options);
+            });
+        }
+
         doc.setFontSize(headerFontSize);
         doc.setFont(undefined, 'bold');
         doc.text("Safety Plan", pageWidth / 2, y, { align: 'center' });
@@ -351,15 +481,22 @@
             planDateStr = `${month}-${day}-${year}`;
         }
         const planDate = `Date: ${planDateStr}`;
-        const createdWith = `Created with: ${document.getElementById('createdWith').value || 'N/A'}`;
+        const createdWith = `Created with help from: ${document.getElementById('createdWith').value || 'N/A'}`;
 
         doc.setFontSize(bodyFontSize);
         doc.setFont(undefined, 'normal');
-        checkPageBreak(10);
-        doc.text(patientName, margin, y);
-        doc.text(planDate, pageWidth / 2, y, { align: 'center' });
-        doc.text(createdWith, pageWidth - margin, y, { align: 'right' });
-        y += 10;
+        const headerGap = 7;
+        const headerColumnWidth = (pageWidth - (margin * 2) - (headerGap * 2)) / 3;
+        const headerColumns = [
+            { text: patientName, x: margin },
+            { text: planDate, x: margin + headerColumnWidth + headerGap },
+            { text: createdWith, x: margin + ((headerColumnWidth + headerGap) * 2) }
+        ];
+        const headerLines = headerColumns.map(({ text }) => doc.splitTextToSize(text, headerColumnWidth));
+        const headerHeight = Math.max(...headerLines.map(lines => lines.length)) * lineHeight;
+        checkPageBreak(headerHeight);
+        headerLines.forEach((lines, index) => drawLines(lines, headerColumns[index].x, y));
+        y += headerHeight + 5;
 
         document.querySelectorAll('.form-group').forEach(group => {
             const label = group.querySelector('.form-label');
@@ -375,11 +512,13 @@
             }
 
             if (label && hasContent) {
-                checkPageBreak(10);
                 doc.setFontSize(bodyFontSize);
                 doc.setFont(undefined, 'bold');
-                doc.text(label.textContent, margin, y);
-                y += 6;
+                const labelLines = doc.splitTextToSize(label.textContent.trim(), pageWidth - (margin * 2));
+                const labelHeight = labelLines.length * lineHeight;
+                checkPageBreak(labelHeight);
+                drawLines(labelLines, margin, y);
+                y += labelHeight + 1;
             }
 
             const threeColInputs = group.querySelectorAll('.three-col-input');
@@ -412,9 +551,9 @@
                          const heightRequired = linesRequired * lineHeight;
                          checkPageBreak(heightRequired);
 
-                         doc.text(nameLines, col1x, y);
-                         doc.text(phoneLines, col2x, y);
-                         doc.text(extLines, col3x, y);
+                         drawLines(nameLines, col1x, y);
+                         drawLines(phoneLines, col2x, y);
+                         drawLines(extLines, col3x, y);
 
                          y += heightRequired + 1;
                      }
@@ -430,7 +569,7 @@
                          const splitText = doc.splitTextToSize(line, pageWidth - (margin * 2) - 5);
                          const heightRequired = splitText.length * lineHeight;
                          checkPageBreak(heightRequired);
-                         doc.text(splitText, margin + 5, y);
+                         drawLines(splitText, margin + 5, y);
                          y += heightRequired + 1;
                      }
                  });
@@ -463,24 +602,26 @@
                 }
 
                 if (resources.length > 0) {
-                    const col1Width = 80;
-                    const col2x = margin + col1Width + 2;
+                    const resourceLabelX = margin + 5;
+                    const col1Width = 78;
+                    const col2x = resourceLabelX + col1Width + 7;
+                    const col2Width = pageWidth - col2x - margin;
                     doc.setFontSize(bodyFontSize);
 
                     resources.forEach(resource => {
                         doc.setFont(undefined, 'bold');
                         const labelLines = doc.splitTextToSize(resource.label, col1Width);
                         doc.setFont(undefined, 'normal');
-                        const valueLines = doc.splitTextToSize(resource.value, pageWidth - col2x - margin);
+                        const valueLines = doc.splitTextToSize(resource.value, col2Width);
 
                         const linesRequired = Math.max(labelLines.length, valueLines.length);
                         const heightRequired = linesRequired * lineHeight;
                         checkPageBreak(heightRequired);
 
                         doc.setFont(undefined, 'bold');
-                        doc.text(resource.label, margin + 5, y, { maxWidth: col1Width, align: 'left' });
+                        drawLines(labelLines, resourceLabelX, y);
                         doc.setFont(undefined, 'normal');
-                        doc.text(resource.value, col2x, y, { maxWidth: (pageWidth - col2x - margin), align: 'left' });
+                        drawLines(valueLines, col2x, y);
 
                         y += heightRequired + 2;
                     });
@@ -491,7 +632,34 @@
 
         const sanitizedName = patientNameRaw.trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_-]/g, '');
         const fileBase = sanitizedName || 'Safety_Plan';
-        doc.save(`${fileBase}_Safety_Plan.pdf`);
+        const suggestedFilename = `${fileBase}_Safety_Plan.pdf`;
+        const pdfData = doc.output('arraybuffer');
+        const nativeResult = await requestNativeSave(suggestedFilename, pdfData);
+
+        if (nativeResult.handled) {
+            if (nativeResult.ok) {
+                const savedName = nativeResult.filename || suggestedFilename;
+                setSaveStatus(`Saved as ${savedName}.`, 'success');
+            } else if (nativeResult.cancelled) {
+                setSaveStatus('Save cancelled.');
+            } else {
+                setSaveStatus(nativeResult.error || 'The PDF could not be saved.', 'error');
+            }
+            return;
+        }
+
+        const browserResult = savePdfInBrowser(pdfData, suggestedFilename);
+        if (browserResult.ok) {
+            setSaveStatus(`Downloaded ${browserResult.filename}.`, 'success');
+        } else {
+            setSaveStatus('Save cancelled.');
+        }
+        } catch (error) {
+            console.error('Failed to generate Safety Plan PDF:', error);
+            setSaveStatus(`The PDF could not be saved: ${error?.message || String(error)}`, 'error');
+        } finally {
+            if (saveButton) saveButton.disabled = false;
+        }
     }
 
     document.getElementById("saveBtn").addEventListener("click", generatePDF);

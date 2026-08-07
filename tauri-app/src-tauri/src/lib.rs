@@ -40,6 +40,35 @@ fn write_backup_file_blocking(path: String, contents: String) -> Result<(), Stri
     Ok(())
 }
 
+#[tauri::command]
+async fn write_binary_file(path: String, contents: Vec<u8>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || write_binary_file_blocking(path, contents))
+        .await
+        .map_err(|error| format!("Binary file write task failed: {error}"))?
+}
+
+fn write_binary_file_blocking(path: String, contents: Vec<u8>) -> Result<(), String> {
+    let trimmed_path = path.trim();
+    if trimmed_path.is_empty() {
+        return Err("File path is empty.".to_string());
+    }
+
+    let output_path = PathBuf::from(trimmed_path);
+    if !output_path.is_absolute() {
+        return Err("File path must be an absolute file path.".to_string());
+    }
+
+    let parent_dir = output_path
+        .parent()
+        .ok_or_else(|| "File path must include a parent directory.".to_string())?;
+    fs::create_dir_all(parent_dir)
+        .map_err(|error| format!("Failed to prepare output directory: {error}"))?;
+    fs::write(&output_path, contents)
+        .map_err(|error| format!("Failed to write binary file: {error}"))?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod backup_tests {
     use super::write_backup_file_blocking;
@@ -101,6 +130,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             write_backup_file,
+            write_binary_file,
             biometric::get_biometric_availability,
             biometric::store_biometric_secret,
             biometric::read_biometric_secret,

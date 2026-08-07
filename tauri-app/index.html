@@ -131,13 +131,6 @@
             -webkit-app-region: no-drag;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .header {
-                background: var(--panel-header-bg);
-                color: var(--text-color-inverted);
-            }
-        }
-        
         .header-title-group {
             display: flex;
             align-items: center;
@@ -335,6 +328,12 @@
 
         .menu-item-btn.theme {
             background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+
+        .menu-item-btn.theme-select {
+            appearance: auto;
+            -webkit-appearance: auto;
+            font-family: inherit;
         }
 
         .btn {
@@ -2507,7 +2506,6 @@
                 <button id="headerMenuBtn" class="btn header-menu-btn" title="Open menu"><span class="menu-label-wrap">Menu<span id="menuBackupWarning" class="menu-alert-indicator hidden" aria-hidden="true">!</span><span id="menuUpdateAsterisk" class="update-asterisk hidden" aria-hidden="true">*</span></span> ▾</button>
                 <div id="headerMenuDropdown" class="header-menu-dropdown hidden">
                     <button id="informedConsentBtn" class="menu-item-btn">Informed Consent</button>
-                    <button id="cssrsBtn" class="menu-item-btn">CSSRS</button>
                     <button id="soapAuditGuideBtn" class="menu-item-btn">SOAP Audit Guide</button>
                     <button id="soapInstructionsBtn" class="menu-item-btn">SOAP Instructions</button>
                     <button id="treatmentGoalsInstructionsBtn" class="menu-item-btn">Treatment Goals Instructions</button>
@@ -2517,7 +2515,11 @@
                     <button id="manualSaveBtn" class="menu-item-btn save">Save Now</button>
                     <button id="checkForUpdatesBtn" class="menu-item-btn"><span>Check for Updates</span><span id="checkForUpdatesAsterisk" class="update-asterisk hidden" aria-hidden="true">*</span></button>
                     <button id="settingsBtn" class="menu-item-btn settings">Settings</button>
-                    <button id="themeToggleBtn" class="menu-item-btn theme" title="Toggle Theme">Theme</button>
+                    <select id="themeToggleBtn" class="menu-item-btn theme theme-select" title="Choose appearance" aria-label="Choose appearance">
+                        <option value="light">Day mode</option>
+                        <option value="dark">Night mode</option>
+                        <option value="automatic">Follow system settings</option>
+                    </select>
                     <button id="lockScreenBtn" class="menu-item-btn" title="Lock Screen">Lock Screen</button>
                 </div>
             </div>
@@ -3669,7 +3671,6 @@
             const settingsModal = document.getElementById('settingsModal');
             const closeSettingsBtn = document.getElementById('closeSettingsBtn');
             const informedConsentBtn = document.getElementById('informedConsentBtn');
-            const cssrsBtn = document.getElementById('cssrsBtn');
             const soapAuditGuideBtn = document.getElementById('soapAuditGuideBtn');
             const soapInstructionsBtn = document.getElementById('soapInstructionsBtn');
             const treatmentGoalsInstructionsBtn = document.getElementById('treatmentGoalsInstructionsBtn');
@@ -10203,6 +10204,88 @@ This error cannot be fixed within this application's code; it requires a configu
 
             const isTauriRuntime = () => typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
 
+            const SAFETY_PLAN_SAVE_MESSAGE = 'smartemr-safety-plan-save';
+            const SAFETY_PLAN_SAVE_RESULT_MESSAGE = 'smartemr-safety-plan-save-result';
+
+            const postSafetyPlanSaveResult = (event, payload) => {
+                if (!event.source || typeof event.source.postMessage !== 'function') return;
+                const targetOrigin = event.origin && event.origin !== 'null' ? event.origin : '*';
+                const message = { type: SAFETY_PLAN_SAVE_RESULT_MESSAGE, ...payload };
+                try {
+                    event.source.postMessage(message, targetOrigin);
+                } catch (_postMessageError) {
+                    event.source.postMessage(message, '*');
+                }
+            };
+
+            window.addEventListener('message', async (event) => {
+                if (
+                    event.source !== safetyPlanIframeEl?.contentWindow ||
+                    event.data?.type !== SAFETY_PLAN_SAVE_MESSAGE
+                ) {
+                    return;
+                }
+
+                if (!isTauriRuntime()) {
+                    postSafetyPlanSaveResult(event, { handled: false });
+                    return;
+                }
+
+                const rawBytes = event.data?.bytes;
+                if (!rawBytes || typeof rawBytes.byteLength !== 'number') {
+                    postSafetyPlanSaveResult(event, {
+                        handled: true,
+                        error: 'The generated PDF data was empty.'
+                    });
+                    return;
+                }
+
+                try {
+                    const defaultFileName = typeof event.data.filename === 'string' && event.data.filename.trim()
+                        ? event.data.filename.trim()
+                        : 'Safety_Plan.pdf';
+                    const lastSafetyPlanPath = localStorage.getItem('lastSafetyPlanPath') || defaultFileName;
+                    const selectedPath = await save({
+                        title: 'Save Safety Plan PDF',
+                        defaultPath: lastSafetyPlanPath,
+                        filters: [
+                            {
+                                name: 'PDF document',
+                                extensions: ['pdf']
+                            }
+                        ]
+                    });
+
+                    if (!selectedPath) {
+                        postSafetyPlanSaveResult(event, { handled: true, cancelled: true });
+                        return;
+                    }
+
+                    const normalizedPath = normalizeSelectedPath(selectedPath);
+                    if (!normalizedPath) {
+                        throw new Error('No valid save path returned by dialog.');
+                    }
+
+                    await invoke('write_binary_file', {
+                        path: normalizedPath,
+                        contents: Array.from(new Uint8Array(rawBytes))
+                    });
+                    localStorage.setItem('lastSafetyPlanPath', normalizedPath);
+                    const savedName = normalizedPath.split(/[\\/]/).pop() || defaultFileName;
+                    postSafetyPlanSaveResult(event, {
+                        handled: true,
+                        ok: true,
+                        filename: savedName
+                    });
+                } catch (error) {
+                    console.error('Failed to save Safety Plan PDF:', error);
+                    postSafetyPlanSaveResult(event, {
+                        handled: true,
+                        error: `The PDF could not be saved: ${resolveErrorMessage(error)}`
+                    });
+                }
+            });
+
             const writeDesktopTextFile = async (path, contents, options = {}) => {
                 const normalizedPath = normalizeSelectedPath(path);
                 if (!normalizedPath) {
@@ -10914,7 +10997,6 @@ This error cannot be fixed within this application's code; it requires a configu
 
             [
                 informedConsentBtn,
-                cssrsBtn,
                 soapAuditGuideBtn,
                 soapInstructionsBtn,
                 treatmentGoalsInstructionsBtn,
@@ -11419,31 +11501,20 @@ This error cannot be fixed within this application's code; it requires a configu
             apiProviderSelect.addEventListener('change', toggleProviderSettings);
 
             // --- Theme Management ---
-            const updateThemeButton = () => {
-                const savedTheme = localStorage.getItem('theme') || 'automatic';
-                if (savedTheme === 'dark') {
-                    themeToggleBtn.textContent = '🌙';
-                    themeToggleBtn.title = 'Switch to Automatic Theme';
-                } else if (savedTheme === 'automatic') {
-                    themeToggleBtn.textContent = '🔄';
-                    themeToggleBtn.title = 'Switch to Light Theme';
-                } else {
-                    themeToggleBtn.textContent = '☀️';
-                    themeToggleBtn.title = 'Switch to Dark Theme';
-                }
+            const THEME_PREFERENCES = new Set(['light', 'dark', 'automatic']);
+            const getStoredThemePreference = () => {
+                const savedTheme = localStorage.getItem('theme');
+                return THEME_PREFERENCES.has(savedTheme) ? savedTheme : 'automatic';
             };
 
-            const cycleTheme = () => {
-                const savedTheme = localStorage.getItem('theme') || 'automatic';
-                let newTheme;
-                if (savedTheme === 'light') {
-                    newTheme = 'dark';
-                } else if (savedTheme === 'dark') {
-                    newTheme = 'automatic';
-                } else {
-                    newTheme = 'light';
-                }
-                applyTheme(newTheme);
+            const updateThemeButton = () => {
+                const savedTheme = getStoredThemePreference();
+                themeToggleBtn.value = savedTheme;
+                themeToggleBtn.title = savedTheme === 'automatic'
+                    ? 'Follow system appearance settings'
+                    : savedTheme === 'dark'
+                        ? 'Use night mode'
+                        : 'Use day mode';
             };
 
             const updateTaskbarTheme = async (effectiveTheme) => {
@@ -11463,29 +11534,29 @@ This error cannot be fixed within this application's code; it requires a configu
             };
 
             const applyTheme = (theme) => {
+                const selectedTheme = THEME_PREFERENCES.has(theme) ? theme : 'automatic';
                 let effectiveTheme;
-                if (theme === 'automatic') {
+                if (selectedTheme === 'automatic') {
                     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                     effectiveTheme = prefersDark ? 'dark' : 'light';
-                    document.body.dataset.theme = effectiveTheme;
                 } else {
-                    effectiveTheme = theme;
-                    document.body.dataset.theme = theme;
+                    effectiveTheme = selectedTheme;
                 }
-                localStorage.setItem('theme', theme);
+                document.body.dataset.theme = effectiveTheme;
+                localStorage.setItem('theme', selectedTheme);
                 updateTaskbarTheme(effectiveTheme);
                 updateThemeButton();
                 syncEmbeddedTheme(effectiveTheme);
             };
 
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-                const savedTheme = localStorage.getItem('theme') || 'automatic';
-                if (savedTheme === 'automatic') {
+            const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            systemThemeQuery.addEventListener('change', () => {
+                if (getStoredThemePreference() === 'automatic') {
                     applyTheme('automatic');
                 }
             });
 
-            themeToggleBtn.addEventListener('click', cycleTheme);
+            themeToggleBtn.addEventListener('change', event => applyTheme(event.target.value));
 
             // --- Collapsible Sections ---
             const handleCollapsibleClick = (e) => {
@@ -11814,8 +11885,7 @@ This error cannot be fixed within this application's code; it requires a configu
             };
             
             const loadTheme = () => {
-                const savedTheme = localStorage.getItem('theme') || 'automatic';
-                applyTheme(savedTheme);
+                applyTheme(getStoredThemePreference());
             };
 
             // Set appointment date to today (local timezone, not UTC)

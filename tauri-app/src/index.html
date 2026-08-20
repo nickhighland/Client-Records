@@ -2475,7 +2475,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.7" aria-label="SmartEMR version 3.0.7">v3.0.7</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.8" aria-label="SmartEMR version 3.0.8">v3.0.8</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -2705,7 +2705,10 @@
                          </div>
                          </div>
                          <div id="intakeSessionBlock" class="audit-proofing-block hidden">
-                             <div style="font-size: 0.85rem; color: var(--text-color-secondary); font-weight: 700; margin-bottom: 6px;">Intake Session Prompts</div>
+                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+                                 <div style="font-size: 0.85rem; color: var(--text-color-secondary); font-weight: 700;">Intake Session Prompts</div>
+                                 <button id="copyIntakeSessionBtn" class="btn" type="button" style="padding: 4px 8px; font-size: 0.8rem;" disabled>Copy All</button>
+                             </div>
                              <div id="intakeFieldsContainer" class="audit-proofing-grid"></div>
                          </div>
                      </div>
@@ -3649,6 +3652,7 @@
             const auditProofingBlockEl = document.getElementById('auditProofingBlock');
             const intakeSessionBlockEl = document.getElementById('intakeSessionBlock');
             const intakeFieldsContainerEl = document.getElementById('intakeFieldsContainer');
+            const copyIntakeSessionBtn = document.getElementById('copyIntakeSessionBtn');
             const guidingModalitiesListEl = document.getElementById('guidingModalitiesList');
             const guidingModalityOtherWrapEl = document.getElementById('guidingModalityOtherWrap');
             const guidingModalityOtherEl = document.getElementById('guidingModalityOther');
@@ -4009,6 +4013,7 @@
                 { key: 'medicalConditionsHistory', label: 'Medical Conditions and History' },
                 { key: 'currentMedications', label: 'Current Medications' },
                 { key: 'substanceUse', label: 'Substance Use' },
+                { key: 'sleepHygiene', label: 'Sleep Hygiene' },
                 { key: 'familyHistory', label: 'Family History' },
                 { key: 'socialHistory', label: 'Social History' },
                 { key: 'spiritualCulturalFactors', label: 'Spiritual/Cultural Factors' },
@@ -4377,6 +4382,19 @@
                     wrapper.appendChild(textarea);
                     intakeFieldsContainerEl.appendChild(wrapper);
                 });
+            };
+
+            const formatIntakeSessionForCopy = (intakeSession) => {
+                if (!intakeSession?.fields || typeof intakeSession.fields !== 'object') return '';
+
+                return intakePromptFields
+                    .map(field => ({
+                        label: field.label,
+                        value: String(intakeSession.fields[field.key] ?? '').trim()
+                    }))
+                    .filter(field => field.value)
+                    .map(field => `**${field.label}**\n${field.value}`)
+                    .join('\n\n');
             };
 
             const hasAppointmentGenerationInput = (appointment) => {
@@ -6808,6 +6826,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 regularSessionFieldsEl.classList.toggle('hidden', !!intakeSession);
                 intakeSessionBlockEl.classList.toggle('hidden', !intakeSession);
+                copyIntakeSessionBtn.disabled = !intakeSession;
                 auditProofingBlockEl.classList.toggle('hidden', !appointment);
                 renderIntakeFields(intakeSession);
 
@@ -8226,6 +8245,28 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 intakeSession.fields[e.target.dataset.intakeKey] = e.target.value;
                 markDirty();
+            });
+
+            copyIntakeSessionBtn.addEventListener('click', async () => {
+                const client = findClient(selectedClientId);
+                const intakeSession = findIntakeSession(client, selectedIntakeId);
+                const text = formatIntakeSessionForCopy(intakeSession);
+                if (!text) {
+                    alert('Enter intake information before copying.');
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const originalText = copyIntakeSessionBtn.textContent;
+                    copyIntakeSessionBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyIntakeSessionBtn.textContent = originalText;
+                    }, 2000);
+                } catch (error) {
+                    console.error('Failed to copy intake session:', error);
+                    alert('Could not copy the intake session to the clipboard.');
+                }
             });
 
             soapContentEl.addEventListener('input', (e) => {

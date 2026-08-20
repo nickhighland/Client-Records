@@ -2475,7 +2475,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.6" aria-label="SmartEMR version 3.0.6">v3.0.6</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.7" aria-label="SmartEMR version 3.0.7">v3.0.7</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -6499,7 +6499,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 activeGoalGeneratorClientId = null;
                 goalGenerationRequestId += 1;
                 markDirty();
-                if (selectedClientId === client.id) renderDetails();
+                if (selectedClientId !== client.id) {
+                    selectedClientId = client.id;
+                    selectedAppointmentId = null;
+                    selectedNoteId = null;
+                    selectedIntakeId = null;
+                }
+                fullRender();
             };
             
             // --- UI Rendering ---
@@ -7114,6 +7120,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 fullRender();
             };
 
+            const clearSelectedRecordView = () => {
+                selectedAppointmentId = null;
+                selectedNoteId = null;
+                selectedIntakeId = null;
+                noteNameInput.value = '';
+            };
+
             const addGoal = () => {
                 const client = findClient(selectedClientId);
                 if (!client) return;
@@ -7442,13 +7455,19 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const clientId = clientItem.dataset.clientId;
 
                 if (e.target.closest('.today-session-btn')) {
-                    if (isClientInTodaySessions(clientId)) {
+                    const movingFromTodaySessions = isClientInTodaySessions(clientId);
+                    if (movingFromTodaySessions) {
                         removeClientFromTodaySessions(clientId);
                     } else {
                         moveClientToTodaySessionsEnd(clientId);
                     }
                     markDirty();
-                    renderClients();
+                    if (movingFromTodaySessions && selectedClientId === clientId) {
+                        clearSelectedRecordView();
+                        fullRender();
+                    } else {
+                        renderClients();
+                    }
                 } else if (e.target.closest('.delete-btn')) {
                      const client = findClient(clientId);
                      if (confirm(`Are you sure you want to delete ${client.name}?`)) {

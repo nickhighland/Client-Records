@@ -2487,7 +2487,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.9" aria-label="SmartEMR version 3.0.9">v3.0.9</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.10" aria-label="SmartEMR version 3.0.10">v3.0.10</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -3851,6 +3851,8 @@
             let selectedNoteId = null;
             let selectedIntakeId = null;
             let recordViewClearedForSelectedClient = false;
+            let appointmentDateManualOverride = null;
+            let appointmentDateRefreshTimer = null;
             let clientSearchQuery = '';
             let isDirty = false;
             let apiProvider = 'openwebui';
@@ -4069,6 +4071,42 @@
             const findAppointment = (client, id) => client?.appointments.find(a => a.id === id);
             const findNote = (client, id) => client?.notes?.find(n => n.id === id);
             const findIntakeSession = (client, id) => client?.intakeSessions?.find(i => i.id === id);
+            const getLocalDateInputValue = (date = new Date()) => {
+                return date.getFullYear() + '-' +
+                    String(date.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(date.getDate()).padStart(2, '0');
+            };
+            const getAppointmentDateInputValue = (dateValue) => {
+                if (!dateValue) return '';
+                const rawDate = String(dateValue);
+                if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return rawDate;
+                const date = new Date(dateValue);
+                return Number.isNaN(date.getTime()) ? '' : getLocalDateInputValue(date);
+            };
+            const syncAppointmentDateInput = () => {
+                if (recordViewClearedForSelectedClient) {
+                    appointmentDateInput.value = '';
+                    return;
+                }
+
+                const client = findClient(selectedClientId);
+                const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
+                appointmentDateInput.value = appointment
+                    ? getAppointmentDateInputValue(appointment.date)
+                    : (appointmentDateManualOverride || getLocalDateInputValue());
+            };
+            const scheduleAppointmentDateRefresh = () => {
+                if (appointmentDateRefreshTimer) {
+                    window.clearTimeout(appointmentDateRefreshTimer);
+                }
+
+                const now = new Date();
+                const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+                appointmentDateRefreshTimer = window.setTimeout(() => {
+                    syncAppointmentDateInput();
+                    scheduleAppointmentDateRefresh();
+                }, Math.max(1000, nextDay.getTime() - now.getTime()));
+            };
             const normalizeClientContactEntries = (entries) => {
                 if (Array.isArray(entries)) {
                     return entries.map(entry => typeof entry === 'string' ? entry : String(entry ?? ''));
@@ -6608,12 +6646,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 addNoteBtn.disabled = !client || recordViewClearedForSelectedClient;
                 if (recordViewClearedForSelectedClient) {
                     appointmentListEl.innerHTML = '';
-                    appointmentDateInput.value = '';
+                    syncAppointmentDateInput();
                     noteNameInput.value = '';
                     updateAppointmentDateBtn.disabled = true;
                     renameNoteBtn.disabled = true;
                     return;
                 }
+                syncAppointmentDateInput();
                 if (!client) {
                     appointmentListEl.innerHTML = '<div class="no-selection">Select a client first</div>';
                     return;
@@ -6826,7 +6865,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 sessionInfoEl.value = appointment
                     ? appointment.sessionInfo || ''
                     : (note ? note.sessionInfo || '' : '');
-                if (!appointment) appointmentDateInput.value = '';
+                syncAppointmentDateInput();
                 noteNameInput.value = note ? note.name || '' : '';
                 sessionInfoEl.placeholder = appointment
                     ? "Enter session details..."
@@ -10613,6 +10652,12 @@ This error cannot be fixed within this application's code; it requires a configu
             addAppointmentBtn.addEventListener('click', addAppointment);
             addIntakeBtn.addEventListener('click', addIntakeSession);
             addNoteBtn.addEventListener('click', addNote);
+            appointmentDateInput.addEventListener('change', () => {
+                const selectedDate = appointmentDateInput.value;
+                const today = getLocalDateInputValue();
+                appointmentDateManualOverride = selectedDate && selectedDate !== today ? selectedDate : null;
+                if (!selectedDate) appointmentDateInput.value = today;
+            });
             renameNoteBtn.addEventListener('click', renameSelectedNote);
             noteNameInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
@@ -10628,6 +10673,7 @@ This error cannot be fixed within this application's code; it requires a configu
 
             // Tab switching functionality
             appointmentsTabBtn.addEventListener('click', () => {
+                syncAppointmentDateInput();
                 appointmentsTabBtn.style.color = 'var(--text-color-primary)';
                 appointmentsTabBtn.style.borderBottomColor = '#3498db';
                 goalsTabBtn.style.color = 'var(--text-color-secondary)';
@@ -11987,12 +12033,9 @@ This error cannot be fixed within this application's code; it requires a configu
                 applyTheme(getStoredThemePreference());
             };
 
-            // Set appointment date to today (local timezone, not UTC)
-            const today = new Date();
-            const localDateString = today.getFullYear() + '-' + 
-                String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                String(today.getDate()).padStart(2, '0');
-            appointmentDateInput.value = localDateString;
+            // Keep new appointment dates aligned with the local calendar day.
+            syncAppointmentDateInput();
+            scheduleAppointmentDateRefresh();
             
             // Data loading is now handled by unlockApp()
             

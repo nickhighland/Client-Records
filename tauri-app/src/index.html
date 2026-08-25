@@ -733,6 +733,18 @@
             background: var(--item-active-bg);
             border-left-color: var(--item-active-border-color);
             font-weight: bold;
+            box-shadow: 0 0 0 1px var(--item-active-border-color), 0 4px 12px rgba(33, 150, 243, 0.22);
+        }
+        .client-item.active .client-name-label {
+            display: inline-flex;
+            align-items: center;
+            max-width: 100%;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+            color: #ffffff;
+            font-weight: 800;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
         }
 
         .client-item-main {
@@ -2475,7 +2487,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.8" aria-label="SmartEMR version 3.0.8">v3.0.8</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.9" aria-label="SmartEMR version 3.0.9">v3.0.9</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -3838,6 +3850,7 @@
             let selectedAppointmentId = null;
             let selectedNoteId = null;
             let selectedIntakeId = null;
+            let recordViewClearedForSelectedClient = false;
             let clientSearchQuery = '';
             let isDirty = false;
             let apiProvider = 'openwebui';
@@ -6590,9 +6603,17 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             const renderAppointments = () => {
                 const client = findClient(selectedClientId);
-                addAppointmentBtn.disabled = !client;
-                addIntakeBtn.disabled = !client;
-                addNoteBtn.disabled = !client;
+                addAppointmentBtn.disabled = !client || recordViewClearedForSelectedClient;
+                addIntakeBtn.disabled = !client || recordViewClearedForSelectedClient;
+                addNoteBtn.disabled = !client || recordViewClearedForSelectedClient;
+                if (recordViewClearedForSelectedClient) {
+                    appointmentListEl.innerHTML = '';
+                    appointmentDateInput.value = '';
+                    noteNameInput.value = '';
+                    updateAppointmentDateBtn.disabled = true;
+                    renameNoteBtn.disabled = true;
+                    return;
+                }
                 if (!client) {
                     appointmentListEl.innerHTML = '<div class="no-selection">Select a client first</div>';
                     return;
@@ -6777,7 +6798,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const renderDetails = () => {
-                const client = findClient(selectedClientId);
+                const client = recordViewClearedForSelectedClient ? null : findClient(selectedClientId);
                 const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
                 const note = client ? findNote(client, selectedNoteId) : null;
                 const intakeSession = client ? findIntakeSession(client, selectedIntakeId) : null;
@@ -6805,6 +6826,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 sessionInfoEl.value = appointment
                     ? appointment.sessionInfo || ''
                     : (note ? note.sessionInfo || '' : '');
+                if (!appointment) appointmentDateInput.value = '';
+                noteNameInput.value = note ? note.name || '' : '';
                 sessionInfoEl.placeholder = appointment
                     ? "Enter session details..."
                     : (note ? "Enter freeform note details..." : "Select an appointment or note to begin...");
@@ -6862,12 +6885,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const renderGoals = () => {
-                const client = findClient(selectedClientId);
+                const client = recordViewClearedForSelectedClient ? null : findClient(selectedClientId);
                 addGoalBtnInTab.disabled = !client;
                 generateGoalsBtn.disabled = !client;
                 
                 if (!client) {
-                    goalsListInTabEl.innerHTML = '<div class="no-selection">Select a client to manage goals</div>';
+                    goalsListInTabEl.innerHTML = recordViewClearedForSelectedClient ? '' : '<div class="no-selection">Select a client to manage goals</div>';
                     return;
                 }
 
@@ -6913,6 +6936,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
             
             const renderSoap = () => {
+                if (recordViewClearedForSelectedClient) {
+                    soapContentEl.innerHTML = '';
+                    return;
+                }
+
                 const client = findClient(selectedClientId);
                 const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
                 const note = client ? findNote(client, selectedNoteId) : null;
@@ -7059,7 +7087,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 });
 
                 deletedAppointmentsListEl.innerHTML = '';
-                if (!selectedClientId) {
+                if (!selectedClientId || recordViewClearedForSelectedClient) {
                     clearDeletedAppointmentsBtn.classList.add('hidden');
                     return;
                 }
@@ -7115,6 +7143,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 selectedAppointmentId = null;
                 selectedNoteId = null;
                 selectedIntakeId = null;
+                recordViewClearedForSelectedClient = false;
                 fullRender();
             };
 
@@ -7122,6 +7151,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 selectedAppointmentId = id;
                 selectedNoteId = null;
                 selectedIntakeId = null;
+                recordViewClearedForSelectedClient = false;
                 fullRender();
             };
 
@@ -7129,6 +7159,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 selectedNoteId = id;
                 selectedAppointmentId = null;
                 selectedIntakeId = null;
+                recordViewClearedForSelectedClient = false;
                 fullRender();
             };
 
@@ -7136,6 +7167,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 selectedIntakeId = id;
                 selectedAppointmentId = null;
                 selectedNoteId = null;
+                recordViewClearedForSelectedClient = false;
                 fullRender();
             };
 
@@ -7143,6 +7175,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 selectedAppointmentId = null;
                 selectedNoteId = null;
                 selectedIntakeId = null;
+                recordViewClearedForSelectedClient = true;
                 noteNameInput.value = '';
             };
 

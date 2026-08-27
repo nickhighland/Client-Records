@@ -950,6 +950,44 @@
             outline: none; border-color: var(--textarea-focus-border);
             box-shadow: 0 0 0 2px var(--textarea-focus-shadow);
         }
+        .rich-note-editor {
+            width: 100%;
+            min-height: 220px;
+            box-sizing: border-box;
+            padding: 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--input-text);
+            overflow-y: auto;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+            resize: vertical;
+            flex: 1 1 auto;
+            outline: none;
+        }
+        .rich-note-editor:focus {
+            border-color: var(--textarea-focus-border);
+            box-shadow: 0 0 0 2px var(--textarea-focus-shadow);
+        }
+        .rich-note-editor[contenteditable="false"] {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        .rich-note-editor:empty::before {
+            content: attr(data-placeholder);
+            color: var(--text-color-secondary);
+            pointer-events: none;
+        }
+        .next-session-note-editor {
+            height: 100%;
+            min-height: 220px;
+            resize: none;
+        }
+        .rich-note-shortcuts {
+            color: var(--text-color-secondary);
+            font-size: 0.75rem;
+        }
         
         .session-section {
             display: flex; flex-direction: column;
@@ -1378,6 +1416,28 @@
             border-radius: 0 0 6px 6px; border-top: none;
             flex-grow: 1;
             /* overflow-y: hidden; is removed to allow manual resize */
+        }
+        .diagnostic-support-block {
+            margin-top: 10px;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .diagnostic-support-header {
+            background: var(--input-bg);
+            color: var(--text-color-primary);
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .diagnostic-support-textarea {
+            min-height: 100px;
+            border-radius: 0;
+            border: none;
         }
 
         .suggestion-box {
@@ -2487,7 +2547,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.10" aria-label="SmartEMR version 3.0.10">v3.0.10</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.11" aria-label="SmartEMR version 3.0.11">v3.0.11</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -2744,8 +2804,11 @@
                         <div id="notesContent" class="panel-content collapsible-content" style="display: flex; flex-direction: column; min-height: 160px;">
                         <div id="clientDetailsContent" style="flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px;">
                             <div style="display: flex; flex-direction: column; gap: 6px; min-height: 0;">
-                                <label for="persistentNotes" style="font-weight: 600; color: var(--text-color-primary); display: block;">Client Details / Notes</label>
-                                <textarea id="persistentNotes" placeholder="Select a client to enter client details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; min-height:220px; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:vertical;"></textarea>
+                                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+                                    <label for="persistentNotes" style="font-weight: 600; color: var(--text-color-primary); display: block;">Client Details / Notes</label>
+                                    <span class="rich-note-shortcuts">Cmd/Ctrl+B bold | Cmd/Ctrl+I italic | Cmd/Ctrl+U underline</span>
+                                </div>
+                                <div id="persistentNotes" class="rich-note-editor" contenteditable="false" role="textbox" aria-label="Client Details / Notes" aria-multiline="true" aria-disabled="true" tabindex="0" data-placeholder="Select a client to enter client details..." spellcheck="true" autocorrect="off" title="Use Cmd/Ctrl+B for bold, Cmd/Ctrl+I for italic, and Cmd/Ctrl+U for underline."></div>
                             </div>
                         </div>
                         <div id="contactContent" class="hidden" style="flex: 1; overflow: auto;">
@@ -2775,7 +2838,8 @@
                             </div>
                         </div>
                         <div id="nextSessionContent" class="hidden" style="flex: 1; overflow: auto;">
-                            <textarea id="nextSessionNotes" placeholder="Select a client to enter next session notes..." disabled autocorrect="off" autocapitalize="off" spellcheck="true" style="width:100%; height:100%; box-sizing:border-box; padding:12px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--input-text); resize:none;"></textarea>
+                            <div class="rich-note-shortcuts" style="padding-bottom: 6px;">Cmd/Ctrl+B bold | Cmd/Ctrl+I italic | Cmd/Ctrl+U underline</div>
+                            <div id="nextSessionNotes" class="rich-note-editor next-session-note-editor" contenteditable="false" role="textbox" aria-label="Next Session Notes" aria-multiline="true" aria-disabled="true" tabindex="0" data-placeholder="Select a client to enter next session notes..." spellcheck="true" autocorrect="off" title="Use Cmd/Ctrl+B for bold, Cmd/Ctrl+I for italic, and Cmd/Ctrl+U for underline."></div>
                         </div>
                     </div>
                  </div>
@@ -4071,6 +4135,82 @@
             const findAppointment = (client, id) => client?.appointments.find(a => a.id === id);
             const findNote = (client, id) => client?.notes?.find(n => n.id === id);
             const findIntakeSession = (client, id) => client?.intakeSessions?.find(i => i.id === id);
+            const RICH_NOTE_ALLOWED_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'DIV', 'P']);
+            const getRichNoteSemanticTags = (node, tagName) => {
+                if (RICH_NOTE_ALLOWED_TAGS.has(tagName)) return [tagName];
+                if (tagName !== 'SPAN') return [];
+
+                const style = String(node.getAttribute('style') || '').toLowerCase();
+                return [
+                    /font-weight\s*:\s*(?:bold|[5-9]00)/.test(style) ? 'STRONG' : null,
+                    /font-style\s*:\s*italic/.test(style) ? 'EM' : null,
+                    /text-decoration(?:-line)?\s*:[^;]*underline/.test(style) ? 'U' : null
+                ].filter(Boolean);
+            };
+            const sanitizeRichNoteHtml = (html) => {
+                const template = document.createElement('template');
+                template.innerHTML = String(html || '');
+                const output = document.createElement('div');
+
+                const appendSanitizedNode = (node, parent) => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        parent.appendChild(document.createTextNode(node.nodeValue || ''));
+                        return;
+                    }
+                    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+                    const tagName = node.tagName.toUpperCase();
+                    if (tagName === 'BR') {
+                        parent.appendChild(document.createElement('br'));
+                        return;
+                    }
+
+                    const semanticTags = getRichNoteSemanticTags(node, tagName);
+                    let target = parent;
+                    semanticTags.forEach(semanticTag => {
+                        const element = document.createElement(semanticTag.toLowerCase());
+                        target.appendChild(element);
+                        target = element;
+                    });
+                    Array.from(node.childNodes).forEach(child => appendSanitizedNode(child, target));
+                };
+
+                Array.from(template.content.childNodes).forEach(child => appendSanitizedNode(child, output));
+                return output.innerHTML;
+            };
+            const plainTextToRichNoteHtml = (value) => {
+                const container = document.createElement('div');
+                container.textContent = String(value ?? '');
+                return container.innerHTML.replace(/\r\n?|\n/g, '<br>');
+            };
+            const setRichNoteEditorValue = (editor, value) => {
+                if (!editor) return;
+                const rawValue = String(value ?? '');
+                if (!rawValue) {
+                    editor.innerHTML = '';
+                    return;
+                }
+
+                const includesRichMarkup = /<\s*\/?\s*(?:strong|b|em|i|u|br|div|p)\b/i.test(rawValue);
+                editor.innerHTML = includesRichMarkup
+                    ? sanitizeRichNoteHtml(rawValue)
+                    : plainTextToRichNoteHtml(rawValue);
+            };
+            const getRichNoteEditorValue = (editor) => {
+                if (!editor) return '';
+                const sanitizedHtml = sanitizeRichNoteHtml(editor.innerHTML);
+                return editor.textContent.trim() || sanitizedHtml.includes('<br') ? sanitizedHtml : '';
+            };
+            const handleRichNoteShortcut = (event) => {
+                if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+                const commands = { b: 'bold', i: 'italic', u: 'underline' };
+                const command = commands[event.key.toLowerCase()];
+                if (!command) return;
+
+                event.preventDefault();
+                document.execCommand(command, false);
+                event.currentTarget.dispatchEvent(new Event('input', { bubbles: true }));
+            };
             const getLocalDateInputValue = (date = new Date()) => {
                 return date.getFullYear() + '-' +
                     String(date.getMonth() + 1).padStart(2, '0') + '-' +
@@ -6348,6 +6488,57 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return joinSoapBulletItems(orderedItems);
             };
 
+            const buildDiagnosticSupportSessionContext = (client, appointment) => {
+                const soap = appointment?.soap || {};
+                const auditProofing = getAuditProofingData(appointment);
+                const resolvedInterventions = getResolvedSoapInterventions(appointment);
+                const interventionText = resolvedInterventions.length > 0
+                    ? resolvedInterventions.join('\n')
+                    : (soap.interventions || '');
+                const sections = [
+                    ['Presenting Problem', client?.presentingProblem],
+                    ['Session Information', appointment?.sessionInfo],
+                    ['Subjective', soap.s],
+                    ['Objective', soap.o],
+                    ['Interventions', interventionText],
+                    ['Assessment', soap.a],
+                    ['Plan', soap.p],
+                    ['Symptom Pattern / Severity Context', auditProofing.symptoms],
+                    ['Functional Impact', auditProofing.functionalImpact],
+                    ['Progress / Response to Treatment', auditProofing.progressResponse],
+                    ['Medical Necessity Rationale', auditProofing.medicalNecessity]
+                ];
+
+                return sections
+                    .map(([label, value]) => `${label}:\n${String(value || '').trim() || '- Not documented'}`)
+                    .join('\n\n');
+            };
+
+            const normalizeDiagnosticSupportFromAi = (aiPayload) => {
+                const value = aiPayload?.diagnostic_support
+                    ?? aiPayload?.diagnosticSupport
+                    ?? aiPayload?.statement
+                    ?? aiPayload?.support
+                    ?? '';
+                return (Array.isArray(value) ? value.join(' ') : String(value)).replace(/\s*\n+\s*/g, ' ').trim();
+            };
+
+            const fetchDiagnosticSupportFromAI = async (client, appointment) => {
+                const diagnosis = String(client?.diagnosis || '').trim();
+                if (!diagnosis) {
+                    throw new Error('Enter the client diagnosis before generating Diagnostic Support.');
+                }
+
+                const systemPrompt = 'You are a behavioral-health documentation assistant. Write a concise, chart-ready Diagnostic Support statement from the documented diagnosis and session record. Use only facts explicitly documented in the supplied record. Explain how documented symptoms, observations, functional impact, and response to treatment are consistent with the diagnosis and support continued clinically necessary treatment when the record supports that conclusion. Do not invent symptoms, duration, severity, impairment, risk, criteria, or treatment response. If the record is insufficient, say so plainly and identify the missing documentation instead of overstating support. Do not include a heading, diagnosis code, bullet list, or disclaimer. Return only JSON in the exact form {"diagnostic_support":"..."}.';
+                const userPrompt = `Diagnosis to support:\n${diagnosis}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nWrite one concise Diagnostic Support statement in 2-4 sentences. Return only JSON in the exact form {"diagnostic_support":"..."}.`;
+                const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
+                const diagnosticSupport = normalizeDiagnosticSupportFromAi(aiPayload);
+                if (!diagnosticSupport) {
+                    throw new Error('AI returned an empty Diagnostic Support statement.');
+                }
+                return diagnosticSupport;
+            };
+
             const fetchObjectiveInterventionsFromAI = async (objectiveText, bank) => {
                 if (!selectedModel) {
                     throw new Error('Please connect to a provider and select a model in Settings.');
@@ -6842,12 +7033,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const note = client ? findNote(client, selectedNoteId) : null;
                 const intakeSession = client ? findIntakeSession(client, selectedIntakeId) : null;
                 
-                persistentNotesEl.disabled = !client;
-                persistentNotesEl.value = client ? client.persistentNotes || '' : '';
-                persistentNotesEl.placeholder = client ? "Enter persistent notes for this client..." : "Select a client to enter persistent notes...";
-                nextSessionNotesEl.disabled = !client;
-                nextSessionNotesEl.value = client ? client.nextSessionNotes || '' : '';
-                nextSessionNotesEl.placeholder = client ? "Enter next session notes for this client..." : "Select a client to enter next session notes...";
+                persistentNotesEl.contentEditable = client ? 'true' : 'false';
+                persistentNotesEl.setAttribute('aria-disabled', String(!client));
+                persistentNotesEl.dataset.placeholder = client ? "Enter persistent notes for this client..." : "Select a client to enter persistent notes...";
+                setRichNoteEditorValue(persistentNotesEl, client ? client.persistentNotes || '' : '');
+                nextSessionNotesEl.contentEditable = client ? 'true' : 'false';
+                nextSessionNotesEl.setAttribute('aria-disabled', String(!client));
+                nextSessionNotesEl.dataset.placeholder = client ? "Enter next session notes for this client..." : "Select a client to enter next session notes...";
+                setRichNoteEditorValue(nextSessionNotesEl, client ? client.nextSessionNotes || '' : '');
                 updateNotesTabUI();
                 updateClientDetailsTabLabels();
                 renderClientContactFields(client);
@@ -7035,6 +7228,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-header"><span>Assessment</span><button class="copy-btn" data-target="soapA">Copy</button></div>
                         <textarea id="soapA" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.a || ''}</textarea>
                         ${(soapData.a_suggestion || []).map((s, i) => renderSuggestionBox('a', s, i)).join('')}
+                        <div class="diagnostic-support-block">
+                            <div class="diagnostic-support-header"><span>Diagnostic Support</span><button class="copy-btn" data-target="diagnosticSupport">Copy</button></div>
+                            <textarea id="diagnosticSupport" class="soap-textarea diagnostic-support-textarea" placeholder="Press Organize in Objective to generate a diagnostic support statement." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.diagnosticSupport || '')}</textarea>
+                        </div>
                     </div>
                     <div class="soap-section">
                         <div class="soap-header"><span>Plan</span><button class="copy-btn" data-target="soapP">Copy</button></div>
@@ -8007,10 +8204,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             persistentNotesEl.addEventListener('input', () => {
                  const client = findClient(selectedClientId);
                  if (client) {
-                     client.persistentNotes = persistentNotesEl.value;
+                     client.persistentNotes = getRichNoteEditorValue(persistentNotesEl);
                      markDirty();
                  }
             });
+            persistentNotesEl.addEventListener('keydown', handleRichNoteShortcut);
             addPhoneNumberBtn?.addEventListener('click', () => {
                 addClientContactEntry('phones');
             });
@@ -8035,10 +8233,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             nextSessionNotesEl.addEventListener('input', () => {
                  const client = findClient(selectedClientId);
                  if (client) {
-                     client.nextSessionNotes = nextSessionNotesEl.value;
+                     client.nextSessionNotes = getRichNoteEditorValue(nextSessionNotesEl);
                      markDirty();
                  }
             });
+            nextSessionNotesEl.addEventListener('keydown', handleRichNoteShortcut);
             clientDetailsTabBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 activeNotesTab = 'clientDetails';
@@ -8219,6 +8418,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 generateNoteBtn.disabled = !appointment || !hasAppointmentGenerationInput(appointment);
             };
 
+            const saveDiagnosticSupport = (textarea) => {
+                const client = findClient(selectedClientId);
+                const appointment = findAppointment(client, selectedAppointmentId);
+                if (!appointment) return;
+                if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
+                appointment.soap.diagnosticSupport = textarea.value;
+                delete appointment.auditCheck;
+                markDirty();
+            };
+
             const saveSoapNote = (textarea, isManualEdit = true) => {
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
@@ -8343,6 +8552,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             soapContentEl.addEventListener('input', (e) => {
                 if (e.target.matches('.soap-textarea')) {
+                    if (e.target.id === 'diagnosticSupport') {
+                        saveDiagnosticSupport(e.target);
+                        return;
+                    }
                     handleBulletedInput(e, saveSoapNote);
                     if (e.target.id === 'soapO') {
                         const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
@@ -8359,11 +8572,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             });
             soapContentEl.addEventListener('keydown', (e) => {
                 if (e.target.matches('.soap-textarea')) {
-                    handleBulletedKeyDown(e);
+                    if (e.target.id !== 'diagnosticSupport') {
+                        handleBulletedKeyDown(e);
+                    }
                 }
             });
             soapContentEl.addEventListener('focus', (e) => {
                 if (e.target.matches('.soap-textarea')) {
+                    if (e.target.id === 'diagnosticSupport') return;
                     const textarea = e.target;
                     if (textarea.value.length === 0) {
                         textarea.value = '• ';
@@ -8847,6 +9063,7 @@ Requirements:
                 const appointmentContext = getSelectedAppointmentContext();
                 const appointment = getAppointmentFromContext(appointmentContext);
                 if (!appointment) return;
+                const client = findClient(appointmentContext.clientId);
 
                 const objectiveText = (appointment.soap?.o || '').trim();
                 const objectiveItems = splitSoapBulletItems(objectiveText);
@@ -8861,6 +9078,7 @@ Requirements:
                     organizeObjectiveBtn.textContent = 'Organizing...';
                 }
 
+                let diagnosticSupportError = null;
                 try {
                     let organizedObjective;
                     try {
@@ -8881,6 +9099,24 @@ Requirements:
                         renderAfter: false,
                         suppressEmptyAlert: true
                     });
+
+                    if (client?.diagnosis?.trim()) {
+                        try {
+                            const diagnosticSupport = await fetchDiagnosticSupportFromAI(client, appointment);
+                            appointment.soap.diagnosticSupport = diagnosticSupport;
+                            delete appointment.auditCheck;
+                            markDirty();
+                        } catch (error) {
+                            diagnosticSupportError = error;
+                            console.warn('Diagnostic Support AI generation failed.', error);
+                        }
+                    } else {
+                        diagnosticSupportError = new Error('No client diagnosis is recorded.');
+                    }
+
+                    if (diagnosticSupportError) {
+                        alert(`Objective organized, but Diagnostic Support could not be generated. ${diagnosticSupportError.message}`);
+                    }
                 } catch (error) {
                     console.error('Objective organization error:', error);
                     alert(`Failed to organize Objective content. ${error.message}`);

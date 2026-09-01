@@ -19,4 +19,14 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.doesNotMatch(html, /id="generateInterventionsBtn"[^>]*>Read<\/button>/);
         assert.doesNotMatch(html, /data-target="soapS"[^>]*>Copy<\/button>/);
     });
+
+    test(`${path} explains the SOAP golden thread and evidence boundaries`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+
+        assert.match(html, /Follow the golden thread from diagnosis and presenting problem to the active goal\/objective/);
+        assert.match(html, /Never fill documentation gaps with assumptions/);
+        assert.match(html, /Suggestions Tone[\s\S]*?evidence-preserving/);
+        assert.match(html, /Legacy Instructions \(Review\)/);
+        assert.match(html, /Audit-support field mapping/);
+    });
 }

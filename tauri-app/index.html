@@ -3073,16 +3073,16 @@
                 <h2 style="font-size: 1.5rem; font-weight: bold;">SOAP Instructions</h2>
                 <button id="closeSoapInstructionsBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
             </div>
-            <div class="instructions-modal-scroll">
+                <div class="instructions-modal-scroll">
                 <div class="instructions-modal-intro">
-                    Adjust how SOAP generation behaves clinically and stylistically. The app keeps the response keys, suggestion arrays, field mapping, and other output-contract rules locked.
+                    Shape the SOAP note's clinical emphasis and writing style. A strong note follows the golden thread from diagnosis and presenting problem to the active goal/objective, session evidence, intervention, client response, progress or barriers, medical necessity, and next steps. Evidence, privacy, safety, field-mapping, and output-contract rules remain locked.
                 </div>
                 <div class="instructions-lock-card">
                     <strong>Locked Format Rules</strong>
                     <ul>
                         <li>The app still requires the fixed SOAP response keys: <code>s</code>, <code>o</code>, <code>a</code>, <code>p</code>, <code>i</code>, plus the suggestion arrays.</li>
-                        <li>Audit-proofing field mapping, intervention-bank restrictions, and the app’s response shape remain enforced.</li>
-                        <li>Your edits below shape the AI’s clinical priorities, section emphasis, and writing behavior.</li>
+                        <li>Audit-support field mapping, intervention-bank restrictions, and the app's response shape remain enforced.</li>
+                        <li>Your edits below shape clinical priorities, section separation, treatment-plan linkage, and writing behavior.</li>
                     </ul>
                 </div>
                 <div id="soapInstructionsSections" class="instructions-editor"></div>
@@ -9109,37 +9109,37 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 {
                     key: 'clinicalFocus',
                     label: 'Clinical Focus',
-                    description: 'What the SOAP note should prioritize clinically.',
-                    defaultValue: 'Keep the note audit-ready, clinically grounded, and tied closely to the session information provided.'
+                    description: 'Define what the note should make clinically clear: diagnosis, symptoms, functional impact, treatment targets, skilled care, response, and next steps.',
+                    defaultValue: 'Keep the note audit-supportive, individualized, and grounded in documented facts. Follow the golden thread from diagnosis and presenting problem to the active goal/objective, session evidence, intervention, client response, progress or barriers, medical necessity, and the next treatment step. Never fill documentation gaps with assumptions.'
                 },
                 {
                     key: 'sectionPriorities',
                     label: 'Section Priorities',
-                    description: 'How the AI should balance Subjective, Objective, Assessment, and Plan content.',
-                    defaultValue: "Keep Subjective in the client's reported experience, make Objective action-based, keep Assessment interpretive and progress-aware, and make Plan concrete for next steps."
+                    description: 'Define how the AI should separate client report, observed status and Writer actions, clinical interpretation, and the next-session plan.',
+                    defaultValue: "Keep Subjective limited to Ct's documented experience; make Objective reflect documented observations and actual Writer actions; make Assessment interpretive, diagnosis- and goal-linked, and explicit about functional impact, response, progress, barriers, and medical necessity only when supported; make Plan concrete and tied to the next treatment step."
                 },
                 {
                     key: 'objectiveAndInterventions',
                     label: 'Objective / Interventions',
-                    description: 'How intervention language, Writer/Ct phrasing, and treatment-goal linkage should read.',
-                    defaultValue: 'Use explicit Writer/Ct phrasing in Objective bullets and connect interventions to active treatment goals or objectives when the session material clearly supports it.'
+                    description: 'Define how documented observations, Writer actions, Ct participation or response, modalities, interventions, and goal/objective links should be recorded.',
+                    defaultValue: 'Use Writer/Ct phrasing only when supported by the session record. Include documented observations, actual interventions, modality, client response, and active goal/objective linkage when clear. Use exact Intervention Bank names only; never force participation, response, modality, or goal linkage that was not documented.'
                 },
                 {
                     key: 'suggestionsTone',
                     label: 'Suggestions Tone',
-                    description: 'How the clinical language suggestions should sound.',
-                    defaultValue: 'Make suggestions clinically precise, concise, and useful for strengthening chart language without adding new facts.'
+                    description: 'Control how suggestions improve clarity and clinical precision while preserving the evidence in the record.',
+                    defaultValue: 'Make suggestions concise, chart-ready, and evidence-preserving. Improve wording or identify missing documentation, but do not add facts, assume interventions, or imply progress that is not documented.'
                 },
                 {
                     key: 'additionalPreferences',
                     label: 'Additional Preferences',
-                    description: 'Optional extra SOAP-specific behavior you want the AI to follow.',
+                    description: 'Add clinician-specific formatting or workflow preferences that do not conflict with evidence, privacy, safety, or output rules.',
                     defaultValue: ''
                 },
                 {
                     key: 'legacyImportedPrompt',
-                    label: 'Imported Legacy Instructions',
-                    description: 'Older full-prompt text from previous versions appears here so nothing is lost. Locked app rules still override if there is a conflict.',
+                    label: 'Legacy Instructions (Review)',
+                    description: 'Older full-prompt text carried forward from a previous version. Review or rewrite it; it remains guidance and cannot override locked evidence, privacy, safety, or output rules.',
                     defaultValue: '',
                     hideWhenEmpty: true,
                     isLegacy: true,

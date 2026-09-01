@@ -988,6 +988,90 @@
             color: var(--text-color-secondary);
             font-size: 0.75rem;
         }
+        .rich-note-toolbar {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .rich-note-format-btn,
+        .rich-note-color-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 26px;
+            padding: 2px;
+            border: 1px solid var(--input-border);
+            border-radius: 5px;
+            background: var(--input-bg);
+            color: var(--text-color-primary);
+            cursor: pointer;
+            line-height: 1;
+            transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+        }
+        .rich-note-format-btn:hover:not(:disabled),
+        .rich-note-color-btn:hover:not(.is-disabled) {
+            background: var(--item-active-bg);
+            border-color: var(--textarea-focus-border);
+        }
+        .rich-note-format-btn[aria-pressed="true"] {
+            background: var(--item-active-bg);
+            border-color: var(--textarea-focus-border);
+            box-shadow: inset 0 0 0 1px var(--textarea-focus-border);
+        }
+        .rich-note-format-btn:disabled,
+        .rich-note-color-btn.is-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .rich-note-format-btn:focus-visible,
+        .rich-note-color-btn:focus-within {
+            outline: none;
+            border-color: var(--textarea-focus-border);
+            box-shadow: 0 0 0 2px var(--textarea-focus-shadow);
+        }
+        .rich-note-format-glyph {
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+        .rich-note-format-glyph.italic {
+            font-style: italic;
+        }
+        .rich-note-format-glyph.underline {
+            text-decoration: underline;
+        }
+        .rich-note-color-icon {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            line-height: 0.8;
+        }
+        .rich-note-color-glyph {
+            font-size: 0.85rem;
+            font-weight: 800;
+        }
+        .rich-note-color-swatch {
+            display: block;
+            width: 16px;
+            height: 3px;
+            border-radius: 999px;
+            background: var(--rich-note-color, #e74c3c);
+        }
+        .rich-note-color-input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .rich-note-color-btn.is-disabled .rich-note-color-input {
+            cursor: not-allowed;
+        }
         
         .session-section {
             display: flex; flex-direction: column;
@@ -1412,6 +1496,40 @@
             font-size: 12px; transition: all 0.2s;
         }
         .copy-btn:hover { background: rgba(255, 255, 255, 0.3); }
+        .soap-icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 26px;
+            padding: 4px;
+            line-height: 1;
+        }
+        .soap-icon-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .soap-action-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .soap-icon-btn.is-loading svg {
+            animation: soap-icon-spin 0.8s linear infinite;
+        }
+        @keyframes soap-icon-spin {
+            to { transform: rotate(360deg); }
+        }
+        .soap-action-complete {
+            margin-left: 2px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
         .soap-textarea {
             border-radius: 0 0 6px 6px; border-top: none;
             flex-grow: 1;
@@ -2547,7 +2665,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.11" aria-label="SmartEMR version 3.0.11">v3.0.11</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.12" aria-label="SmartEMR version 3.0.12">v3.0.12</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -2806,9 +2924,17 @@
                             <div style="display: flex; flex-direction: column; gap: 6px; min-height: 0;">
                                 <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap;">
                                     <label for="persistentNotes" style="font-weight: 600; color: var(--text-color-primary); display: block;">Client Details / Notes</label>
-                                    <span class="rich-note-shortcuts">Cmd/Ctrl+B bold | Cmd/Ctrl+I italic | Cmd/Ctrl+U underline</span>
+                                    <div class="rich-note-toolbar" data-rich-note-toolbar data-editor-id="persistentNotes" role="toolbar" aria-label="Client Details text formatting">
+                                        <button type="button" class="rich-note-format-btn" data-rich-note-command="bold" title="Bold" aria-label="Bold" aria-pressed="false"><span class="rich-note-format-glyph" aria-hidden="true">B</span></button>
+                                        <button type="button" class="rich-note-format-btn" data-rich-note-command="italic" title="Italic" aria-label="Italic" aria-pressed="false"><span class="rich-note-format-glyph italic" aria-hidden="true">I</span></button>
+                                        <button type="button" class="rich-note-format-btn" data-rich-note-command="underline" title="Underline" aria-label="Underline" aria-pressed="false"><span class="rich-note-format-glyph underline" aria-hidden="true">U</span></button>
+                                        <label class="rich-note-color-btn" data-rich-note-color-control title="Text color" aria-label="Text color">
+                                            <span class="rich-note-color-icon" aria-hidden="true"><span class="rich-note-color-glyph">A</span><span class="rich-note-color-swatch" data-rich-note-color-swatch></span></span>
+                                            <input type="color" class="rich-note-color-input" data-rich-note-color data-rich-note-editor="persistentNotes" value="#e74c3c" aria-label="Text color">
+                                        </label>
+                                    </div>
                                 </div>
-                                <div id="persistentNotes" class="rich-note-editor" contenteditable="false" role="textbox" aria-label="Client Details / Notes" aria-multiline="true" aria-disabled="true" tabindex="0" data-placeholder="Select a client to enter client details..." spellcheck="true" autocorrect="off" title="Use Cmd/Ctrl+B for bold, Cmd/Ctrl+I for italic, and Cmd/Ctrl+U for underline."></div>
+                                <div id="persistentNotes" class="rich-note-editor" contenteditable="false" role="textbox" aria-label="Client Details / Notes" aria-multiline="true" aria-disabled="true" tabindex="0" data-placeholder="Select a client to enter client details..." spellcheck="true" autocorrect="off" title="Rich text editor"></div>
                             </div>
                         </div>
                         <div id="contactContent" class="hidden" style="flex: 1; overflow: auto;">
@@ -2838,8 +2964,16 @@
                             </div>
                         </div>
                         <div id="nextSessionContent" class="hidden" style="flex: 1; overflow: auto;">
-                            <div class="rich-note-shortcuts" style="padding-bottom: 6px;">Cmd/Ctrl+B bold | Cmd/Ctrl+I italic | Cmd/Ctrl+U underline</div>
-                            <div id="nextSessionNotes" class="rich-note-editor next-session-note-editor" contenteditable="false" role="textbox" aria-label="Next Session Notes" aria-multiline="true" aria-disabled="true" tabindex="0" data-placeholder="Select a client to enter next session notes..." spellcheck="true" autocorrect="off" title="Use Cmd/Ctrl+B for bold, Cmd/Ctrl+I for italic, and Cmd/Ctrl+U for underline."></div>
+                            <div class="rich-note-toolbar" data-rich-note-toolbar data-editor-id="nextSessionNotes" role="toolbar" aria-label="Next Session Notes text formatting" style="padding-bottom: 6px;">
+                                <button type="button" class="rich-note-format-btn" data-rich-note-command="bold" title="Bold" aria-label="Bold" aria-pressed="false"><span class="rich-note-format-glyph" aria-hidden="true">B</span></button>
+                                <button type="button" class="rich-note-format-btn" data-rich-note-command="italic" title="Italic" aria-label="Italic" aria-pressed="false"><span class="rich-note-format-glyph italic" aria-hidden="true">I</span></button>
+                                <button type="button" class="rich-note-format-btn" data-rich-note-command="underline" title="Underline" aria-label="Underline" aria-pressed="false"><span class="rich-note-format-glyph underline" aria-hidden="true">U</span></button>
+                                <label class="rich-note-color-btn" data-rich-note-color-control title="Text color" aria-label="Text color">
+                                    <span class="rich-note-color-icon" aria-hidden="true"><span class="rich-note-color-glyph">A</span><span class="rich-note-color-swatch" data-rich-note-color-swatch></span></span>
+                                    <input type="color" class="rich-note-color-input" data-rich-note-color data-rich-note-editor="nextSessionNotes" value="#e74c3c" aria-label="Text color">
+                                </label>
+                            </div>
+                            <div id="nextSessionNotes" class="rich-note-editor next-session-note-editor" contenteditable="false" role="textbox" aria-label="Next Session Notes" aria-multiline="true" aria-disabled="true" tabindex="0" data-placeholder="Select a client to enter next session notes..." spellcheck="true" autocorrect="off" title="Rich text editor"></div>
                         </div>
                     </div>
                  </div>
@@ -4136,6 +4270,7 @@
             const findNote = (client, id) => client?.notes?.find(n => n.id === id);
             const findIntakeSession = (client, id) => client?.intakeSessions?.find(i => i.id === id);
             const RICH_NOTE_ALLOWED_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'DIV', 'P']);
+            const richNoteSelections = new WeakMap();
             const getRichNoteSemanticTags = (node, tagName) => {
                 if (RICH_NOTE_ALLOWED_TAGS.has(tagName)) return [tagName];
                 if (tagName !== 'SPAN') return [];
@@ -4146,6 +4281,19 @@
                     /font-style\s*:\s*italic/.test(style) ? 'EM' : null,
                     /text-decoration(?:-line)?\s*:[^;]*underline/.test(style) ? 'U' : null
                 ].filter(Boolean);
+            };
+            const getRichNoteTextColor = (node) => {
+                if (!node || node.nodeType !== Node.ELEMENT_NODE) return '';
+                const tagName = node.tagName.toUpperCase();
+                const rawColor = tagName === 'FONT'
+                    ? node.getAttribute('color')
+                    : node.style?.color;
+                if (!rawColor) return '';
+
+                const probe = document.createElement('span');
+                probe.style.color = String(rawColor).trim();
+                const safeColor = probe.style.color;
+                return safeColor && !/[<>;]/.test(safeColor) ? safeColor : '';
             };
             const sanitizeRichNoteHtml = (html) => {
                 const template = document.createElement('template');
@@ -4172,6 +4320,13 @@
                         target.appendChild(element);
                         target = element;
                     });
+                    const textColor = getRichNoteTextColor(node);
+                    if (textColor) {
+                        const colorElement = document.createElement('span');
+                        colorElement.style.color = textColor;
+                        target.appendChild(colorElement);
+                        target = colorElement;
+                    }
                     Array.from(node.childNodes).forEach(child => appendSanitizedNode(child, target));
                 };
 
@@ -4191,7 +4346,7 @@
                     return;
                 }
 
-                const includesRichMarkup = /<\s*\/?\s*(?:strong|b|em|i|u|br|div|p)\b/i.test(rawValue);
+                const includesRichMarkup = /<\s*\/?\s*(?:strong|b|em|i|u|br|div|p|span|font)\b/i.test(rawValue);
                 editor.innerHTML = includesRichMarkup
                     ? sanitizeRichNoteHtml(rawValue)
                     : plainTextToRichNoteHtml(rawValue);
@@ -4201,6 +4356,87 @@
                 const sanitizedHtml = sanitizeRichNoteHtml(editor.innerHTML);
                 return editor.textContent.trim() || sanitizedHtml.includes('<br') ? sanitizedHtml : '';
             };
+            const isRichNoteEditorNode = (editor, node) => {
+                return !!editor && !!node && (node === editor || editor.contains(node));
+            };
+            const saveRichNoteSelection = (editor) => {
+                const selection = window.getSelection();
+                if (!editor || !selection?.rangeCount) return;
+                const range = selection.getRangeAt(0);
+                if (isRichNoteEditorNode(editor, range.startContainer) && isRichNoteEditorNode(editor, range.endContainer)) {
+                    richNoteSelections.set(editor, range.cloneRange());
+                }
+            };
+            const restoreRichNoteSelection = (editor) => {
+                const range = richNoteSelections.get(editor);
+                if (!range) return;
+                const selection = window.getSelection();
+                if (!selection) return;
+                try {
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } catch (error) {
+                    richNoteSelections.delete(editor);
+                }
+            };
+            const getRichNoteToolbar = (editor) => {
+                if (!editor) return null;
+                return [...document.querySelectorAll('[data-rich-note-toolbar]')]
+                    .find(toolbar => toolbar.dataset.editorId === editor.id) || null;
+            };
+            const updateRichNoteColorSwatch = (colorInput) => {
+                const swatch = colorInput?.closest('[data-rich-note-color-control]')?.querySelector('[data-rich-note-color-swatch]');
+                if (swatch && colorInput.value) {
+                    swatch.style.setProperty('--rich-note-color', colorInput.value);
+                }
+            };
+            const updateRichNoteToolbarState = (editor) => {
+                const toolbar = getRichNoteToolbar(editor);
+                if (!toolbar) return;
+                const disabled = editor.contentEditable !== 'true';
+                const editorHasFocus = document.activeElement === editor;
+                toolbar.querySelectorAll('[data-rich-note-command]').forEach(button => {
+                    button.disabled = disabled;
+                    let isPressed = false;
+                    if (!disabled && editorHasFocus) {
+                        try {
+                            isPressed = document.queryCommandState(button.dataset.richNoteCommand);
+                        } catch (error) {
+                            isPressed = false;
+                        }
+                    }
+                    button.setAttribute('aria-pressed', String(isPressed));
+                });
+                const colorInput = toolbar.querySelector('[data-rich-note-color]');
+                const colorControl = toolbar.querySelector('[data-rich-note-color-control]');
+                if (colorInput) colorInput.disabled = disabled;
+                colorControl?.classList.toggle('is-disabled', disabled);
+                colorControl?.setAttribute('aria-disabled', String(disabled));
+                updateRichNoteColorSwatch(colorInput);
+            };
+            const updateRichNoteToolbarStates = () => {
+                [persistentNotesEl, nextSessionNotesEl].forEach(updateRichNoteToolbarState);
+            };
+            const executeRichNoteCommand = (editor, command, value = '') => {
+                if (!editor || editor.contentEditable !== 'true') return;
+                editor.focus();
+                restoreRichNoteSelection(editor);
+                try {
+                    if (command === 'foreColor') {
+                        try {
+                            document.execCommand('styleWithCSS', false, true);
+                        } catch (error) {
+                            // Older WebKit builds may not expose styleWithCSS.
+                        }
+                    }
+                    document.execCommand(command, false, value);
+                } catch (error) {
+                    console.warn(`Rich note command failed: ${command}`, error);
+                }
+                saveRichNoteSelection(editor);
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+                updateRichNoteToolbarState(editor);
+            };
             const handleRichNoteShortcut = (event) => {
                 if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
                 const commands = { b: 'bold', i: 'italic', u: 'underline' };
@@ -4208,8 +4444,7 @@
                 if (!command) return;
 
                 event.preventDefault();
-                document.execCommand(command, false);
-                event.currentTarget.dispatchEvent(new Event('input', { bubbles: true }));
+                executeRichNoteCommand(event.currentTarget, command);
             };
             const getLocalDateInputValue = (date = new Date()) => {
                 return date.getFullYear() + '-' +
@@ -5586,9 +5821,28 @@
                     && actionState.readInterventionsRevision === actionState.interventionsRevision;
             };
 
-            const setSoapActionButtonContent = (button, label, isComplete) => {
+            const SOAP_ICON_SVGS = {
+                copy: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
+                bank: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h2M10 6h10M4 12h2M10 12h10M4 18h2M10 18h10"></path></svg>',
+                refresh: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 11a8.1 8.1 0 0 0-14.7-4.8L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8.1 8.1 0 0 0 14.7 4.8L21 15"></path><path d="M21 20v-5h-5"></path></svg>',
+                check: '<span class="soap-action-complete" aria-hidden="true">✓</span>'
+            };
+            const renderSoapCopyButton = (targetId, label) => {
+                return `<button type="button" class="copy-btn soap-icon-btn" data-target="${targetId}" title="Copy ${label}" aria-label="Copy ${label}">${SOAP_ICON_SVGS.copy}</button>`;
+            };
+
+            const setSoapActionButtonContent = (button, label, isComplete, isLoading = false) => {
                 if (!button) return;
-                button.innerHTML = `${label}${isComplete ? '<span class="soap-action-complete" aria-hidden="true">✓</span>' : ''}`;
+                const isRefreshButton = label === 'Refresh';
+                button.innerHTML = isRefreshButton
+                    ? `${SOAP_ICON_SVGS.refresh}${isComplete ? SOAP_ICON_SVGS.check : ''}`
+                    : `${label}${isComplete ? SOAP_ICON_SVGS.check : ''}`;
+                button.classList.toggle('is-loading', isLoading);
+                button.title = isRefreshButton
+                    ? (isLoading ? 'Refreshing interventions...' : 'Refresh interventions')
+                    : label;
+                button.setAttribute('aria-label', button.title);
+                button.setAttribute('aria-busy', String(isLoading));
             };
 
             const refreshObjectiveActionButtons = (appointment) => {
@@ -5606,7 +5860,7 @@
                     : null;
                 if (generateInterventionsBtn) {
                     generateInterventionsBtn.disabled = !objectiveText;
-                    setSoapActionButtonContent(generateInterventionsBtn, 'Read', isObjectiveReadCompleted(appointment));
+                    setSoapActionButtonContent(generateInterventionsBtn, 'Refresh', isObjectiveReadCompleted(appointment));
                 }
             };
 
@@ -6538,6 +6792,45 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
                 return diagnosticSupport;
             };
+            const refreshDiagnosticSupport = async () => {
+                const appointmentContext = getSelectedAppointmentContext();
+                const appointment = getAppointmentFromContext(appointmentContext);
+                const client = appointmentContext ? findClient(appointmentContext.clientId) : null;
+                if (!client || !appointment) return;
+
+                const refreshButton = document.getElementById('refreshDiagnosticSupportBtn');
+                if (refreshButton) {
+                    refreshButton.disabled = true;
+                    refreshButton.classList.add('is-loading');
+                    refreshButton.title = 'Refreshing Diagnostic Support...';
+                    refreshButton.setAttribute('aria-label', refreshButton.title);
+                    refreshButton.setAttribute('aria-busy', 'true');
+                }
+
+                try {
+                    const diagnosticSupport = await fetchDiagnosticSupportFromAI(client, appointment);
+                    if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
+                    appointment.soap.diagnosticSupport = diagnosticSupport;
+                    delete appointment.auditCheck;
+                    markDirty();
+                    if (isCurrentAppointmentContext(appointmentContext)) {
+                        renderSoap();
+                    }
+                } catch (error) {
+                    console.error('Diagnostic Support refresh error:', error);
+                    if (isCurrentAppointmentContext(appointmentContext)) {
+                        alert(`Failed to refresh Diagnostic Support. ${error.message}`);
+                    }
+                } finally {
+                    if (refreshButton?.isConnected) {
+                        refreshButton.disabled = false;
+                        refreshButton.classList.remove('is-loading');
+                        refreshButton.title = 'Refresh Diagnostic Support';
+                        refreshButton.setAttribute('aria-label', refreshButton.title);
+                        refreshButton.removeAttribute('aria-busy');
+                    }
+                }
+            };
 
             const fetchObjectiveInterventionsFromAI = async (objectiveText, bank) => {
                 if (!selectedModel) {
@@ -7041,6 +7334,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 nextSessionNotesEl.setAttribute('aria-disabled', String(!client));
                 nextSessionNotesEl.dataset.placeholder = client ? "Enter next session notes for this client..." : "Select a client to enter next session notes...";
                 setRichNoteEditorValue(nextSessionNotesEl, client ? client.nextSessionNotes || '' : '');
+                updateRichNoteToolbarStates();
                 updateNotesTabUI();
                 updateClientDetailsTabLabels();
                 renderClientContactFields(client);
@@ -7199,7 +7493,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const auditResult = appointment.auditCheck || null;
                 soapContentEl.innerHTML = `
                     <div class="soap-section">
-                        <div class="soap-header"><span>Subjective</span><button class="copy-btn" data-target="soapS">Copy</button></div>
+                        <div class="soap-header"><span>Subjective</span>${renderSoapCopyButton('soapS', 'Subjective')}</div>
                         <textarea id="soapS" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.s || ''}</textarea>
                         ${(soapData.s_suggestion || []).map((s, i) => renderSuggestionBox('s', s, i)).join('')}
                     </div>
@@ -7209,7 +7503,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 <span>Objective</span>
                                 <button id="organizeObjectiveBtn" class="copy-btn" style="padding: 4px 10px;">Organize</button>
                             </div>
-                            <button class="copy-btn" data-target="soapO">Copy</button>
+                            ${renderSoapCopyButton('soapO', 'Objective')}
                         </div>
                         <textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.o || ''}</textarea>
                         ${(soapData.o_suggestion || []).map((s, i) => renderSuggestionBox('o', s, i)).join('')}
@@ -7218,23 +7512,32 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-header">
                             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <span>Interventions</span>
-                                <button id="generateInterventionsBtn" class="copy-btn" style="padding: 4px 10px;">Read</button>
+                                <button id="generateInterventionsBtn" type="button" class="copy-btn soap-icon-btn" title="Refresh interventions" aria-label="Refresh interventions">${SOAP_ICON_SVGS.refresh}</button>
                             </div>
-                            <div><button id="selectInterventionsBtn" class="copy-btn" style="margin-right:6px;">Bank</button><button class="copy-btn" data-target="interventions">Copy</button></div>
+                            <div class="soap-action-group">
+                                <button id="selectInterventionsBtn" type="button" class="copy-btn soap-icon-btn" title="Open Intervention Bank" aria-label="Open Intervention Bank">${SOAP_ICON_SVGS.bank}</button>
+                                ${renderSoapCopyButton('interventions', 'Interventions')}
+                            </div>
                         </div>
-                        <textarea id="interventions" class="soap-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${interventions}</textarea>
+                    <textarea id="interventions" class="soap-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${interventions}</textarea>
                     </div>
                     <div class="soap-section">
-                        <div class="soap-header"><span>Assessment</span><button class="copy-btn" data-target="soapA">Copy</button></div>
+                        <div class="soap-header"><span>Assessment</span>${renderSoapCopyButton('soapA', 'Assessment')}</div>
                         <textarea id="soapA" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.a || ''}</textarea>
                         ${(soapData.a_suggestion || []).map((s, i) => renderSuggestionBox('a', s, i)).join('')}
                         <div class="diagnostic-support-block">
-                            <div class="diagnostic-support-header"><span>Diagnostic Support</span><button class="copy-btn" data-target="diagnosticSupport">Copy</button></div>
+                            <div class="diagnostic-support-header">
+                                <span>Diagnostic Support</span>
+                                <div class="soap-action-group">
+                                    <button id="refreshDiagnosticSupportBtn" type="button" class="copy-btn soap-icon-btn" title="Refresh Diagnostic Support" aria-label="Refresh Diagnostic Support">${SOAP_ICON_SVGS.refresh}</button>
+                                    ${renderSoapCopyButton('diagnosticSupport', 'Diagnostic Support')}
+                                </div>
+                            </div>
                             <textarea id="diagnosticSupport" class="soap-textarea diagnostic-support-textarea" placeholder="Press Organize in Objective to generate a diagnostic support statement." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.diagnosticSupport || '')}</textarea>
                         </div>
                     </div>
                     <div class="soap-section">
-                        <div class="soap-header"><span>Plan</span><button class="copy-btn" data-target="soapP">Copy</button></div>
+                        <div class="soap-header"><span>Plan</span>${renderSoapCopyButton('soapP', 'Plan')}</div>
                         <textarea id="soapP" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.p || ''}</textarea>
                         ${(soapData.p_suggestion || []).map((s, i) => renderSuggestionBox('p', s, i)).join('')}
                     </div>
@@ -8209,6 +8512,55 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                  }
             });
             persistentNotesEl.addEventListener('keydown', handleRichNoteShortcut);
+            nextSessionNotesEl.addEventListener('focus', () => {
+                saveRichNoteSelection(nextSessionNotesEl);
+                updateRichNoteToolbarState(nextSessionNotesEl);
+            });
+            persistentNotesEl.addEventListener('focus', () => {
+                saveRichNoteSelection(persistentNotesEl);
+                updateRichNoteToolbarState(persistentNotesEl);
+            });
+            [persistentNotesEl, nextSessionNotesEl].forEach(editor => {
+                editor.addEventListener('mouseup', () => saveRichNoteSelection(editor));
+                editor.addEventListener('keyup', () => {
+                    saveRichNoteSelection(editor);
+                    updateRichNoteToolbarState(editor);
+                });
+            });
+            document.addEventListener('selectionchange', () => {
+                const activeEditor = [persistentNotesEl, nextSessionNotesEl]
+                    .find(editor => document.activeElement === editor);
+                if (activeEditor) {
+                    saveRichNoteSelection(activeEditor);
+                    updateRichNoteToolbarState(activeEditor);
+                }
+            });
+            document.querySelectorAll('[data-rich-note-toolbar]').forEach(toolbar => {
+                const editor = document.getElementById(toolbar.dataset.editorId);
+                if (!editor) return;
+
+                toolbar.addEventListener('mousedown', (event) => {
+                    const commandButton = event.target.closest('[data-rich-note-command]');
+                    if (commandButton) {
+                        saveRichNoteSelection(editor);
+                        event.preventDefault();
+                        return;
+                    }
+                    if (event.target.closest('[data-rich-note-color]')) {
+                        saveRichNoteSelection(editor);
+                    }
+                });
+                toolbar.addEventListener('click', (event) => {
+                    const commandButton = event.target.closest('[data-rich-note-command]');
+                    if (!commandButton) return;
+                    executeRichNoteCommand(editor, commandButton.dataset.richNoteCommand);
+                });
+                toolbar.querySelector('[data-rich-note-color]')?.addEventListener('change', (event) => {
+                    updateRichNoteColorSwatch(event.currentTarget);
+                    executeRichNoteCommand(editor, 'foreColor', event.currentTarget.value);
+                });
+            });
+            updateRichNoteToolbarStates();
             addPhoneNumberBtn?.addEventListener('click', () => {
                 addClientContactEntry('phones');
             });
@@ -8588,7 +8940,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
             });
             soapContentEl.addEventListener('click', (e) => {
-                 if (e.target.id === 'runSoapAuditBtn') {
+                 const clickedButton = e.target.closest?.('button');
+                 if (clickedButton?.id === 'runSoapAuditBtn') {
                      const client = findClient(selectedClientId);
                      const appointment = findAppointment(client, selectedAppointmentId);
                      if (!client || !appointment) {
@@ -8612,7 +8965,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                      renderSoap();
                      return;
                  }
-                 if (e.target.id === 'selectInterventionsBtn') {
+                 if (clickedButton?.id === 'refreshDiagnosticSupportBtn') {
+                     void refreshDiagnosticSupport();
+                     return;
+                 }
+                 if (clickedButton?.id === 'selectInterventionsBtn') {
                      const client = findClient(selectedClientId);
                      const appointment = findAppointment(client, selectedAppointmentId);
                      if (!appointment) return;
@@ -8620,14 +8977,24 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                      interventionPickerModal.classList.remove('hidden');
                      return;
                  }
-                 if (e.target.classList.contains('copy-btn')) {
-                     const targetId = e.target.dataset.target;
+                 const copyButton = clickedButton?.classList.contains('copy-btn') ? clickedButton : null;
+                 if (copyButton) {
+                     const targetId = copyButton.dataset.target;
+                     if (!targetId) return;
                      const textarea = document.getElementById(targetId);
                      if (!textarea) return;
                      navigator.clipboard.writeText(textarea.value).then(() => {
-                         const originalText = e.target.textContent;
-                         e.target.textContent = 'Copied!';
-                         setTimeout(() => { e.target.textContent = originalText; }, 2000);
+                         const originalHtml = copyButton.innerHTML;
+                         const originalLabel = copyButton.getAttribute('aria-label') || `Copy ${targetId}`;
+                         copyButton.innerHTML = SOAP_ICON_SVGS.check;
+                         copyButton.title = 'Copied';
+                         copyButton.setAttribute('aria-label', `${originalLabel} (copied)`);
+                         setTimeout(() => {
+                             if (!copyButton.isConnected) return;
+                             copyButton.innerHTML = originalHtml;
+                             copyButton.title = originalLabel;
+                             copyButton.setAttribute('aria-label', originalLabel);
+                         }, 2000);
                      }).catch(err => {
                          console.error('Failed to copy text: ', err);
                          alert('Could not copy text to clipboard.');
@@ -9150,7 +9517,7 @@ Requirements:
                 const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
                 if (generateInterventionsBtn) {
                     generateInterventionsBtn.disabled = true;
-                    generateInterventionsBtn.textContent = 'Reading...';
+                    setSoapActionButtonContent(generateInterventionsBtn, 'Refresh', false, true);
                 }
 
                 const bank = getInterventionBankNames();
@@ -9177,7 +9544,7 @@ Requirements:
                 } finally {
                     if (generateInterventionsBtn?.isConnected) {
                         generateInterventionsBtn.disabled = false;
-                        setSoapActionButtonContent(generateInterventionsBtn, 'Read', isObjectiveReadCompleted(appointment));
+                        setSoapActionButtonContent(generateInterventionsBtn, 'Refresh', isObjectiveReadCompleted(appointment));
                     }
                     if (renderAfter && isCurrentAppointmentContext(resolvedAppointmentContext)) {
                         renderSoap();

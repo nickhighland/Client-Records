@@ -29,4 +29,19 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /Legacy Instructions \(Review\)/);
         assert.match(html, /Audit-support field mapping/);
     });
+
+    test(`${path} uses evidence-first SOAP generation without fabricated collaboration`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+
+        assert.match(html, /const SOAP_GUIDANCE_MIGRATION_VERSION = 1/);
+        assert.match(html, /migrateSoapGuidanceOnce\(data\.aiInstructions\)/);
+        assert.match(html, /Clinician-Entered Diagnosis \(Treatment Anchor; not evidence of today's symptoms\)/);
+        assert.match(html, /Candidate Objectives \(not automatically addressed; choose only when current-session evidence supports them\)/);
+        assert.match(html, /Do not assume interventions, client participation, response, improvement, impairment, risk status, or medical necessity/);
+        assert.match(html, /Do not use a fixed suggestion count/);
+        assert.match(html, /const normalizeObjectiveLine =/);
+        assert.doesNotMatch(html, /Writer engaged Ct in this intervention/);
+        assert.doesNotMatch(html, /with Ct participation/);
+        assert.doesNotMatch(html, /assuming interventions when needed/);
+    });
 }

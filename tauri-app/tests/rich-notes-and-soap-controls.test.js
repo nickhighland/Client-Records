@@ -10,6 +10,11 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /data-rich-note-command="italic"/);
         assert.match(html, /data-rich-note-command="underline"/);
         assert.match(html, /data-rich-note-color/);
+        assert.match(html, /data-smartemr-color-base/);
+        assert.match(html, /data-smartemr-color-theme/);
+        assert.match(html, /const invertRichNoteColor =/);
+        assert.match(html, /const updateRichNoteColorsForTheme =/);
+        assert.match(html, /updateRichNoteColorInputForTheme/);
         assert.doesNotMatch(html, /Cmd\/Ctrl\+B bold \| Cmd\/Ctrl\+I italic \| Cmd\/Ctrl\+U underline/);
 
         assert.match(html, /const SOAP_ICON_SVGS =/);
@@ -25,6 +30,10 @@ for (const path of ['index.html', 'src/index.html']) {
 
         assert.match(html, /Follow the golden thread from diagnosis and presenting problem to the active goal\/objective/);
         assert.match(html, /Never fill documentation gaps with assumptions/);
+        assert.match(html, /portable to an external EMR/);
+        assert.match(html, /the treatment goal of \[brief restatement of the goal\]/);
+        assert.match(html, /the objective of \[brief restatement of the objective\]/);
+        assert.doesNotMatch(html, /Use the identifiers supplied for goals and objectives/);
         assert.match(html, /Suggestions Tone[\s\S]*?evidence-preserving/);
         assert.match(html, /Legacy Instructions \(Review\)/);
         assert.match(html, /Audit-support field mapping/);
@@ -37,6 +46,9 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /migrateSoapGuidanceOnce\(data\.aiInstructions\)/);
         assert.match(html, /Clinician-Entered Diagnosis \(Treatment Anchor; not evidence of today's symptoms\)/);
         assert.match(html, /Candidate Objectives \(not automatically addressed; choose only when current-session evidence supports them\)/);
+        assert.match(html, /Treatment goal: \$\{goal\.title\}/);
+        assert.doesNotMatch(html, /const goalRef = `G\$\{goalIndex \+ 1\}`/);
+        assert.doesNotMatch(html, /\[\$\{obj\.ref\}\]/);
         assert.match(html, /Do not assume interventions, client participation, response, improvement, impairment, risk status, or medical necessity/);
         assert.match(html, /Do not use a fixed suggestion count/);
         assert.match(html, /const normalizeObjectiveLine =/);

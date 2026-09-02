@@ -44,7 +44,7 @@ for (const path of ['index.html', 'src/index.html']) {
 
         assert.match(html, /const SOAP_GUIDANCE_MIGRATION_VERSION = 1/);
         assert.match(html, /migrateSoapGuidanceOnce\(data\.aiInstructions\)/);
-        assert.match(html, /Clinician-Entered Diagnosis \(Treatment Anchor; not evidence of today's symptoms\)/);
+        assert.match(html, /Clinician-Entered Diagnoses \(Treatment Anchors; not evidence of today's symptoms\)/);
         assert.match(html, /Candidate Objectives \(not automatically addressed; choose only when current-session evidence supports them\)/);
         assert.match(html, /Treatment goal: \$\{goal\.title\}/);
         assert.doesNotMatch(html, /const goalRef = `G\$\{goalIndex \+ 1\}`/);
@@ -55,5 +55,19 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.doesNotMatch(html, /Writer engaged Ct in this intervention/);
         assert.doesNotMatch(html, /with Ct participation/);
         assert.doesNotMatch(html, /assuming interventions when needed/);
+    });
+
+    test(`${path} supports editable multi-diagnosis treatment planning and diagnostic support`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+
+        assert.match(html, /id="addDiagnosisBtn"/);
+        assert.match(html, /id="clientDiagnosesList"/);
+        assert.match(html, /const normalizeClientDiagnoses =/);
+        assert.match(html, /const generateDiagnosticSupportStatements =/);
+        assert.match(html, /data-diagnosis-id/);
+        assert.match(html, /Consider every diagnosis when developing the presenting problem, goals, and objectives/);
+        assert.match(html, /Generate a concise clinical presenting problem from all supplied diagnoses/);
+        assert.match(html, /else if \(soap\.diagnosticSupport\)/);
+        assert.match(html, /Diagnostic Support generated for \$\{result\.generated\} diagnosis/);
     });
 }

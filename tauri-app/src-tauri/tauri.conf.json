@@ -1,6 +1,6 @@
 {
   "productName": "SmartEMR",
-  "version": "3.0.14",
+  "version": "3.0.15",
   "identifier": "com.clientrecords.tauriapp",
   "build": {
     "beforeDevCommand": "npm run dev",

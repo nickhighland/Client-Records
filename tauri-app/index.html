@@ -1483,105 +1483,6 @@
             background: var(--suggestion-bg);
         }
 
-        .client-diagnoses-editor {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .client-diagnoses-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .client-diagnoses-list {
-            display: flex;
-            flex-direction: column;
-            gap: 7px;
-        }
-        .client-diagnosis-row {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-        }
-        .client-diagnosis-input {
-            flex: 1 1 auto;
-            min-width: 0;
-            box-sizing: border-box;
-            width: 100%;
-            padding: 8px;
-            border: 1px solid var(--input-border);
-            border-radius: 4px;
-            font-size: 14px;
-            font-family: inherit;
-            background-color: var(--input-bg);
-            color: var(--input-text);
-        }
-        .client-diagnosis-input:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-        .remove-client-diagnosis-btn {
-            flex: 0 0 auto;
-            min-width: 34px;
-            min-height: 34px;
-            padding: 4px 8px;
-            border: 1px solid var(--panel-border);
-            border-radius: 5px;
-            background: transparent;
-            color: var(--text-color-secondary);
-            cursor: pointer;
-            font-size: 1rem;
-            line-height: 1;
-        }
-        .remove-client-diagnosis-btn:hover:not(:disabled) {
-            background: var(--suggestion-bg);
-            color: var(--text-color-primary);
-        }
-        .remove-client-diagnosis-btn:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-        }
-        .client-diagnoses-help {
-            margin: 0;
-            color: var(--text-color-secondary);
-            font-size: 0.78rem;
-            line-height: 1.35;
-        }
-        .diagnostic-support-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding: 8px;
-        }
-        .diagnostic-support-item {
-            border: 1px solid var(--panel-border);
-            border-radius: 5px;
-            overflow: hidden;
-        }
-        .diagnostic-support-item-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            padding: 6px 8px;
-            background: color-mix(in srgb, var(--input-bg) 78%, var(--panel-border) 22%);
-        }
-        .diagnostic-support-diagnosis {
-            min-width: 0;
-            color: var(--text-color-primary);
-            font-size: 0.8rem;
-            font-weight: 700;
-            overflow-wrap: anywhere;
-        }
-        .diagnostic-support-empty {
-            margin: 0;
-            padding: 10px;
-            color: var(--text-color-secondary);
-            font-size: 0.8rem;
-        }
-
         .soap-section { margin-bottom: 15px; }
         .soap-header {
             background: linear-gradient(135deg, #5D6D7E 0%, #34495E 100%);
@@ -1655,23 +1556,6 @@
             min-height: 100px;
             border-radius: 0;
             border: none;
-        }
-        .diagnostic-support-item .diagnostic-support-textarea {
-            width: 100%;
-            box-sizing: border-box;
-            min-height: 90px;
-        }
-
-        @media (max-width: 520px) {
-            .client-diagnosis-row {
-                align-items: stretch;
-            }
-            .remove-client-diagnosis-btn {
-                min-width: 38px;
-            }
-            .diagnostic-support-item-header {
-                align-items: flex-start;
-            }
         }
 
         .suggestion-box {
@@ -2781,7 +2665,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.15" aria-label="SmartEMR version 3.0.15">v3.0.15</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.14" aria-label="SmartEMR version 3.0.14">v3.0.14</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -2949,16 +2833,8 @@
                 <!-- Goals Tab Content -->
                 <div id="goalsTabContent" class="panel-content" style="display: none; flex-direction: column; overflow-y: auto;">
                     <div style="padding: 10px; border-bottom: 1px solid var(--panel-border); flex-shrink: 0;">
-                        <div class="client-diagnoses-editor">
-                            <div class="client-diagnoses-header">
-                                <label style="font-weight: 600; color: var(--text-color-primary);" for="clientDiagnosesList">Diagnoses</label>
-                                <button id="addDiagnosisBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.8rem;" disabled>+ Add diagnosis</button>
-                            </div>
-                            <p class="client-diagnoses-help">Add one diagnosis per row. You can edit or remove diagnoses at any time.</p>
-                            <div id="clientDiagnosesList" class="client-diagnoses-list" aria-live="polite">
-                                <div class="no-selection">Select a client to manage diagnoses</div>
-                            </div>
-                        </div>
+                        <label for="clientDiagnosis" style="font-weight: 600; color: var(--text-color-primary); display: block; margin-bottom: 8px;">Diagnosis</label>
+                        <textarea id="clientDiagnosis" placeholder="Enter client diagnoses here for reference..." style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text); resize: vertical;" disabled></textarea>
                         <label for="clientPresentingProblem" style="font-weight: 600; color: var(--text-color-primary); display: block; margin: 12px 0 8px;">Presenting Problem</label>
                         <textarea id="clientPresentingProblem" placeholder="Enter or generate the client's presenting problem..." style="width: 100%; min-height: 100px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text); resize: vertical;" disabled></textarea>
                     </div>
@@ -3389,8 +3265,8 @@
             <div class="goal-generator-controls">
                 <div class="goal-generator-card">
                     <div class="goal-generator-title">Clinical Focus</div>
-                    <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;" for="goalDiagnosisInput">Diagnoses</label>
-                    <textarea id="goalDiagnosisInput" class="setting-input" rows="3" placeholder="Enter one diagnosis per line for this treatment plan."></textarea>
+                    <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;" for="goalDiagnosisInput">Diagnosis</label>
+                    <textarea id="goalDiagnosisInput" class="setting-input" rows="3" placeholder="Enter the diagnosis to use for this treatment plan."></textarea>
                     <label style="margin: 0.75rem 0 0.25rem; font-weight: 600; display: block;" for="presentingProblemShorthandInput">Presenting Problem Shorthand</label>
                     <textarea id="presentingProblemShorthandInput" class="setting-input" rows="4" placeholder="Enter shorthand symptoms, concerns, functional impact, and other clinician notes."></textarea>
                 </div>
@@ -3975,8 +3851,7 @@
             const clientDetailsContentEl = document.getElementById('clientDetailsContent');
             const contactContentEl = document.getElementById('contactContent');
             const nextSessionContentEl = document.getElementById('nextSessionContent');
-            const clientDiagnosesListEl = document.getElementById('clientDiagnosesList');
-            const addDiagnosisBtn = document.getElementById('addDiagnosisBtn');
+            const clientDiagnosisEl = document.getElementById('clientDiagnosis');
             const clientPresentingProblemEl = document.getElementById('clientPresentingProblem');
             const sessionInfoEl = document.getElementById('sessionInfo');
             const auditProofSymptomsEl = document.getElementById('auditProofSymptoms');
@@ -4773,65 +4648,6 @@
                 client.contactInfo.emails = normalizeClientContactEntries(client.contactInfo.emails);
                 return client.contactInfo;
             };
-            const normalizeDiagnosisEntry = (entry) => {
-                const isObject = entry && typeof entry === 'object';
-                const rawName = isObject
-                    ? (entry.name ?? entry.diagnosis ?? entry.text ?? entry.label ?? '')
-                    : entry;
-                const name = String(rawName ?? '').trim();
-                const id = isObject && typeof entry.id === 'string' && entry.id.trim()
-                    ? entry.id.trim()
-                    : crypto.randomUUID();
-                return { id, name };
-            };
-            const normalizeClientDiagnoses = (client) => {
-                if (!client || typeof client !== 'object') return false;
-
-                const previousDiagnoses = client.diagnoses;
-                const previousLegacyDiagnosis = typeof client.diagnosis === 'string' ? client.diagnosis : '';
-                const hasUsableDiagnosisList = Array.isArray(previousDiagnoses)
-                    && previousDiagnoses.some(entry => String(entry?.name ?? entry?.diagnosis ?? entry?.text ?? entry ?? '').trim());
-                const source = Array.isArray(previousDiagnoses) && (hasUsableDiagnosisList || !previousLegacyDiagnosis.trim())
-                    ? previousDiagnoses
-                    : (previousLegacyDiagnosis.trim()
-                        ? previousLegacyDiagnosis.split(/\r?\n/).map(value => value.replace(/^\s*[-•*]\s*/, ''))
-                        : []);
-                const seenIds = new Set();
-                const normalized = source
-                    .map(normalizeDiagnosisEntry)
-                    .map(entry => {
-                        if (seenIds.has(entry.id)) entry.id = crypto.randomUUID();
-                        seenIds.add(entry.id);
-                        return entry;
-                    });
-                const legacyDiagnosis = normalized
-                    .map(entry => entry.name)
-                    .filter(Boolean)
-                    .join('\n');
-                const changed = JSON.stringify(previousDiagnoses) !== JSON.stringify(normalized)
-                    || previousLegacyDiagnosis !== legacyDiagnosis;
-
-                client.diagnoses = normalized;
-                client.diagnosis = legacyDiagnosis;
-                return changed;
-            };
-            const getClientDiagnoses = (client) => {
-                if (!client || typeof client !== 'object') return [];
-                const needsNormalization = !Array.isArray(client.diagnoses)
-                    || client.diagnoses.some(entry => !entry || typeof entry !== 'object'
-                        || typeof entry.id !== 'string'
-                        || typeof entry.name !== 'string');
-                if (needsNormalization) normalizeClientDiagnoses(client);
-                return Array.isArray(client.diagnoses) ? client.diagnoses : [];
-            };
-            const getNamedClientDiagnoses = (client) => getClientDiagnoses(client)
-                .filter(entry => String(entry?.name || '').trim());
-            const syncLegacyDiagnosisText = (client) => {
-                if (!client) return;
-                client.diagnosis = getNamedClientDiagnoses(client)
-                    .map(entry => entry.name.trim())
-                    .join('\n');
-            };
             const getSelectedAppointmentContext = () => {
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
@@ -4853,7 +4669,6 @@
             };
 
             const normalizeClientData = () => {
-                let dataMigrated = false;
                 if (!Array.isArray(data.clients)) data.clients = [];
                 if (!Array.isArray(data.archivedClients)) data.archivedClients = [];
                 if (!Array.isArray(data.todaySessionClientIds)) data.todaySessionClientIds = [];
@@ -4874,7 +4689,6 @@
                     if (!Array.isArray(client.goals)) client.goals = [];
                     ensureClientContactInfo(client);
                     if (typeof client.diagnosis !== 'string') client.diagnosis = '';
-                    if (normalizeClientDiagnoses(client)) dataMigrated = true;
                     if (typeof client.presentingProblem !== 'string') client.presentingProblem = '';
                     if (typeof client.persistentInstructions !== 'string') client.persistentInstructions = '';
                     if (typeof client.nextSessionNotes !== 'string') client.nextSessionNotes = '';
@@ -4907,7 +4721,6 @@
                             delete appt.customInstructions;
                         }
                         ensureSoapObjectiveActionState(appt);
-                        if (ensureDiagnosticSupportEntries(appt, client).changed) dataMigrated = true;
                     });
 
                     if (!client.goalGenerationLens || typeof client.goalGenerationLens !== 'object') {
@@ -4966,7 +4779,7 @@
                 if (!Array.isArray(deletedItems.appointments)) deletedItems.appointments = [];
                 if (!Array.isArray(deletedItems.notes)) deletedItems.notes = [];
                 if (!Array.isArray(deletedItems.intakes)) deletedItems.intakes = [];
-                return dataMigrated || soapGuidanceMigrated;
+                return soapGuidanceMigrated;
             };
 
             const isClientInTodaySessions = (clientId) => (data.todaySessionClientIds || []).includes(clientId);
@@ -5262,9 +5075,9 @@
             const getTreatmentGoalsContext = (client) => {
                 if (!client) return '';
                 const contextSections = [];
-                const diagnoses = getNamedClientDiagnoses(client);
-                if (diagnoses.length > 0) {
-                    contextSections.push(`- **Clinician-Entered Diagnoses (Treatment Anchors; not evidence of today's symptoms):**\n${diagnoses.map(entry => `  - ${entry.name}`).join('\n')}`);
+                const diagnosis = (client.diagnosis || '').trim();
+                if (diagnosis) {
+                    contextSections.push(`- **Clinician-Entered Diagnosis (Treatment Anchor; not evidence of today's symptoms):**\n${diagnosis}`);
                 }
 
                 const presentingProblem = (client.presentingProblem || '').trim();
@@ -6081,113 +5894,6 @@
                 return state;
             };
 
-            const normalizeDiagnosticSupportEntry = (entry) => {
-                const isObject = entry && typeof entry === 'object';
-                const statement = isObject
-                    ? (entry.statement ?? entry.text ?? entry.support ?? entry.diagnosticSupport ?? '')
-                    : entry;
-                const diagnosisId = isObject && typeof entry.diagnosisId === 'string'
-                    ? entry.diagnosisId.trim()
-                    : '';
-                const diagnosis = isObject
-                    ? String(entry.diagnosis ?? entry.name ?? '').trim()
-                    : '';
-                return {
-                    diagnosisId,
-                    diagnosis,
-                    statement: String(statement ?? '').trim()
-                };
-            };
-            const syncDiagnosticSupportLegacyField = (appointment, entries) => {
-                if (!appointment?.soap) return;
-                appointment.soap.diagnosticSupport = (entries || [])
-                    .map(entry => String(entry?.statement || '').trim())
-                    .filter(Boolean)
-                    .join('\n\n');
-            };
-            const ensureDiagnosticSupportEntries = (appointment, client) => {
-                if (!appointment) return { entries: [], changed: false };
-                let changed = false;
-                if (!appointment.soap || typeof appointment.soap !== 'object') {
-                    appointment.soap = { s: '', o: '', a: '', p: '' };
-                    changed = true;
-                }
-
-                const soap = appointment.soap;
-                const diagnoses = getNamedClientDiagnoses(client);
-                const legacyValue = soap.diagnosticSupport;
-                const rawEntries = Array.isArray(soap.diagnosticSupports)
-                    ? soap.diagnosticSupports
-                    : Array.isArray(legacyValue)
-                        ? legacyValue
-                        : (legacyValue && typeof legacyValue === 'object' ? [legacyValue] : []);
-                const normalizedEntries = rawEntries.map(normalizeDiagnosticSupportEntry);
-                const legacyStatement = typeof legacyValue === 'string' ? legacyValue.trim() : '';
-                const usedEntries = new Set();
-                const entries = diagnoses.map((diagnosis, index) => {
-                    let matchIndex = normalizedEntries.findIndex((entry, candidateIndex) => {
-                        if (usedEntries.has(candidateIndex)) return false;
-                        return entry.diagnosisId === diagnosis.id;
-                    });
-                    if (matchIndex < 0) {
-                        matchIndex = normalizedEntries.findIndex((entry, candidateIndex) => {
-                            if (usedEntries.has(candidateIndex)) return false;
-                            return entry.diagnosis && entry.diagnosis === diagnosis.name;
-                        });
-                    }
-
-                    const matched = matchIndex >= 0 ? normalizedEntries[matchIndex] : null;
-                    if (matchIndex >= 0) usedEntries.add(matchIndex);
-                    return {
-                        diagnosisId: diagnosis.id,
-                        diagnosis: diagnosis.name,
-                        statement: matched?.statement || (!normalizedEntries.length && index === 0 ? legacyStatement : '')
-                    };
-                });
-
-                if (JSON.stringify(soap.diagnosticSupports || null) !== JSON.stringify(entries)) {
-                    soap.diagnosticSupports = entries;
-                    changed = true;
-                }
-                if (diagnoses.length > 0) {
-                    const combined = entries
-                        .map(entry => String(entry.statement || '').trim())
-                        .filter(Boolean)
-                        .join('\n\n');
-                    if (soap.diagnosticSupport !== combined) {
-                        soap.diagnosticSupport = combined;
-                        changed = true;
-                    }
-                } else if (soap.diagnosticSupport) {
-                    soap.diagnosticSupport = '';
-                    changed = true;
-                }
-
-                return { entries, changed };
-            };
-            const setDiagnosticSupportEntry = (appointment, client, diagnosisId, statement) => {
-                const { entries } = ensureDiagnosticSupportEntries(appointment, client);
-                const diagnosis = getNamedClientDiagnoses(client).find(entry => entry.id === diagnosisId);
-                const support = entries.find(entry => entry.diagnosisId === diagnosisId);
-                if (!diagnosis || !support) return false;
-                appointment.soap.diagnosticSupports = entries;
-                const nextStatement = String(statement ?? '');
-                const changed = support.statement !== nextStatement || support.diagnosis !== diagnosis.name;
-                support.diagnosis = diagnosis.name;
-                support.statement = nextStatement;
-                syncDiagnosticSupportLegacyField(appointment, entries);
-                return changed;
-            };
-            const clearDiagnosticSupportForDiagnosis = (client, diagnosisId) => {
-                (client?.appointments || []).forEach(appointment => {
-                    const { entries } = ensureDiagnosticSupportEntries(appointment, client);
-                    appointment.soap.diagnosticSupports = entries;
-                    const support = entries.find(entry => entry.diagnosisId === diagnosisId);
-                    if (support) support.statement = '';
-                    syncDiagnosticSupportLegacyField(appointment, entries);
-                });
-            };
-
             const updateSoapFieldValue = (appointment, fieldKey, nextValue) => {
                 if (!appointment) return false;
                 if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
@@ -6656,42 +6362,34 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 saveClientGoalGenerationLens();
             };
 
-            const formatDiagnosesForDraft = (value) => String(value || '')
-                .split(/\r?\n/)
-                .map(item => item.trim())
-                .filter(Boolean)
-                .join('; ');
-
             const makeGoalText = (problem, index, modalities) => {
-                const diagnosisContext = formatDiagnosesForDraft(problem);
                 const modalityHint = modalities[0] ? ` using ${modalities[0]}` : '';
                 const templates = [
-                    `Client will demonstrate improved management of ${diagnosisContext}${modalityHint}, resulting in decreased symptom burden.`,
-                    `Client will strengthen adaptive coping around ${diagnosisContext}${modalityHint}, resulting in decreased functional impairment.`,
-                    `Client will increase emotional regulation related to ${diagnosisContext}${modalityHint}, resulting in decreased distress and improved stability.`,
-                    `Client will improve consistency in healthy responses to ${diagnosisContext}${modalityHint}, resulting in decreased escalation and improved daily functioning.`
+                    `Client will demonstrate improved management of ${problem}${modalityHint}, resulting in decreased symptom burden.`,
+                    `Client will strengthen adaptive coping around ${problem}${modalityHint}, resulting in decreased functional impairment.`,
+                    `Client will increase emotional regulation related to ${problem}${modalityHint}, resulting in decreased distress and improved stability.`,
+                    `Client will improve consistency in healthy responses to ${problem}${modalityHint}, resulting in decreased escalation and improved daily functioning.`
                 ];
                 return templates[index % templates.length];
             };
 
             const makeObjectiveText = (problem, goalText, objectiveIndex, format, modalities) => {
-                const diagnosisContext = formatDiagnosesForDraft(problem);
                 const modalityPhrase = modalities.length > 0 ? ` aligned with ${modalities[0]}` : '';
                 if (format === 'smart') {
                     const smartTemplates = [
-                        `Client will identify 2 triggers related to ${diagnosisContext}${modalityPhrase} and document them in writing at least 3 days per week.`,
+                        `Client will identify 2 triggers related to ${problem}${modalityPhrase} and document them in writing at least 3 days per week.`,
                         `Client will practice one coping strategy tied to ${goalText.toLowerCase()}${modalityPhrase} in at least 2 real-life situations each week.`,
-                        `Client will track intensity of ${diagnosisContext} symptoms weekly${modalityPhrase} and report trend changes during session.`,
+                        `Client will track intensity of ${problem} symptoms weekly${modalityPhrase} and report trend changes during session.`,
                         `Client will use a structured self-regulation routine${modalityPhrase} and report at least 50% adherence by target review date.`
                     ];
                     return smartTemplates[objectiveIndex % smartTemplates.length];
                 }
 
                 const actionTemplates = [
-                    `Client will identify patterns that maintain ${diagnosisContext}${modalityPhrase} and discuss them in session.`,
-                    `Client will identify and practice coping responses for ${diagnosisContext}${modalityPhrase} between sessions.`,
+                    `Client will identify patterns that maintain ${problem}${modalityPhrase} and discuss them in session.`,
+                    `Client will identify and practice coping responses for ${problem}${modalityPhrase} between sessions.`,
                     `Client will identify barriers to progress${modalityPhrase} and use one replacement action in real-time.`,
-                    `Client will identify gains and next steps${modalityPhrase} to sustain progress related to ${diagnosisContext}.`
+                    `Client will identify gains and next steps${modalityPhrase} to sustain progress related to ${problem}.`
                 ];
                 return actionTemplates[objectiveIndex % actionTemplates.length];
             };
@@ -6753,13 +6451,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return JSON.parse(jsonText);
             };
 
-            const normalizePresentingProblemFromAi = (aiPayload, diagnoses, shorthand) => {
+            const normalizePresentingProblemFromAi = (aiPayload, diagnosis, shorthand) => {
                 const generatedText = (aiPayload?.presentingProblem || aiPayload?.presenting_problem || '').toString().trim();
                 if (generatedText) return generatedText;
 
-                const diagnosisText = diagnoses
-                    ? `Client presents for treatment related to the documented diagnoses: ${formatDiagnosesForDraft(diagnoses)}.`
-                    : '';
+                const diagnosisText = diagnosis ? `Client presents for treatment related to ${diagnosis}.` : '';
                 const shorthandText = shorthand ? ` Clinician shorthand: ${shorthand}.` : '';
                 return `${diagnosisText}${shorthandText}`.trim();
             };
@@ -6773,14 +6469,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return targets;
             };
 
-            const normalizeGoalDraftsFromAi = (aiPayload, diagnoses, goalCount, objectiveCount, format, modalities, objectivesPerGoal) => {
+            const normalizeGoalDraftsFromAi = (aiPayload, diagnosis, goalCount, objectiveCount, format, modalities, objectivesPerGoal) => {
                 const staggeredTimeline = [3, 6, 9, 12];
                 const aiGoals = Array.isArray(aiPayload?.goals) ? aiPayload.goals : [];
                 const normalizedGoals = [];
 
                 for (let goalIndex = 0; goalIndex < goalCount; goalIndex += 1) {
                     const aiGoal = aiGoals[goalIndex] || {};
-                    const fallbackGoalTitle = makeGoalText(diagnoses, goalIndex, modalities);
+                    const fallbackGoalTitle = makeGoalText(diagnosis, goalIndex, modalities);
                     const goalTitle = (aiGoal.title || fallbackGoalTitle || '').toString().trim() || fallbackGoalTitle;
                     normalizedGoals.push({
                         id: crypto.randomUUID(),
@@ -6813,7 +6509,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             : (rawAiObjective || {});
                         const goalContext = objectivesPerGoal ? goal.title : sharedGoalContext;
                         const fallbackObjectiveText = makeObjectiveText(
-                            diagnoses,
+                            diagnosis,
                             goalContext,
                             overallObjectiveIndex,
                             format,
@@ -6838,7 +6534,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return normalizedGoals;
             };
 
-            const fetchGoalDraftsFromAI = async (diagnoses, shorthand, goalCount, objectiveCount, format, modalities, objectivesPerGoal) => {
+            const fetchGoalDraftsFromAI = async (diagnosis, shorthand, goalCount, objectiveCount, format, modalities, objectivesPerGoal) => {
                 if (!selectedModel) {
                     throw new Error('Please connect to a provider and select a model in Settings.');
                 }
@@ -6855,7 +6551,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const objectiveRequest = objectivesPerGoal
                     ? `${objectiveCount} objectives under every goal`
                     : `${objectiveCount} total objectives distributed across all goals; each objective must support the complete set of goals`;
-                const userPrompt = `Diagnoses:\n${diagnoses}\n\nPresenting Problem Shorthand:\n${shorthand || '- None provided'}\n\nRequested Output:\n- Goals: ${goalCount}\n- Objectives: ${objectiveRequest}\n- Objective format: ${styleDescriptor}\n\nWrite a concise clinical Presenting Problem using all supplied Diagnoses and the Presenting Problem Shorthand above. Consider every diagnosis when developing the presenting problem, goals, and objectives; do not silently omit a supplied diagnosis. Do not invent symptoms, duration, risk factors, functional impairment, or history that was not supplied.\n\nGuiding Modalities (Allowed):\n${modalityContext}\n\nForbidden Modalities (Do not use):\n${forbiddenContext}\n\nReturn only JSON in the required schema.`;
+                const userPrompt = `Diagnosis:\n${diagnosis}\n\nPresenting Problem Shorthand:\n${shorthand || '- None provided'}\n\nRequested Output:\n- Goals: ${goalCount}\n- Objectives: ${objectiveRequest}\n- Objective format: ${styleDescriptor}\n\nWrite a concise clinical Presenting Problem using only the Diagnosis and Presenting Problem Shorthand above. Do not invent symptoms, duration, risk factors, functional impairment, or history that was not supplied.\n\nGuiding Modalities (Allowed):\n${modalityContext}\n\nForbidden Modalities (Do not use):\n${forbiddenContext}\n\nReturn only JSON in the required schema.`;
 
                 if (apiProvider === 'vertex') {
                     if (!vertexServiceAccount || !vertexLocation) throw new Error('Please connect Vertex in Settings first.');
@@ -7204,14 +6900,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return (Array.isArray(value) ? value.join(' ') : String(value)).replace(/\s*\n+\s*/g, ' ').trim();
             };
 
-            const fetchDiagnosticSupportFromAI = async (client, appointment, diagnosisText) => {
-                const diagnosis = String(diagnosisText || '').trim();
+            const fetchDiagnosticSupportFromAI = async (client, appointment) => {
+                const diagnosis = String(client?.diagnosis || '').trim();
                 if (!diagnosis) {
-                    throw new Error('Enter a diagnosis before generating Diagnostic Support.');
+                    throw new Error('Enter the client diagnosis before generating Diagnostic Support.');
                 }
 
-                const systemPrompt = 'You are a behavioral-health documentation assistant. Write a concise, chart-ready Diagnostic Support statement for the specified diagnosis from the documented diagnosis and session record. Use only facts explicitly documented in the supplied record. Explain how documented symptoms, observations, functional impact, and response to treatment are consistent with the specified diagnosis and support continued clinically necessary treatment when the record supports that conclusion. Do not use evidence that is relevant only to a different diagnosis as support for this one. Do not invent symptoms, duration, severity, impairment, risk, criteria, or treatment response. If the record is insufficient, say so plainly and identify the missing documentation instead of overstating support. Do not include a heading, diagnosis code, bullet list, or disclaimer. Return only JSON in the exact form {"diagnostic_support":"..."}.';
-                const userPrompt = `Diagnosis to support:\n${diagnosis}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nWrite one concise Diagnostic Support statement in 2-4 sentences for this diagnosis only. Return only JSON in the exact form {"diagnostic_support":"..."}.`;
+                const systemPrompt = 'You are a behavioral-health documentation assistant. Write a concise, chart-ready Diagnostic Support statement from the documented diagnosis and session record. Use only facts explicitly documented in the supplied record. Explain how documented symptoms, observations, functional impact, and response to treatment are consistent with the diagnosis and support continued clinically necessary treatment when the record supports that conclusion. Do not invent symptoms, duration, severity, impairment, risk, criteria, or treatment response. If the record is insufficient, say so plainly and identify the missing documentation instead of overstating support. Do not include a heading, diagnosis code, bullet list, or disclaimer. Return only JSON in the exact form {"diagnostic_support":"..."}.';
+                const userPrompt = `Diagnosis to support:\n${diagnosis}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nWrite one concise Diagnostic Support statement in 2-4 sentences. Return only JSON in the exact form {"diagnostic_support":"..."}.`;
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
                 const diagnosticSupport = normalizeDiagnosticSupportFromAi(aiPayload);
                 if (!diagnosticSupport) {
@@ -7219,62 +6915,29 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
                 return diagnosticSupport;
             };
-            const generateDiagnosticSupportStatements = async (client, appointment, diagnosisId = null) => {
-                const diagnoses = getNamedClientDiagnoses(client);
-                if (diagnoses.length === 0) {
-                    throw new Error('Add at least one diagnosis before generating Diagnostic Support.');
-                }
-
-                const targets = diagnosisId
-                    ? diagnoses.filter(entry => entry.id === diagnosisId)
-                    : diagnoses;
-                if (targets.length === 0) {
-                    throw new Error('The selected diagnosis is no longer available.');
-                }
-
-                const errors = [];
-                let generated = 0;
-                for (const diagnosis of targets) {
-                    try {
-                        const diagnosisName = diagnosis.name.trim();
-                        const statement = await fetchDiagnosticSupportFromAI(client, appointment, diagnosisName);
-                        const currentDiagnosis = getNamedClientDiagnoses(client).find(entry => entry.id === diagnosis.id);
-                        if (!currentDiagnosis || currentDiagnosis.name.trim() !== diagnosisName) continue;
-                        setDiagnosticSupportEntry(appointment, client, diagnosis.id, statement);
-                        generated += 1;
-                    } catch (error) {
-                        errors.push(`${diagnosis.name.trim()}: ${error?.message || String(error)}`);
-                    }
-                }
-
-                return { generated, errors };
-            };
-            const refreshDiagnosticSupport = async (diagnosisId = null) => {
+            const refreshDiagnosticSupport = async () => {
                 const appointmentContext = getSelectedAppointmentContext();
                 const appointment = getAppointmentFromContext(appointmentContext);
                 const client = appointmentContext ? findClient(appointmentContext.clientId) : null;
                 if (!client || !appointment) return;
 
-                const refreshButtons = [...document.querySelectorAll('.refresh-diagnostic-support-btn')];
-                refreshButtons.forEach(button => {
-                    button.disabled = true;
-                    button.classList.add('is-loading');
-                    button.title = 'Refreshing Diagnostic Support...';
-                    button.setAttribute('aria-label', button.title);
-                    button.setAttribute('aria-busy', 'true');
-                });
+                const refreshButton = document.getElementById('refreshDiagnosticSupportBtn');
+                if (refreshButton) {
+                    refreshButton.disabled = true;
+                    refreshButton.classList.add('is-loading');
+                    refreshButton.title = 'Refreshing Diagnostic Support...';
+                    refreshButton.setAttribute('aria-label', refreshButton.title);
+                    refreshButton.setAttribute('aria-busy', 'true');
+                }
 
                 try {
-                    const result = await generateDiagnosticSupportStatements(client, appointment, diagnosisId);
-                    if (result.generated > 0) {
-                        delete appointment.auditCheck;
-                        markDirty();
-                    }
+                    const diagnosticSupport = await fetchDiagnosticSupportFromAI(client, appointment);
+                    if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
+                    appointment.soap.diagnosticSupport = diagnosticSupport;
+                    delete appointment.auditCheck;
+                    markDirty();
                     if (isCurrentAppointmentContext(appointmentContext)) {
                         renderSoap();
-                    }
-                    if (result.errors.length > 0 && isCurrentAppointmentContext(appointmentContext)) {
-                        alert(`Diagnostic Support generated for ${result.generated} diagnosis${result.generated === 1 ? '' : 'es'}, but some statements could not be generated:\n\n${result.errors.join('\n')}`);
                     }
                 } catch (error) {
                     console.error('Diagnostic Support refresh error:', error);
@@ -7282,14 +6945,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         alert(`Failed to refresh Diagnostic Support. ${error.message}`);
                     }
                 } finally {
-                    refreshButtons.forEach(button => {
-                        if (!button.isConnected) return;
-                        button.disabled = false;
-                        button.classList.remove('is-loading');
-                        button.title = 'Refresh Diagnostic Support';
-                        button.setAttribute('aria-label', button.title);
-                        button.removeAttribute('aria-busy');
-                    });
+                    if (refreshButton?.isConnected) {
+                        refreshButton.disabled = false;
+                        refreshButton.classList.remove('is-loading');
+                        refreshButton.title = 'Refresh Diagnostic Support';
+                        refreshButton.setAttribute('aria-label', refreshButton.title);
+                        refreshButton.removeAttribute('aria-busy');
+                    }
                 }
             };
 
@@ -7315,7 +6977,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const generateGoalDrafts = async () => {
-                const diagnoses = (goalDiagnosisInput.value || '').trim();
+                const diagnosis = (goalDiagnosisInput.value || '').trim();
                 const shorthand = (presentingProblemShorthandInput.value || '').trim();
                 const goalCount = Math.max(1, Math.min(20, parseInt(goalCountInput.value, 10) || 1));
                 const objectiveCount = Math.max(1, Math.min(20, parseInt(objectiveCountInput.value, 10) || 1));
@@ -7328,8 +6990,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (!generatorClient) return;
                 saveClientGoalGenerationLens(generatorClientId);
 
-                if (!diagnoses) {
-                    alert('Please enter at least one diagnosis first.');
+                if (!diagnosis) {
+                    alert('Please enter a diagnosis first.');
                     return;
                 }
 
@@ -7338,7 +7000,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 try {
                     const aiPayload = await fetchGoalDraftsFromAI(
-                        diagnoses,
+                        diagnosis,
                         shorthand,
                         goalCount,
                         objectiveCount,
@@ -7347,10 +7009,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         objectivesPerGoal
                     );
                     if (activeGoalGeneratorClientId !== generatorClientId || goalGenerationRequestId !== requestId) return;
-                    generatedPresentingProblemDraft = normalizePresentingProblemFromAi(aiPayload, diagnoses, shorthand);
+                    generatedPresentingProblemDraft = normalizePresentingProblemFromAi(aiPayload, diagnosis, shorthand);
                     generatedGoalsDraft = normalizeGoalDraftsFromAi(
                         aiPayload,
-                        diagnoses,
+                        diagnosis,
                         goalCount,
                         objectiveCount,
                         format,
@@ -7781,79 +7443,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 renderDetails();
             };
 
-            const renderClientDiagnoses = (client) => {
-                if (!client) {
-                    addDiagnosisBtn.disabled = true;
-                    clientDiagnosesListEl.innerHTML = '<div class="no-selection">Select a client to manage diagnoses</div>';
-                    return;
-                }
-
-                addDiagnosisBtn.disabled = false;
-                const diagnoses = getClientDiagnoses(client);
-                if (diagnoses.length === 0) {
-                    clientDiagnosesListEl.innerHTML = '<div class="no-selection">No diagnoses recorded. Click + Add diagnosis.</div>';
-                    return;
-                }
-
-                clientDiagnosesListEl.innerHTML = diagnoses.map((diagnosis, index) => {
-                    const label = diagnosis.name.trim() || `Diagnosis ${index + 1}`;
-                    const escapedId = escapeGoalDraftHtml(diagnosis.id);
-                    return `
-                        <div class="client-diagnosis-row" data-diagnosis-id="${escapedId}">
-                            <input type="text" class="client-diagnosis-input" data-diagnosis-id="${escapedId}" value="${escapeGoalDraftHtml(diagnosis.name)}" placeholder="e.g., Generalized Anxiety Disorder (F41.1)" aria-label="${escapeGoalDraftHtml(label)}">
-                            <button type="button" class="remove-client-diagnosis-btn" data-diagnosis-id="${escapedId}" title="Remove diagnosis" aria-label="Remove ${escapeGoalDraftHtml(label)}">×</button>
-                        </div>
-                    `;
-                }).join('');
-            };
-
-            const addClientDiagnosis = () => {
-                const client = findClient(selectedClientId);
-                if (!client || recordViewClearedForSelectedClient) return;
-                const diagnoses = getClientDiagnoses(client);
-                const existingEmpty = diagnoses.find(entry => !String(entry.name || '').trim());
-                if (existingEmpty) {
-                    clientDiagnosesListEl.querySelector(`.client-diagnosis-input[data-diagnosis-id="${existingEmpty.id}"]`)?.focus();
-                    return;
-                }
-
-                const diagnosis = { id: crypto.randomUUID(), name: '' };
-                diagnoses.push(diagnosis);
-                syncLegacyDiagnosisText(client);
-                markDirty();
-                renderDetails();
-                clientDiagnosesListEl.querySelector(`.client-diagnosis-input[data-diagnosis-id="${diagnosis.id}"]`)?.focus();
-            };
-
-            const removeClientDiagnosis = (diagnosisId) => {
-                const client = findClient(selectedClientId);
-                if (!client || !diagnosisId) return;
-                const diagnoses = getClientDiagnoses(client);
-                const index = diagnoses.findIndex(entry => entry.id === diagnosisId);
-                if (index < 0) return;
-
-                diagnoses.splice(index, 1);
-                syncLegacyDiagnosisText(client);
-                clearDiagnosticSupportForDiagnosis(client, diagnosisId);
-                markDirty();
-                renderDetails();
-            };
-
-            const updateClientDiagnosis = (diagnosisId, value) => {
-                const client = findClient(selectedClientId);
-                if (!client || !diagnosisId) return;
-                const diagnosis = getClientDiagnoses(client).find(entry => entry.id === diagnosisId);
-                if (!diagnosis) return;
-
-                const previousName = diagnosis.name;
-                diagnosis.name = String(value ?? '');
-                syncLegacyDiagnosisText(client);
-                if (previousName.trim() !== diagnosis.name.trim()) {
-                    clearDiagnosticSupportForDiagnosis(client, diagnosisId);
-                }
-                markDirty();
-            };
-
             const renderDetails = () => {
                 const client = recordViewClearedForSelectedClient ? null : findClient(selectedClientId);
                 const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
@@ -7873,7 +7462,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 updateClientDetailsTabLabels();
                 renderClientContactFields(client);
 
-                renderClientDiagnoses(client);
+                clientDiagnosisEl.disabled = !client;
+                clientDiagnosisEl.value = client ? client.diagnosis || '' : '';
+                clientDiagnosisEl.placeholder = client ? "Enter client diagnoses here for reference..." : "Select a client to enter diagnoses...";
                 clientPresentingProblemEl.disabled = !client;
                 clientPresentingProblemEl.value = client ? client.presentingProblem || '' : '';
                 clientPresentingProblemEl.placeholder = client
@@ -7993,50 +7584,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 `).join('');
             };
             
-            const renderDiagnosticSupport = (client, appointment) => {
-                const { entries } = ensureDiagnosticSupportEntries(appointment, client);
-                const refreshButton = `<button id="refreshDiagnosticSupportBtn" type="button" class="copy-btn soap-icon-btn refresh-diagnostic-support-btn" title="Refresh Diagnostic Support" aria-label="Refresh Diagnostic Support"${entries.length ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>`;
-                if (entries.length === 0) {
-                    return `
-                        <div class="diagnostic-support-block">
-                            <div class="diagnostic-support-header">
-                                <span>Diagnostic Support</span>
-                                <div class="soap-action-group">${refreshButton}</div>
-                            </div>
-                            <p class="diagnostic-support-empty">Add at least one diagnosis to generate a support statement.</p>
-                        </div>
-                    `;
-                }
-
-                return `
-                    <div class="diagnostic-support-block">
-                        <div class="diagnostic-support-header">
-                            <span>Diagnostic Support (${entries.length})</span>
-                            <div class="soap-action-group">${refreshButton}</div>
-                        </div>
-                        <div class="diagnostic-support-list">
-                            ${entries.map((entry, index) => {
-                                const label = entry.diagnosis.trim() || `Diagnosis ${index + 1}`;
-                                const escapedId = escapeGoalDraftHtml(entry.diagnosisId);
-                                const targetId = `diagnosticSupport-${entry.diagnosisId}`;
-                                return `
-                                    <div class="diagnostic-support-item" data-diagnosis-id="${escapedId}">
-                                        <div class="diagnostic-support-item-header">
-                                            <span class="diagnostic-support-diagnosis">${escapeGoalDraftHtml(label)}</span>
-                                            <div class="soap-action-group">
-                                                <button type="button" class="copy-btn soap-icon-btn refresh-diagnostic-support-btn" data-diagnosis-id="${escapedId}" title="Refresh Diagnostic Support" aria-label="Refresh Diagnostic Support for ${escapeGoalDraftHtml(label)}">${SOAP_ICON_SVGS.refresh}</button>
-                                                ${renderSoapCopyButton(targetId, 'Diagnostic Support statement')}
-                                            </div>
-                                        </div>
-                                        <textarea id="${escapeGoalDraftHtml(targetId)}" data-diagnosis-id="${escapedId}" class="soap-textarea diagnostic-support-textarea" placeholder="Press Refresh to generate support for this diagnosis." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(entry.statement || '')}</textarea>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `;
-            };
-
             const renderSoap = () => {
                 if (recordViewClearedForSelectedClient) {
                     soapContentEl.innerHTML = '';
@@ -8101,7 +7648,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-header"><span>Assessment</span>${renderSoapCopyButton('soapA', 'Assessment')}</div>
                         <textarea id="soapA" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.a || ''}</textarea>
                         ${(soapData.a_suggestion || []).map((s, i) => renderSuggestionBox('a', s, i)).join('')}
-                        ${renderDiagnosticSupport(client, appointment)}
+                        <div class="diagnostic-support-block">
+                            <div class="diagnostic-support-header">
+                                <span>Diagnostic Support</span>
+                                <div class="soap-action-group">
+                                    <button id="refreshDiagnosticSupportBtn" type="button" class="copy-btn soap-icon-btn" title="Refresh Diagnostic Support" aria-label="Refresh Diagnostic Support">${SOAP_ICON_SVGS.refresh}</button>
+                                    ${renderSoapCopyButton('diagnosticSupport', 'Diagnostic Support')}
+                                </div>
+                            </div>
+                            <textarea id="diagnosticSupport" class="soap-textarea diagnostic-support-textarea" placeholder="Press Organize in Objective to generate a diagnostic support statement." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.diagnosticSupport || '')}</textarea>
+                        </div>
                     </div>
                     <div class="soap-section">
                         <div class="soap-header"><span>Plan</span>${renderSoapCopyButton('soapP', 'Plan')}</div>
@@ -8482,7 +8038,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     },
                     persistentNotes: '',
                     nextSessionNotes: '',
-                    diagnoses: [],
                     diagnosis: '',
                     presentingProblem: '',
                     persistentInstructions: '',
@@ -9174,21 +8729,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 updateNotesTabUI();
             });
 
-            addDiagnosisBtn.addEventListener('click', addClientDiagnosis);
-            clientDiagnosesListEl.addEventListener('input', (event) => {
-                const input = event.target.closest?.('.client-diagnosis-input');
-                if (!input) return;
-                updateClientDiagnosis(input.dataset.diagnosisId, input.value);
-            });
-            clientDiagnosesListEl.addEventListener('change', (event) => {
-                if (event.target.closest?.('.client-diagnosis-input')) {
-                    renderSoap();
-                }
-            });
-            clientDiagnosesListEl.addEventListener('click', (event) => {
-                const removeButton = event.target.closest?.('.remove-client-diagnosis-btn');
-                if (!removeButton) return;
-                removeClientDiagnosis(removeButton.dataset.diagnosisId);
+            clientDiagnosisEl.addEventListener('input', () => {
+                 const client = findClient(selectedClientId);
+                 if (client) {
+                     client.diagnosis = clientDiagnosisEl.value;
+                     markDirty();
+                 }
             });
             clientPresentingProblemEl.addEventListener('input', () => {
                 const client = findClient(selectedClientId);
@@ -9350,9 +8896,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             const saveDiagnosticSupport = (textarea) => {
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
-                const diagnosisId = textarea?.dataset?.diagnosisId;
-                if (!client || !appointment || !diagnosisId) return;
-                if (!setDiagnosticSupportEntry(appointment, client, diagnosisId, textarea.value)) return;
+                if (!appointment) return;
+                if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
+                appointment.soap.diagnosticSupport = textarea.value;
                 delete appointment.auditCheck;
                 markDirty();
             };
@@ -9481,7 +9027,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             soapContentEl.addEventListener('input', (e) => {
                 if (e.target.matches('.soap-textarea')) {
-                    if (e.target.classList.contains('diagnostic-support-textarea')) {
+                    if (e.target.id === 'diagnosticSupport') {
                         saveDiagnosticSupport(e.target);
                         return;
                     }
@@ -9501,14 +9047,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             });
             soapContentEl.addEventListener('keydown', (e) => {
                 if (e.target.matches('.soap-textarea')) {
-                    if (!e.target.classList.contains('diagnostic-support-textarea')) {
+                    if (e.target.id !== 'diagnosticSupport') {
                         handleBulletedKeyDown(e);
                     }
                 }
             });
             soapContentEl.addEventListener('focus', (e) => {
                 if (e.target.matches('.soap-textarea')) {
-                    if (e.target.classList.contains('diagnostic-support-textarea')) return;
+                    if (e.target.id === 'diagnosticSupport') return;
                     const textarea = e.target;
                     if (textarea.value.length === 0) {
                         textarea.value = '• ';
@@ -9542,8 +9088,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                      renderSoap();
                      return;
                  }
-                 if (clickedButton?.classList.contains('refresh-diagnostic-support-btn')) {
-                     void refreshDiagnosticSupport(clickedButton.dataset.diagnosisId || null);
+                 if (clickedButton?.id === 'refreshDiagnosticSupportBtn') {
+                     void refreshDiagnosticSupport();
                      return;
                  }
                  if (clickedButton?.id === 'selectInterventionsBtn') {
@@ -9727,7 +9273,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     key: 'clinicalFocus',
                     label: 'Clinical Focus',
                     description: 'What the generated treatment plan should emphasize clinically.',
-                    defaultValue: 'Write clinically appropriate treatment goals and objectives that match the presenting problem, consider all supplied diagnoses, and support medical necessity.'
+                    defaultValue: 'Write clinically appropriate treatment goals and objectives that match the presenting problem and support medical necessity.'
                 },
                 {
                     key: 'goalStyle',
@@ -9878,7 +9424,7 @@ Analyze the labeled clinical record in User Input and return only the required J
 
 **Source Boundaries and Evidence Rules:**
 - **Current Session:** The primary evidence for what occurred today, including Ct report, observable status, Writer actions, interventions, response, and change.
-- **Clinician-Entered Diagnoses:** Treatment anchors. They are not proof of today's symptoms, impairment, risk status, intervention delivery, response, or progress.
+- **Clinician-Entered Diagnosis:** A treatment anchor. It is not proof of today's symptoms, impairment, risk status, intervention delivery, response, or progress.
 - **Presenting Problem and Treatment Plan:** The intended clinical focus. Do not claim a goal/objective was addressed or that progress occurred unless current-session evidence supports it.
 - **Intervention Bank and Selected Interventions:** Use exact allowed names. A selected intervention is not proof that it was delivered unless the session record confirms it.
 - **Client Modality Lens:** A conceptual default only. Preserve explicitly documented techniques and never force-fit a modality.
@@ -9938,9 +9484,8 @@ ${guidanceBlock}Return ONLY valid JSON in this exact shape:
 }
 
 Requirements:
-- Generate a concise clinical presenting problem from all supplied diagnoses and the presenting-problem shorthand.
+- Generate a concise clinical presenting problem from only the supplied diagnosis and presenting-problem shorthand.
 - Do not invent symptoms, duration, risk factors, functional impairment, history, or other clinical facts.
-- Treat every supplied diagnosis as a relevant treatment-plan anchor. Synthesize the diagnoses into the presenting problem and make the goals/objectives collectively responsive to them when clinically appropriate; do not silently omit a supplied diagnosis.
 - Generate exactly the requested number of goals.
 - Follow the requested objective-count mode exactly. When a total objective count is requested, distribute that total across the goals and write each objective to advance the complete goal set. When objectives per goal are requested, generate that count under every goal.
 - Goal language: concise and outcome-focused, written as "Client will ... resulting in ...".
@@ -10093,17 +9638,12 @@ Requirements:
                         suppressEmptyAlert: true
                     });
 
-                    const diagnoses = getNamedClientDiagnoses(client);
-                    if (diagnoses.length > 0) {
+                    if (client?.diagnosis?.trim()) {
                         try {
-                            const result = await generateDiagnosticSupportStatements(client, appointment);
-                            if (result.generated > 0) {
-                                delete appointment.auditCheck;
-                                markDirty();
-                            }
-                            if (result.errors.length > 0) {
-                                diagnosticSupportError = new Error(result.errors.join('; '));
-                            }
+                            const diagnosticSupport = await fetchDiagnosticSupportFromAI(client, appointment);
+                            appointment.soap.diagnosticSupport = diagnosticSupport;
+                            delete appointment.auditCheck;
+                            markDirty();
                         } catch (error) {
                             diagnosticSupportError = error;
                             console.warn('Diagnostic Support AI generation failed.', error);
@@ -11992,7 +11532,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 const clientLens = getClientGoalGenerationLens(client);
                 goalGeneratorModalities = [...clientLens.modalities];
                 goalGeneratorModalityOther = clientLens.other || '';
-                goalDiagnosisInput.value = getNamedClientDiagnoses(client).map(entry => entry.name).join('\n');
+                goalDiagnosisInput.value = client.diagnosis || '';
                 presentingProblemShorthandInput.value = '';
                 goalCountInput.value = '1';
                 objectiveCountInput.value = '4';

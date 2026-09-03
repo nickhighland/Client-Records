@@ -56,4 +56,18 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.doesNotMatch(html, /with Ct participation/);
         assert.doesNotMatch(html, /assuming interventions when needed/);
     });
+
+    test(`${path} supports a simple editable diagnosis list in Treatment Goals`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+
+        assert.match(html, /id="addDiagnosisBtn"/);
+        assert.match(html, /id="clientDiagnosesList"/);
+        assert.match(html, /const normalizeClientDiagnoses =/);
+        assert.match(html, /const addClientDiagnosis =/);
+        assert.match(html, /const removeClientDiagnosis =/);
+        assert.match(html, /const updateClientDiagnosis =/);
+        assert.match(html, /Add one diagnosis per row/);
+        assert.doesNotMatch(html, /const generateDiagnosticSupportStatements =/);
+        assert.doesNotMatch(html, /Consider every diagnosis when developing the presenting problem/);
+    });
 }

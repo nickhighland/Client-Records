@@ -1483,6 +1483,74 @@
             background: var(--suggestion-bg);
         }
 
+        .client-diagnoses-editor {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .client-diagnoses-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .client-diagnoses-list {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+        .client-diagnosis-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .client-diagnosis-input {
+            flex: 1 1 auto;
+            min-width: 0;
+            box-sizing: border-box;
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--input-border);
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            background-color: var(--input-bg);
+            color: var(--input-text);
+        }
+        .remove-client-diagnosis-btn {
+            flex: 0 0 auto;
+            min-width: 34px;
+            min-height: 34px;
+            padding: 4px 8px;
+            border: 1px solid var(--panel-border);
+            border-radius: 5px;
+            background: transparent;
+            color: var(--text-color-secondary);
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .remove-client-diagnosis-btn:hover {
+            background: var(--suggestion-bg);
+            color: var(--text-color-primary);
+        }
+        .client-diagnoses-help {
+            margin: 0;
+            color: var(--text-color-secondary);
+            font-size: 0.78rem;
+            line-height: 1.35;
+        }
+
+        @media (max-width: 520px) {
+            .client-diagnosis-row {
+                align-items: stretch;
+            }
+            .remove-client-diagnosis-btn {
+                min-width: 38px;
+            }
+        }
+
         .soap-section { margin-bottom: 15px; }
         .soap-header {
             background: linear-gradient(135deg, #5D6D7E 0%, #34495E 100%);
@@ -2665,7 +2733,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.14" aria-label="SmartEMR version 3.0.14">v3.0.14</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.16" aria-label="SmartEMR version 3.0.16">v3.0.16</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -2833,8 +2901,16 @@
                 <!-- Goals Tab Content -->
                 <div id="goalsTabContent" class="panel-content" style="display: none; flex-direction: column; overflow-y: auto;">
                     <div style="padding: 10px; border-bottom: 1px solid var(--panel-border); flex-shrink: 0;">
-                        <label for="clientDiagnosis" style="font-weight: 600; color: var(--text-color-primary); display: block; margin-bottom: 8px;">Diagnosis</label>
-                        <textarea id="clientDiagnosis" placeholder="Enter client diagnoses here for reference..." style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text); resize: vertical;" disabled></textarea>
+                        <div class="client-diagnoses-editor">
+                            <div class="client-diagnoses-header">
+                                <label style="font-weight: 600; color: var(--text-color-primary);">Diagnosis</label>
+                                <button id="addDiagnosisBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.8rem;" disabled>+ Add diagnosis</button>
+                            </div>
+                            <p class="client-diagnoses-help">Add one diagnosis per row. Edit or remove diagnoses as needed.</p>
+                            <div id="clientDiagnosesList" class="client-diagnoses-list" aria-live="polite">
+                                <div class="no-selection">Select a client to manage diagnoses</div>
+                            </div>
+                        </div>
                         <label for="clientPresentingProblem" style="font-weight: 600; color: var(--text-color-primary); display: block; margin: 12px 0 8px;">Presenting Problem</label>
                         <textarea id="clientPresentingProblem" placeholder="Enter or generate the client's presenting problem..." style="width: 100%; min-height: 100px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text); resize: vertical;" disabled></textarea>
                     </div>
@@ -3851,7 +3927,8 @@
             const clientDetailsContentEl = document.getElementById('clientDetailsContent');
             const contactContentEl = document.getElementById('contactContent');
             const nextSessionContentEl = document.getElementById('nextSessionContent');
-            const clientDiagnosisEl = document.getElementById('clientDiagnosis');
+            const clientDiagnosesListEl = document.getElementById('clientDiagnosesList');
+            const addDiagnosisBtn = document.getElementById('addDiagnosisBtn');
             const clientPresentingProblemEl = document.getElementById('clientPresentingProblem');
             const sessionInfoEl = document.getElementById('sessionInfo');
             const auditProofSymptomsEl = document.getElementById('auditProofSymptoms');
@@ -4648,6 +4725,71 @@
                 client.contactInfo.emails = normalizeClientContactEntries(client.contactInfo.emails);
                 return client.contactInfo;
             };
+            const normalizeDiagnosisEntry = (entry) => {
+                const isObject = entry && typeof entry === 'object';
+                const rawName = isObject
+                    ? (entry.name ?? entry.diagnosis ?? entry.text ?? entry.label ?? '')
+                    : entry;
+                const name = String(rawName ?? '').trim();
+                const id = isObject && typeof entry.id === 'string' && entry.id.trim()
+                    ? entry.id.trim()
+                    : crypto.randomUUID();
+                return { id, name };
+            };
+            const normalizeClientDiagnoses = (client) => {
+                if (!client || typeof client !== 'object') return false;
+
+                const previousDiagnoses = client.diagnoses;
+                const previousLegacyDiagnosis = typeof client.diagnosis === 'string' ? client.diagnosis : '';
+                const hasUsableDiagnosisList = Array.isArray(previousDiagnoses)
+                    && previousDiagnoses.some(entry => {
+                        const isObject = entry && typeof entry === 'object';
+                        const rawName = isObject
+                            ? (entry.name ?? entry.diagnosis ?? entry.text ?? entry.label ?? '')
+                            : entry;
+                        return String(rawName ?? '').trim();
+                    });
+                const source = Array.isArray(previousDiagnoses)
+                    && (hasUsableDiagnosisList || !previousLegacyDiagnosis.trim())
+                    ? previousDiagnoses
+                    : (previousLegacyDiagnosis.trim()
+                        ? previousLegacyDiagnosis.split(/\r?\n/).map(value => value.replace(/^\s*[-*\u2022]\s*/, ''))
+                        : []);
+                const seenIds = new Set();
+                const normalized = source
+                    .map(normalizeDiagnosisEntry)
+                    .map(entry => {
+                        if (seenIds.has(entry.id)) entry.id = crypto.randomUUID();
+                        seenIds.add(entry.id);
+                        return entry;
+                    });
+                const legacyDiagnosis = normalized
+                    .map(entry => entry.name)
+                    .filter(Boolean)
+                    .join('\n');
+                const changed = JSON.stringify(previousDiagnoses) !== JSON.stringify(normalized)
+                    || previousLegacyDiagnosis !== legacyDiagnosis;
+
+                client.diagnoses = normalized;
+                client.diagnosis = legacyDiagnosis;
+                return changed;
+            };
+            const getClientDiagnoses = (client) => {
+                if (!client || typeof client !== 'object') return [];
+                const needsNormalization = !Array.isArray(client.diagnoses)
+                    || client.diagnoses.some(entry => !entry || typeof entry !== 'object'
+                        || typeof entry.id !== 'string'
+                        || typeof entry.name !== 'string');
+                if (needsNormalization) normalizeClientDiagnoses(client);
+                return Array.isArray(client.diagnoses) ? client.diagnoses : [];
+            };
+            const syncLegacyDiagnosisText = (client) => {
+                if (!client) return;
+                client.diagnosis = getClientDiagnoses(client)
+                    .map(entry => String(entry.name || '').trim())
+                    .filter(Boolean)
+                    .join('\n');
+            };
             const getSelectedAppointmentContext = () => {
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
@@ -4669,6 +4811,7 @@
             };
 
             const normalizeClientData = () => {
+                let dataMigrated = false;
                 if (!Array.isArray(data.clients)) data.clients = [];
                 if (!Array.isArray(data.archivedClients)) data.archivedClients = [];
                 if (!Array.isArray(data.todaySessionClientIds)) data.todaySessionClientIds = [];
@@ -4689,6 +4832,7 @@
                     if (!Array.isArray(client.goals)) client.goals = [];
                     ensureClientContactInfo(client);
                     if (typeof client.diagnosis !== 'string') client.diagnosis = '';
+                    if (normalizeClientDiagnoses(client)) dataMigrated = true;
                     if (typeof client.presentingProblem !== 'string') client.presentingProblem = '';
                     if (typeof client.persistentInstructions !== 'string') client.persistentInstructions = '';
                     if (typeof client.nextSessionNotes !== 'string') client.nextSessionNotes = '';
@@ -4779,7 +4923,7 @@
                 if (!Array.isArray(deletedItems.appointments)) deletedItems.appointments = [];
                 if (!Array.isArray(deletedItems.notes)) deletedItems.notes = [];
                 if (!Array.isArray(deletedItems.intakes)) deletedItems.intakes = [];
-                return soapGuidanceMigrated;
+                return dataMigrated || soapGuidanceMigrated;
             };
 
             const isClientInTodaySessions = (clientId) => (data.todaySessionClientIds || []).includes(clientId);
@@ -7443,6 +7587,79 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 renderDetails();
             };
 
+            const renderClientDiagnoses = (client) => {
+                if (!client) {
+                    addDiagnosisBtn.disabled = true;
+                    clientDiagnosesListEl.innerHTML = '<div class="no-selection">Select a client to manage diagnoses</div>';
+                    return;
+                }
+
+                addDiagnosisBtn.disabled = false;
+                const diagnoses = getClientDiagnoses(client);
+                if (diagnoses.length === 0) {
+                    clientDiagnosesListEl.innerHTML = '<div class="no-selection">No diagnoses recorded. Click + Add diagnosis.</div>';
+                    return;
+                }
+
+                clientDiagnosesListEl.innerHTML = diagnoses.map((diagnosis, index) => {
+                    const label = diagnosis.name.trim() || `Diagnosis ${index + 1}`;
+                    const escapedId = escapeGoalDraftHtml(diagnosis.id);
+                    const escapedLabel = escapeGoalDraftHtml(label);
+                    return `
+                        <div class="client-diagnosis-row" data-diagnosis-id="${escapedId}">
+                            <input type="text" class="client-diagnosis-input" data-diagnosis-id="${escapedId}" value="${escapeGoalDraftHtml(diagnosis.name)}" placeholder="e.g., Generalized Anxiety Disorder (F41.1)" aria-label="${escapedLabel}">
+                            <button type="button" class="remove-client-diagnosis-btn" data-diagnosis-id="${escapedId}" title="Remove diagnosis" aria-label="Remove ${escapedLabel}">&times;</button>
+                        </div>
+                    `;
+                }).join('');
+            };
+
+            const addClientDiagnosis = () => {
+                const client = findClient(selectedClientId);
+                if (!client || recordViewClearedForSelectedClient) return;
+                const diagnoses = getClientDiagnoses(client);
+                const existingEmpty = diagnoses.find(entry => !String(entry.name || '').trim());
+                if (existingEmpty) {
+                    const existingInput = [...clientDiagnosesListEl.querySelectorAll('.client-diagnosis-input')]
+                        .find(input => input.dataset.diagnosisId === existingEmpty.id);
+                    existingInput?.focus();
+                    return;
+                }
+
+                const diagnosis = { id: crypto.randomUUID(), name: '' };
+                diagnoses.push(diagnosis);
+                syncLegacyDiagnosisText(client);
+                markDirty();
+                renderDetails();
+                const newInput = [...clientDiagnosesListEl.querySelectorAll('.client-diagnosis-input')]
+                    .find(input => input.dataset.diagnosisId === diagnosis.id);
+                newInput?.focus();
+            };
+
+            const removeClientDiagnosis = (diagnosisId) => {
+                const client = findClient(selectedClientId);
+                if (!client || !diagnosisId) return;
+                const diagnoses = getClientDiagnoses(client);
+                const index = diagnoses.findIndex(entry => entry.id === diagnosisId);
+                if (index < 0) return;
+
+                diagnoses.splice(index, 1);
+                syncLegacyDiagnosisText(client);
+                markDirty();
+                renderDetails();
+            };
+
+            const updateClientDiagnosis = (diagnosisId, value) => {
+                const client = findClient(selectedClientId);
+                if (!client || !diagnosisId) return;
+                const diagnosis = getClientDiagnoses(client).find(entry => entry.id === diagnosisId);
+                if (!diagnosis) return;
+
+                diagnosis.name = String(value ?? '');
+                syncLegacyDiagnosisText(client);
+                markDirty();
+            };
+
             const renderDetails = () => {
                 const client = recordViewClearedForSelectedClient ? null : findClient(selectedClientId);
                 const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
@@ -7462,9 +7679,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 updateClientDetailsTabLabels();
                 renderClientContactFields(client);
 
-                clientDiagnosisEl.disabled = !client;
-                clientDiagnosisEl.value = client ? client.diagnosis || '' : '';
-                clientDiagnosisEl.placeholder = client ? "Enter client diagnoses here for reference..." : "Select a client to enter diagnoses...";
+                renderClientDiagnoses(client);
                 clientPresentingProblemEl.disabled = !client;
                 clientPresentingProblemEl.value = client ? client.presentingProblem || '' : '';
                 clientPresentingProblemEl.placeholder = client
@@ -8038,6 +8253,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     },
                     persistentNotes: '',
                     nextSessionNotes: '',
+                    diagnoses: [],
                     diagnosis: '',
                     presentingProblem: '',
                     persistentInstructions: '',
@@ -8729,12 +8945,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 updateNotesTabUI();
             });
 
-            clientDiagnosisEl.addEventListener('input', () => {
-                 const client = findClient(selectedClientId);
-                 if (client) {
-                     client.diagnosis = clientDiagnosisEl.value;
-                     markDirty();
-                 }
+            addDiagnosisBtn.addEventListener('click', addClientDiagnosis);
+            clientDiagnosesListEl.addEventListener('input', (event) => {
+                const input = event.target.closest?.('.client-diagnosis-input');
+                if (!input) return;
+                updateClientDiagnosis(input.dataset.diagnosisId, input.value);
+            });
+            clientDiagnosesListEl.addEventListener('click', (event) => {
+                const removeButton = event.target.closest?.('.remove-client-diagnosis-btn');
+                if (!removeButton) return;
+                removeClientDiagnosis(removeButton.dataset.diagnosisId);
             });
             clientPresentingProblemEl.addEventListener('input', () => {
                 const client = findClient(selectedClientId);

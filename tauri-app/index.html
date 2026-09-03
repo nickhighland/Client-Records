@@ -1505,8 +1505,15 @@
             align-items: center;
             gap: 7px;
         }
-        .client-diagnosis-input {
+        .client-diagnosis-fields {
             flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .client-diagnosis-input {
+            flex: 0 0 auto;
             min-width: 0;
             box-sizing: border-box;
             width: 100%;
@@ -1517,6 +1524,24 @@
             font-family: inherit;
             background-color: var(--input-bg);
             color: var(--input-text);
+        }
+        .client-diagnosis-substantiation-label {
+            color: var(--text-color-secondary);
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        .client-diagnosis-substantiation {
+            box-sizing: border-box;
+            width: 100%;
+            min-height: 62px;
+            padding: 8px;
+            border: 1px solid var(--input-border);
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            resize: vertical;
         }
         .remove-client-diagnosis-btn {
             flex: 0 0 auto;
@@ -2733,7 +2758,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.16" aria-label="SmartEMR version 3.0.16">v3.0.16</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.17" aria-label="SmartEMR version 3.0.17">v3.0.17</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -4734,7 +4759,8 @@
                 const id = isObject && typeof entry.id === 'string' && entry.id.trim()
                     ? entry.id.trim()
                     : crypto.randomUUID();
-                return { id, name };
+                const substantiation = isObject ? String(entry.substantiation ?? '').trim() : '';
+                return { id, name, substantiation };
             };
             const normalizeClientDiagnoses = (client) => {
                 if (!client || typeof client !== 'object') return false;
@@ -4779,7 +4805,8 @@
                 const needsNormalization = !Array.isArray(client.diagnoses)
                     || client.diagnoses.some(entry => !entry || typeof entry !== 'object'
                         || typeof entry.id !== 'string'
-                        || typeof entry.name !== 'string');
+                        || typeof entry.name !== 'string'
+                        || typeof entry.substantiation !== 'string');
                 if (needsNormalization) normalizeClientDiagnoses(client);
                 return Array.isArray(client.diagnoses) ? client.diagnoses : [];
             };
@@ -7607,7 +7634,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     const escapedLabel = escapeGoalDraftHtml(label);
                     return `
                         <div class="client-diagnosis-row" data-diagnosis-id="${escapedId}">
-                            <input type="text" class="client-diagnosis-input" data-diagnosis-id="${escapedId}" value="${escapeGoalDraftHtml(diagnosis.name)}" placeholder="e.g., Generalized Anxiety Disorder (F41.1)" aria-label="${escapedLabel}">
+                            <div class="client-diagnosis-fields">
+                                <input type="text" class="client-diagnosis-input" data-diagnosis-id="${escapedId}" value="${escapeGoalDraftHtml(diagnosis.name)}" placeholder="e.g., Generalized Anxiety Disorder (F41.1)" aria-label="${escapedLabel}">
+                                <label class="client-diagnosis-substantiation-label">Substantiation</label>
+                                <textarea class="client-diagnosis-substantiation" data-diagnosis-id="${escapedId}" rows="3" placeholder="Document the criteria and clinical evidence supporting this diagnosis." aria-label="Substantiation for ${escapedLabel}" spellcheck="true">${escapeGoalDraftHtml(diagnosis.substantiation)}</textarea>
+                            </div>
                             <button type="button" class="remove-client-diagnosis-btn" data-diagnosis-id="${escapedId}" title="Remove diagnosis" aria-label="Remove ${escapedLabel}">&times;</button>
                         </div>
                     `;
@@ -7657,6 +7688,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 diagnosis.name = String(value ?? '');
                 syncLegacyDiagnosisText(client);
+                markDirty();
+            };
+
+            const updateClientDiagnosisSubstantiation = (diagnosisId, value) => {
+                const client = findClient(selectedClientId);
+                if (!client || !diagnosisId) return;
+                const diagnosis = getClientDiagnoses(client).find(entry => entry.id === diagnosisId);
+                if (!diagnosis) return;
+
+                diagnosis.substantiation = String(value ?? '');
                 markDirty();
             };
 
@@ -8948,8 +8989,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             addDiagnosisBtn.addEventListener('click', addClientDiagnosis);
             clientDiagnosesListEl.addEventListener('input', (event) => {
                 const input = event.target.closest?.('.client-diagnosis-input');
-                if (!input) return;
-                updateClientDiagnosis(input.dataset.diagnosisId, input.value);
+                if (input) {
+                    updateClientDiagnosis(input.dataset.diagnosisId, input.value);
+                    return;
+                }
+                const substantiation = event.target.closest?.('.client-diagnosis-substantiation');
+                if (substantiation) {
+                    updateClientDiagnosisSubstantiation(substantiation.dataset.diagnosisId, substantiation.value);
+                }
             });
             clientDiagnosesListEl.addEventListener('click', (event) => {
                 const removeButton = event.target.closest?.('.remove-client-diagnosis-btn');

@@ -66,6 +66,10 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const addClientDiagnosis =/);
         assert.match(html, /const removeClientDiagnosis =/);
         assert.match(html, /const updateClientDiagnosis =/);
+        assert.match(html, /const updateClientDiagnosisSubstantiation =/);
+        assert.match(html, /class="client-diagnosis-substantiation"/);
+        assert.match(html, /Substantiation/);
+        assert.match(html, /substantiation/);
         assert.match(html, /Add one diagnosis per row/);
         assert.doesNotMatch(html, /const generateDiagnosticSupportStatements =/);
         assert.doesNotMatch(html, /Consider every diagnosis when developing the presenting problem/);

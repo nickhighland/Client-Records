@@ -70,6 +70,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /class="client-diagnosis-substantiation"/);
         assert.match(html, /Substantiation/);
         assert.match(html, /substantiation/);
+        assert.match(html, /\.client-diagnosis-row \{[\s\S]*?padding: 9px;[\s\S]*?border: 1px solid var\(--panel-border\)/);
         assert.match(html, /Add one diagnosis per row/);
         assert.doesNotMatch(html, /const generateDiagnosticSupportStatements =/);
         assert.doesNotMatch(html, /Consider every diagnosis when developing the presenting problem/);

@@ -52,10 +52,27 @@ const compareModels = (left, right) => {
 };
 
 export const getVertexApiHost = (location) => {
-    const normalizedLocation = String(location || '').trim().toLowerCase();
+    const normalizedLocation = normalizeVertexLocation(location);
     return normalizedLocation === 'global'
         ? 'aiplatform.googleapis.com'
         : `${normalizedLocation}-aiplatform.googleapis.com`;
+};
+
+export const normalizeVertexLocation = (location) => {
+    const normalizedLocation = String(location || '').trim().toLowerCase();
+    return normalizedLocation || 'global';
+};
+
+export const getVertexRequestLocations = (location) => {
+    const normalizedLocation = normalizeVertexLocation(location);
+    return normalizedLocation === 'global'
+        ? ['global']
+        : [normalizedLocation, 'global'];
+};
+
+export const isVertexPublisherModelNotFound = (status, errorText) => {
+    return Number(status) === 404
+        && String(errorText || '').toLowerCase().includes('publisher model');
 };
 
 export const normalizeVertexPublisherModels = (publisherModels) => {
@@ -93,7 +110,7 @@ const getResponseError = async (response) => {
     }
 };
 
-export const fetchVertexGeminiModelCatalog = async ({
+const fetchVertexGeminiModelCatalogAtLocation = async ({
     accessToken,
     fetchImpl,
     location
@@ -144,6 +161,45 @@ export const fetchVertexGeminiModelCatalog = async ({
     const models = normalizeVertexPublisherModels(publisherModels);
     if (models.length === 0) {
         throw new Error('Vertex returned no compatible Gemini text-generation models.');
+    }
+
+    return publisherModels;
+};
+
+export const fetchVertexGeminiModelCatalog = async ({
+    accessToken,
+    fetchImpl,
+    location
+}) => {
+    if (!accessToken) {
+        throw new Error('A Google access token is required to refresh Vertex models.');
+    }
+    if (typeof fetchImpl !== 'function') {
+        throw new Error('A fetch implementation is required to refresh Vertex models.');
+    }
+
+    const requestedLocation = normalizeVertexLocation(location);
+    const publisherModels = [];
+    const errors = [];
+
+    // Google publishes newer Gemini families globally even when a regional
+    // catalog still responds successfully, so merge both catalogs when needed.
+    for (const catalogLocation of getVertexRequestLocations(requestedLocation)) {
+        try {
+            publisherModels.push(...await fetchVertexGeminiModelCatalogAtLocation({
+                accessToken,
+                fetchImpl,
+                location: catalogLocation
+            }));
+        } catch (error) {
+            errors.push(error);
+        }
+    }
+
+    const models = normalizeVertexPublisherModels(publisherModels);
+    if (models.length === 0) {
+        throw errors[errors.length - 1]
+            || new Error('Vertex returned no compatible Gemini text-generation models.');
     }
 
     return models;

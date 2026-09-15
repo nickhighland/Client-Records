@@ -1,4 +1,8 @@
-import { getVertexApiHost } from './vertex-models.js';
+import {
+    getVertexApiHost,
+    getVertexRequestLocations,
+    isVertexPublisherModelNotFound
+} from './vertex-models.js';
 
 export const VERTEX_CONTEXT_CACHE_TTL_SECONDS = 15 * 60 * 60;
 
@@ -86,6 +90,12 @@ const parseResponseError = async (response) => {
     }
 };
 
+const createVertexCacheError = (message, status) => {
+    const error = new Error(message);
+    error.vertexStatus = status;
+    return error;
+};
+
 const getCacheIdentity = ({ projectId, location, modelId, cacheMaterial }) => {
     const fingerprint = hashText(JSON.stringify(cacheMaterial));
     return {
@@ -122,7 +132,7 @@ export const invalidateVertexContextCache = ({ storage, storageKey }) => {
     }
 };
 
-export const getOrCreateVertexSoapContextCache = async ({
+const getOrCreateVertexSoapContextCacheAtLocation = async ({
     accessToken,
     cacheMaterial,
     fetchImpl,
@@ -177,7 +187,10 @@ export const getOrCreateVertexSoapContextCache = async ({
         });
         if (!countResponse.ok) {
             const details = await parseResponseError(countResponse);
-            throw new Error(`Vertex cache token count failed (${countResponse.status}): ${details}`);
+            throw createVertexCacheError(
+                `Vertex cache token count failed (${countResponse.status}): ${details}`,
+                countResponse.status
+            );
         }
 
         const countResult = await countResponse.json();
@@ -213,7 +226,10 @@ export const getOrCreateVertexSoapContextCache = async ({
     });
     if (!cacheResponse.ok) {
         const details = await parseResponseError(cacheResponse);
-        throw new Error(`Vertex context cache creation failed (${cacheResponse.status}): ${details}`);
+        throw createVertexCacheError(
+            `Vertex context cache creation failed (${cacheResponse.status}): ${details}`,
+            cacheResponse.status
+        );
     }
 
     const cacheResult = await cacheResponse.json();
@@ -233,4 +249,30 @@ export const getOrCreateVertexSoapContextCache = async ({
         storageKey: identity.storageKey,
         totalTokens
     };
+};
+
+export const getOrCreateVertexSoapContextCache = async (options) => {
+    let lastError = null;
+
+    for (const requestLocation of getVertexRequestLocations(options?.location)) {
+        try {
+            const result = await getOrCreateVertexSoapContextCacheAtLocation({
+                ...options,
+                location: requestLocation
+            });
+            return { ...result, location: requestLocation };
+        } catch (error) {
+            lastError = error;
+            if (!isVertexPublisherModelNotFound(error?.vertexStatus, error?.message)
+                || requestLocation === 'global') {
+                throw error;
+            }
+            console.warn(
+                `Vertex context cache model was not available in ${requestLocation}; retrying in global.`,
+                error
+            );
+        }
+    }
+
+    throw lastError || new Error('Vertex context cache could not be created.');
 };

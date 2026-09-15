@@ -145,3 +145,45 @@ test('uses implicit caching when explicit caching is unavailable or below the mi
     assert.equal(getVertexContextCacheMinimumTokens('gemini-2.5-flash'), 2048);
     assert.equal(getVertexContextCacheMinimumTokens('gemini-3.5-flash'), 4096);
 });
+
+test('falls back to the global endpoint when a regional publisher model is not found', async () => {
+    const requests = [];
+    const cacheMaterial = buildVertexSoapCacheMaterial({
+        systemPrompt: 'rules for global fallback',
+        interventionBankContext: '\n- intervention'
+    });
+    const fetchImpl = async (url, options) => {
+        requests.push({ url, body: JSON.parse(options.body) });
+        if (url.startsWith('https://us-central1-aiplatform.googleapis.com/')) {
+            return makeJsonResponse({
+                error: { message: 'Publisher model was not found in this region.' }
+            }, false, 404);
+        }
+        if (url.endsWith(':countTokens')) {
+            return makeJsonResponse({ totalTokens: 5000 });
+        }
+        return makeJsonResponse({
+            name: 'projects/p/locations/global/cachedContents/global-fallback',
+            expireTime: '2030-01-01T01:00:00Z'
+        });
+    };
+
+    const result = await getOrCreateVertexSoapContextCache({
+        accessToken: 'token',
+        cacheMaterial,
+        fetchImpl,
+        location: 'us-central1',
+        modelId: 'gemini-3.8-flash',
+        now: Date.parse('2030-01-01T00:00:00Z'),
+        projectId: 'p',
+        storage: createStorage()
+    });
+
+    assert.equal(result.location, 'global');
+    assert.equal(result.reason, 'created');
+    assert.equal(requests.length, 3);
+    assert.match(requests[0].url, /^https:\/\/us-central1-aiplatform\.googleapis\.com\//);
+    assert.match(requests[1].url, /^https:\/\/aiplatform\.googleapis\.com\//);
+    assert.match(requests[2].url, /^https:\/\/aiplatform\.googleapis\.com\//);
+    assert.equal(requests[2].body.model, 'projects/p/locations/global/publishers/google/models/gemini-3.8-flash');
+});

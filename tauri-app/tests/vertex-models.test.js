@@ -5,6 +5,8 @@ import {
     choosePreferredVertexModel,
     fetchVertexGeminiModelCatalog,
     getVertexApiHost,
+    getVertexRequestLocations,
+    isVertexPublisherModelNotFound,
     normalizeVertexPublisherModels
 } from '../src/vertex-models.js';
 
@@ -52,6 +54,9 @@ test('retrieves every page from the documented publisherModels response', async 
         },
         {
             publisherModels: [{ name: 'publishers/google/models/gemini-3.1-pro-preview', launchStage: 'PUBLIC_PREVIEW' }]
+        },
+        {
+            publisherModels: [{ name: 'publishers/google/models/gemini-3.8-flash', launchStage: 'GA' }]
         }
     ];
     const fetchImpl = async (url, options) => {
@@ -68,13 +73,15 @@ test('retrieves every page from the documented publisherModels response', async 
         location: 'us-central1'
     });
 
-    assert.equal(requestedUrls.length, 2);
+    assert.equal(requestedUrls.length, 3);
     assert.equal(requestedUrls[0].url.host, 'us-central1-aiplatform.googleapis.com');
     assert.equal(requestedUrls[0].url.pathname, '/v1beta1/publishers/google/models');
     assert.equal(requestedUrls[0].url.searchParams.get('listAllVersions'), 'false');
     assert.equal(requestedUrls[1].url.searchParams.get('pageToken'), 'next page');
+    assert.equal(requestedUrls[2].url.host, 'aiplatform.googleapis.com');
     assert.equal(requestedUrls[0].options.headers.Authorization, 'Bearer token');
     assert.deepEqual(models.map(model => model.id), [
+        'gemini-3.8-flash',
         'gemini-3.5-flash',
         'gemini-3.1-pro-preview'
     ]);
@@ -96,6 +103,12 @@ test('rejects the obsolete models response shape instead of silently using stale
 
 test('uses the global host and favors a stable Flash model by default', () => {
     assert.equal(getVertexApiHost('GLOBAL'), 'aiplatform.googleapis.com');
+    assert.equal(getVertexApiHost(''), 'aiplatform.googleapis.com');
+    assert.deepEqual(getVertexRequestLocations('us-central1'), ['us-central1', 'global']);
+    assert.deepEqual(getVertexRequestLocations('global'), ['global']);
+    assert.equal(isVertexPublisherModelNotFound(404, 'Publisher model was not found'), true);
+    assert.equal(isVertexPublisherModelNotFound(403, 'Publisher model was not found'), false);
+    assert.equal(isVertexPublisherModelNotFound(404, 'Permission denied'), false);
     assert.equal(choosePreferredVertexModel([
         { id: 'gemini-3.5-pro', category: 'stable' },
         { id: 'gemini-3.5-flash', category: 'stable' },

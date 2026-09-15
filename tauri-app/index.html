@@ -3280,7 +3280,7 @@
                         </div>
                         <div>
                             <label for="vertexLocationInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Vertex Location</label>
-                            <input type="text" id="vertexLocationInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);" value="us-central1" placeholder="e.g., us-central1">
+                            <input type="text" id="vertexLocationInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);" value="global" placeholder="global or e.g., us-central1">
                         </div>
                         <div>
                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 0.25rem;">
@@ -3818,7 +3818,10 @@
         import {
             choosePreferredVertexModel,
             fetchVertexGeminiModelCatalog,
-            getVertexApiHost
+            getVertexApiHost,
+            getVertexRequestLocations,
+            isVertexPublisherModelNotFound,
+            normalizeVertexLocation
         } from '/src/vertex-models.js';
         import {
             buildVertexCachedSoapPayload,
@@ -4164,7 +4167,7 @@
             let apiKey = null;
             let ollamaAddress = null;
             let vertexServiceAccount = null;
-            let vertexLocation = 'us-central1';
+            let vertexLocation = 'global';
             let vertexModelCatalog = [];
             let openaiApiKey = null;
             let selectedModel = null;
@@ -6709,6 +6712,65 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return normalizedGoals;
             };
 
+            const rememberVertexEffectiveLocation = (location) => {
+                const effectiveLocation = normalizeVertexLocation(location);
+                if (effectiveLocation === vertexLocation) return;
+
+                vertexLocation = effectiveLocation;
+                vertexLocationInput.value = effectiveLocation;
+                localStorage.setItem('vertexLocation', effectiveLocation);
+            };
+
+            const requestVertexGenerateContent = async ({
+                accessToken,
+                allowErrorStatuses = [],
+                errorPrefix = 'Vertex API error',
+                location,
+                modelId,
+                payload,
+                projectId
+            }) => {
+                let lastError = null;
+
+                for (const requestLocation of getVertexRequestLocations(location)) {
+                    const host = getVertexApiHost(requestLocation);
+                    const url = `https://${host}/v1/projects/${projectId}/locations/${requestLocation}/publishers/google/models/${modelId}:generateContent`;
+                    const response = await tauriFetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${accessToken}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        return { response, location: requestLocation };
+                    }
+
+                    const errorText = await response.text();
+                    const error = new Error(`${errorPrefix}: ${response.status} - ${errorText}`);
+                    lastError = error;
+
+                    if (requestLocation !== 'global'
+                        && isVertexPublisherModelNotFound(response.status, errorText)) {
+                        console.warn(
+                            `Vertex model ${modelId} was not available in ${requestLocation}; retrying in global.`,
+                            error
+                        );
+                        continue;
+                    }
+
+                    if (allowErrorStatuses.includes(response.status)) {
+                        return { error, location: requestLocation, response };
+                    }
+
+                    throw error;
+                }
+
+                throw lastError || new Error('Vertex API request failed.');
+            };
+
             const fetchGoalDraftsFromAI = async (diagnosis, shorthand, goalCount, objectiveCount, format, modalities, objectivesPerGoal) => {
                 if (!selectedModel) {
                     throw new Error('Please connect to a provider and select a model in Settings.');
@@ -6740,31 +6802,17 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         generationConfig: { responseMimeType: 'application/json' }
                     };
 
-                    const normalizedLocation = (vertexLocation || '').toLowerCase();
-                    const vertexHost = normalizedLocation === 'global'
-                        ? 'aiplatform.googleapis.com'
-                        : `${normalizedLocation}-aiplatform.googleapis.com`;
-
-                    const callVertexDirect = async (modelId) => {
-                        const url = `https://${vertexHost}/v1/projects/${projectId}/locations/${normalizedLocation}/publishers/google/models/${modelId}:generateContent`;
-                        const response = await tauriFetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${accessToken}`
-                            },
-                            body: JSON.stringify(payload)
-                        });
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(`Vertex API error: ${response.status} - ${errorText}`);
-                        }
-                        const result = await response.json();
-                        const content = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                        return extractJsonObject(content);
-                    };
-
-                    return await callVertexDirect(selectedModel);
+                    const request = await requestVertexGenerateContent({
+                        accessToken,
+                        location: vertexLocation,
+                        modelId: selectedModel,
+                        payload,
+                        projectId
+                    });
+                    rememberVertexEffectiveLocation(request.location);
+                    const result = await request.response.json();
+                    const content = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    return extractJsonObject(content);
                 }
 
                 if (apiProvider === 'openai') {
@@ -6870,31 +6918,17 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         generationConfig: { responseMimeType: 'application/json' }
                     };
 
-                    const normalizedLocation = (vertexLocation || '').toLowerCase();
-                    const vertexHost = normalizedLocation === 'global'
-                        ? 'aiplatform.googleapis.com'
-                        : `${normalizedLocation}-aiplatform.googleapis.com`;
-
-                    const callVertexDirect = async (modelId) => {
-                        const url = `https://${vertexHost}/v1/projects/${projectId}/locations/${normalizedLocation}/publishers/google/models/${modelId}:generateContent`;
-                        const response = await tauriFetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${accessToken}`
-                            },
-                            body: JSON.stringify(payload)
-                        });
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(`Vertex API error: ${response.status} - ${errorText}`);
-                        }
-                        const result = await response.json();
-                        const content = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                        return extractJsonObject(content);
-                    };
-
-                    return await callVertexDirect(selectedModel);
+                    const request = await requestVertexGenerateContent({
+                        accessToken,
+                        location: vertexLocation,
+                        modelId: selectedModel,
+                        payload,
+                        projectId
+                    });
+                    rememberVertexEffectiveLocation(request.location);
+                    const result = await request.response.json();
+                    const content = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    return extractJsonObject(content);
                 }
 
                 if (apiProvider === 'openai') {
@@ -10129,31 +10163,32 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                             projectId,
                             storage: localStorage
                         });
+                        rememberVertexEffectiveLocation(cacheResult.location);
                     } catch (cacheError) {
                         console.warn('Vertex explicit context cache unavailable; using implicit caching.', cacheError);
                     }
 
-                    const host = getVertexApiHost(vertexLocation);
-                    const url = `https://${host}/v1/projects/${projectId}/locations/${vertexLocation}/publishers/google/models/${selectedModel}:generateContent`;
-                    const requestVertexSoap = payload => tauriFetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${accessToken}`
-                        },
-                        body: JSON.stringify(payload)
+                    const requestVertexSoap = payload => requestVertexGenerateContent({
+                        accessToken,
+                        allowErrorStatuses: [400, 404],
+                        location: vertexLocation,
+                        modelId: selectedModel,
+                        payload,
+                        projectId
                     });
                     const directPayload = buildVertexDirectSoapPayload({
                         systemPrompt,
                         interventionBankContext,
                         userPrompt
                     });
-                    let response = await requestVertexSoap(cacheResult?.cacheName
+                    let soapRequest = await requestVertexSoap(cacheResult?.cacheName
                         ? buildVertexCachedSoapPayload({
                             cacheName: cacheResult.cacheName,
                             userPrompt
                         })
                         : directPayload);
+                    rememberVertexEffectiveLocation(soapRequest.location);
+                    let response = soapRequest.response;
 
                     if (!response.ok && cacheResult?.cacheName && [400, 404].includes(response.status)) {
                         invalidateVertexContextCache({
@@ -10161,12 +10196,13 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                             storageKey: cacheResult.storageKey
                         });
                         console.warn('Vertex context cache expired or was rejected; retrying without explicit caching.');
-                        response = await requestVertexSoap(directPayload);
+                        soapRequest = await requestVertexSoap(directPayload);
+                        rememberVertexEffectiveLocation(soapRequest.location);
+                        response = soapRequest.response;
                     }
 
                     if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`Vertex API error: ${response.status} - ${errorText}`);
+                        throw soapRequest.error || new Error(`Vertex API error: ${response.status}`);
                     }
 
                     const result = await response.json();
@@ -10485,26 +10521,18 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                         const credentials = JSON.parse(vertexServiceAccount);
                         const projectId = credentials.project_id;
                         
-                        const normalizedLocation = (vertexLocation || '').toLowerCase();
-                        const vertexHost = normalizedLocation === 'global'
-                            ? 'aiplatform.googleapis.com'
-                            : `${normalizedLocation}-aiplatform.googleapis.com`;
-                        const verifyUrl = `https://${vertexHost}/v1/projects/${projectId}/locations/${normalizedLocation}/publishers/google/models/${selectedModel}:generateContent`;
-                        const response = await tauriFetch(verifyUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${accessToken}`
-                            },
-                            body: JSON.stringify({
+                        const request = await requestVertexGenerateContent({
+                            accessToken,
+                            errorPrefix: 'API test failed',
+                            location: vertexLocation,
+                            modelId: selectedModel,
+                            payload: {
                                 contents: [{ role: "user", parts: [{ text: 'Reply with OK' }] }],
                                 generationConfig: { temperature: 0 }
-                            })
+                            },
+                            projectId
                         });
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(`API test failed: ${response.status} - ${errorText}`);
-                        }
+                        rememberVertexEffectiveLocation(request.location);
                         apiStatus.textContent = 'Verified ✓';
                         apiStatus.style.color = 'green';
                     } else if (apiProvider === 'openai') {
@@ -10575,7 +10603,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                 }
             };
 
-            const VERTEX_MODEL_CACHE_VERSION = 1;
+            const VERTEX_MODEL_CACHE_VERSION = 2;
             const getVertexModelCacheKey = (projectId, location) =>
                 `vertexGeminiModelCatalog:v${VERTEX_MODEL_CACHE_VERSION}:${projectId}:${location}`;
 
@@ -10702,7 +10730,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
 
             const connectToVertex = async ({ isRefresh = false } = {}) => {
                 const serviceAccount = vertexServiceAccountInput.value.trim();
-                const location = (vertexLocationInput.value.trim() || 'us-central1').toLowerCase();
+                const location = normalizeVertexLocation(vertexLocationInput.value);
 
                 if (!serviceAccount) {
                     alert('Please provide a Google Cloud Service Account JSON.');
@@ -10770,7 +10798,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     apiStatus.style.color = 'red';
                     vertexModelInput.innerHTML = '<option>Connection Failed</option>';
                     vertexServiceAccount = null;
-                    vertexLocation = 'us-central1';
+                    vertexLocation = 'global';
                     vertexModelCatalog = [];
                     selectedModel = null;
                     vertexModelStatus.textContent = 'No current model catalog is available. Check the credentials, location, and network connection.';
@@ -11166,7 +11194,7 @@ This error cannot be fixed within this application's code; it requires a configu
                             vertexKeyStatus.style.color = '#27ae60';
                             clearVertexKeyBtn.classList.remove('hidden');
                         }
-                        vertexLocationInput.value = localStorage.getItem('vertexLocation') || 'us-central1';
+                        vertexLocationInput.value = localStorage.getItem('vertexLocation') || 'global';
                         openaiApiKeyInput.value = localStorage.getItem('openaiApiKey') || '';
                     }
 
@@ -13077,7 +13105,7 @@ This error cannot be fixed within this application's code; it requires a configu
                     vertexKeyStatus.textContent = 'Key loaded from storage';
                     vertexKeyStatus.style.color = '#27ae60';
                     clearVertexKeyBtn.classList.remove('hidden');
-                    vertexLocationInput.value = savedVertexLocation || 'us-central1';
+                    vertexLocationInput.value = savedVertexLocation || 'global';
                     connectToVertex();
                 } else if (apiProvider === 'openai' && savedOpenAIKey) {
                     openaiApiKeyInput.value = savedOpenAIKey;

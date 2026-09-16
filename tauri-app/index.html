@@ -1309,6 +1309,39 @@
         .intervention-row:last-child {
             border-bottom: none;
         }
+        .intervention-bank-name {
+            min-width: 0;
+            flex: 1 1 auto;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .intervention-bank-controls {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            flex: 0 0 auto;
+        }
+        .intervention-scope-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-color-secondary);
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        .couples-only-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: rgba(13, 148, 136, 0.18);
+            color: #0f766e;
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
 
         .intervention-group {
             border: 1px solid var(--panel-border);
@@ -1632,15 +1665,15 @@
             flex-grow: 1;
             /* overflow-y: hidden; is removed to allow manual resize */
         }
-        .diagnostic-support-block {
+        .soap-support-block {
             margin-top: 10px;
-            border: 1px solid var(--panel-border);
+            border: 1px solid #0f766e;
             border-radius: 6px;
             overflow: hidden;
         }
-        .diagnostic-support-header {
-            background: var(--input-bg);
-            color: var(--text-color-primary);
+        .soap-support-header {
+            background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+            color: #ffffff;
             padding: 6px 10px;
             font-size: 0.85rem;
             font-weight: 700;
@@ -1649,7 +1682,7 @@
             align-items: center;
             gap: 8px;
         }
-        .diagnostic-support-textarea {
+        .soap-support-textarea {
             min-height: 100px;
             border-radius: 0;
             border: none;
@@ -2762,7 +2795,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.18" aria-label="SmartEMR version 3.0.18">v3.0.18</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.20" aria-label="SmartEMR version 3.0.20">v3.0.20</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -3153,6 +3186,17 @@
             </div>
 
             <div style="margin-bottom: 1rem;">
+                <label for="clientSessionTypeSelect" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Client Session Type</label>
+                <select id="clientSessionTypeSelect" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                    <option value="individual">Individual</option>
+                    <option value="couple">Couple</option>
+                </select>
+                <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 4px;">
+                    Couple sessions include interventions marked Couples only. Those interventions are hidden from Individual sessions and excluded from their AI context.
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
                 <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Client Modality Lens (SOAP Default)</label>
                 <div style="font-size: 0.82rem; color: var(--text-color-secondary); margin-bottom: 8px;">
                     SOAP generation uses this as the default lens for this client. If session details explicitly indicate different interventions/modalities, those interventions are preserved as written.
@@ -3434,10 +3478,14 @@
                     <div id="newInterventionModalityOtherWrap" class="hidden" style="margin-top:8px;">
                         <input id="newInterventionModalityOther" class="setting-input" type="text" placeholder="Or enter a new modality..." disabled>
                     </div>
+                    <label class="intervention-scope-toggle" style="margin-top:8px;">
+                        <input id="newInterventionCouplesOnly" type="checkbox">
+                        Couples-only intervention
+                    </label>
                 </div>
                 <button id="addInterventionBtn" class="btn save-btn" style="width:auto;padding:0 14px;">Add</button>
             </div>
-            <div style="font-size:0.78rem;color:var(--text-color-secondary);margin-bottom:10px;">Leave the intervention blank to create a modality only. Drag interventions into another modality to move them; the bank stays alphabetized automatically.</div>
+            <div style="font-size:0.78rem;color:var(--text-color-secondary);margin-bottom:10px;">Leave the intervention blank to create a modality only. Mark couple-specific techniques as Couples only; they will not be offered for Individual sessions. Drag interventions into another modality to move them; the bank stays alphabetized automatically.</div>
             <div id="interventionBankList" class="intervention-list"></div>
         </div>
     </div>
@@ -4040,6 +4088,7 @@
             const newInterventionModalitySelect = document.getElementById('newInterventionModalitySelect');
             const newInterventionModalityOtherWrap = document.getElementById('newInterventionModalityOtherWrap');
             const newInterventionModalityOther = document.getElementById('newInterventionModalityOther');
+            const newInterventionCouplesOnly = document.getElementById('newInterventionCouplesOnly');
             const addInterventionBtn = document.getElementById('addInterventionBtn');
             const interventionBankList = document.getElementById('interventionBankList');
             const interventionPickerModal = document.getElementById('interventionPickerModal');
@@ -4075,6 +4124,7 @@
             const persistentInstructionsInput = document.getElementById('persistentInstructionsInput');
             const sessionInstructionsInput = document.getElementById('sessionInstructionsInput');
             const preferredPronounsSelect = document.getElementById('preferredPronounsSelect');
+            const clientSessionTypeSelect = document.getElementById('clientSessionTypeSelect');
             const customPronounsWrapEl = document.getElementById('customPronounsWrap');
             const customPronounSubjectInput = document.getElementById('customPronounSubjectInput');
             const customPronounObjectInput = document.getElementById('customPronounObjectInput');
@@ -4824,6 +4874,12 @@
                     .filter(Boolean)
                     .join('\n');
             };
+            const normalizeClientSessionType = (value) => {
+                const normalized = String(value ?? '').trim().toLowerCase();
+                return normalized === 'couple' || normalized === 'couples' ? 'couple' : 'individual';
+            };
+            const getClientSessionType = (client) => normalizeClientSessionType(client?.sessionType ?? client?.clientType);
+            const isCoupleClient = (client) => getClientSessionType(client) === 'couple';
             const getSelectedAppointmentContext = () => {
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
@@ -4865,6 +4921,9 @@
                     if (!Array.isArray(client.intakeSessions)) client.intakeSessions = [];
                     if (!Array.isArray(client.goals)) client.goals = [];
                     ensureClientContactInfo(client);
+                    const previousSessionType = client.sessionType;
+                    client.sessionType = normalizeClientSessionType(client.sessionType ?? client.clientType);
+                    if (previousSessionType !== client.sessionType) dataMigrated = true;
                     if (typeof client.diagnosis !== 'string') client.diagnosis = '';
                     if (normalizeClientDiagnoses(client)) dataMigrated = true;
                     if (typeof client.presentingProblem !== 'string') client.presentingProblem = '';
@@ -5029,7 +5088,7 @@
                 const score = checks.length > 0 ? Math.round((passedCount / checks.length) * 100) : 0;
                 const criticalLabels = new Set([
                     'All SOAP sections completed',
-                    'Assessment states medical necessity/progress',
+                    'Medical Necessity is documented',
                     'Subjective includes functional impact'
                 ]);
                 const failedCritical = checks.filter(check => !check.pass && criticalLabels.has(check.label));
@@ -5084,6 +5143,24 @@
                     progressResponse: raw.progressResponse || '',
                     medicalNecessity: raw.medicalNecessity || ''
                 };
+            };
+
+            const getSoapAuditProofingContext = (appointment) => {
+                const auditProofing = getAuditProofingData(appointment);
+                const contextParts = [];
+                if (auditProofing.symptoms) {
+                    contextParts.push(`\n- **Audit (Subjective):**\n${auditProofing.symptoms}`);
+                }
+                const assessmentParts = [auditProofing.functionalImpact, auditProofing.progressResponse]
+                    .filter(Boolean)
+                    .join('\n\n');
+                if (assessmentParts) {
+                    contextParts.push(`\n- **Audit (Assessment):**\n${assessmentParts}`);
+                }
+                if (auditProofing.medicalNecessity) {
+                    contextParts.push(`\n- **Audit (Medical Necessity):**\n${auditProofing.medicalNecessity}`);
+                }
+                return contextParts.join('');
             };
 
             const saveAuditProofingField = (fieldKey, value) => {
@@ -5153,15 +5230,16 @@
 
             const runSoapAuditCheck = (client, appointment) => {
                 const soap = appointment?.soap || {};
+                const auditProofing = getAuditProofingData(appointment);
                 const sectionText = {
                     s: (soap.s || '').trim(),
                     o: (soap.o || '').trim(),
                     a: (soap.a || '').trim(),
                     p: (soap.p || '').trim(),
-                    i: (soap.interventions || '').trim()
+                    i: (soap.interventions || '').trim(),
+                    medicalNecessity: (soap.medicalNecessity || auditProofing.medicalNecessity || '').trim()
                 };
 
-                const auditProofing = getAuditProofingData(appointment);
                 const auditProofingText = `${auditProofing.symptoms}\n${auditProofing.functionalImpact}\n${auditProofing.progressResponse}\n${auditProofing.medicalNecessity}`.toLowerCase();
 
                 const fullText = `${sectionText.s}\n${sectionText.o}\n${sectionText.a}\n${sectionText.p}\n${sectionText.i}`.toLowerCase();
@@ -5185,9 +5263,14 @@
                         remedy: 'Include at least 1–2 observed findings (appearance, affect, speech, orientation, thought process, engagement).'
                     },
                     {
-                        label: 'Assessment states medical necessity/progress',
-                        pass: sectionText.a.length >= 20 && containsAny(`${sectionText.a.toLowerCase()}\n${auditProofingText}`, [/medically necessary|continued|progress|partial|interfer|impair|deteriorat|required|diagnos|consistent with/]),
-                        remedy: 'Add one sentence explaining why continued skilled treatment is needed now and what progress/remaining barriers were observed.'
+                        label: 'Assessment states progress/clinical interpretation',
+                        pass: sectionText.a.length >= 20 && containsAny(`${sectionText.a.toLowerCase()}\n${auditProofingText}`, [/progress|partial|interfer|impair|deteriorat|required|diagnos|consistent with/]),
+                        remedy: 'Add clinical interpretation describing the diagnosis-linked need, progress, response, or remaining barriers documented this session.'
+                    },
+                    {
+                        label: 'Medical Necessity is documented',
+                        pass: sectionText.medicalNecessity.length >= 20 && containsAny(sectionText.medicalNecessity.toLowerCase(), [/medically necessary|skilled treatment|continued treatment|ongoing treatment/]),
+                        remedy: 'Add a separate statement explaining why ongoing skilled treatment remains medically necessary now.'
                     },
                     {
                         label: 'Plan includes intervention + next step',
@@ -5297,6 +5380,7 @@
             const OBJECTIVE_INTERVENTION_MIN_TARGET = 8;
             const OBJECTIVE_INTERVENTION_MAX_COUNT = 15;
             const OBJECTIVE_INTERVENTION_MIN_SUPPORT_SCORE = 2;
+            const isDefaultCouplesOnlyIntervention = (name) => /^EFCT\s*[-\u2013]/i.test(String(name || '').trim());
             const interventionBankCollator = new Intl.Collator(undefined, {
                 sensitivity: 'base',
                 numeric: true
@@ -5328,6 +5412,7 @@
                         name: entry.trim(),
                         modality: DEFAULT_INTERVENTION_MODALITY,
                         isHeader: false,
+                        couplesOnly: isDefaultCouplesOnlyIntervention(entry),
                         order: index
                     };
                 }
@@ -5340,6 +5425,10 @@
                     name,
                     modality,
                     isHeader: !!entry?.isHeader || (!name && !!modality),
+                    couplesOnly: entry?.couplesOnly === true
+                        || entry?.coupleOnly === true
+                        || entry?.couples_only === true
+                        || isDefaultCouplesOnlyIntervention(name),
                     order: Number.isFinite(entry?.order) ? entry.order : index
                 };
             };
@@ -5394,12 +5483,24 @@
                 renderSoap();
             };
 
-            const getInterventionBankNames = () => getInterventionBankEntries().filter(entry => !entry.isHeader).map(entry => entry.name);
-
             const getInterventionBankEntryByName = (name) => {
                 const normalizedName = String(name || '').trim();
                 return getInterventionBankEntries().find(entry => entry.name === normalizedName) || null;
             };
+
+            const isInterventionAllowedForClient = (entryOrName, client) => {
+                const entry = typeof entryOrName === 'string'
+                    ? getInterventionBankEntryByName(entryOrName)
+                    : entryOrName;
+                return !entry || !entry.couplesOnly || isCoupleClient(client);
+            };
+
+            const getInterventionBankEntriesForClient = (client) => getInterventionBankEntries()
+                .filter(entry => entry.isHeader || isInterventionAllowedForClient(entry, client));
+
+            const getInterventionBankNames = (client = null) => getInterventionBankEntriesForClient(client)
+                .filter(entry => !entry.isHeader)
+                .map(entry => entry.name);
 
             const groupInterventionNamesByModality = (names) => {
                 const groups = new Map();
@@ -5427,28 +5528,29 @@
                 }).join('\n\n');
             };
 
-            const getObjectiveDerivedInterventions = (appointment) => {
-                return Array.isArray(appointment?.soap?.objectiveInterventionMatches)
+            const getObjectiveDerivedInterventions = (appointment, client = null) => {
+                const matches = Array.isArray(appointment?.soap?.objectiveInterventionMatches)
                     ? appointment.soap.objectiveInterventionMatches.filter(Boolean)
                     : [];
+                return matches.filter(item => isInterventionAllowedForClient(item, client || findClient(selectedClientId)));
             };
 
-            const getInterventionBankContext = () => {
-                const bank = getInterventionBankNames();
+            const getInterventionBankContext = (client = null) => {
+                const bank = getInterventionBankNames(client);
                 return bank.length > 0
                     ? `\n- **Intervention Bank (Allowed Interventions Only):**\n${bank.map(item => `  - ${item}`).join('\n')}`
                     : '';
             };
 
-            const getSelectedInterventionContext = (appointment) => {
-                const selected = getObjectiveDerivedInterventions(appointment);
+            const getSelectedInterventionContext = (appointment, client = null) => {
+                const selected = getObjectiveDerivedInterventions(appointment, client);
                 return selected.length > 0
                     ? `\n- **Previously Selected Interventions (From Bank):**\n${selected.map(item => `  - ${item}`).join('\n')}`
                     : '';
             };
 
-            const getInterventionContext = (appointment) =>
-                `${getInterventionBankContext()}${getSelectedInterventionContext(appointment)}`;
+            const getInterventionContext = (appointment, client = null) =>
+                `${getInterventionBankContext(client)}${getSelectedInterventionContext(appointment, client)}`;
 
             const normalizeInterventionText = (text) => (text || '')
                 .toString()
@@ -6012,41 +6114,42 @@
                     .map(candidate => candidate.item);
             };
 
-            const extractInterventionsFromObjective = (objectiveText) => {
+            const extractInterventionsFromObjective = (objectiveText, client = null) => {
                 const objectiveItems = splitSoapBulletItems(objectiveText);
                 const searchTexts = objectiveItems.length > 0 ? objectiveItems : [objectiveText];
                 if (searchTexts.every(text => !String(text || '').trim())) return [];
 
-                const bankMeta = buildInterventionBankMeta(getInterventionBankNames());
+                const bankMeta = buildInterventionBankMeta(getInterventionBankNames(client));
                 return bankMeta
                     .filter(entry => searchTexts.some(text => doesTextDirectlySupportIntervention(text, entry)))
                     .map(entry => entry.item);
             };
 
-            const refreshObjectiveSuggestionInterventionMatches = (appointment) => {
+            const refreshObjectiveSuggestionInterventionMatches = (appointment, client = null) => {
                 if (!appointment?.soap) return;
                 const objectiveSuggestions = Array.isArray(appointment.soap.o_suggestion)
                     ? appointment.soap.o_suggestion
                     : [];
                 appointment.soap.o_suggestion_intervention_matches = objectiveSuggestions.map(suggestion => {
                     if (typeof suggestion === 'object' && suggestion && suggestion.suggested) {
-                        return extractInterventionsFromObjective(suggestion.suggested);
+                        return extractInterventionsFromObjective(suggestion.suggested, client);
                     }
                     if (typeof suggestion === 'string') {
-                        return extractInterventionsFromObjective(suggestion);
+                        return extractInterventionsFromObjective(suggestion, client);
                     }
                     return [];
                 });
             };
 
-            const getResolvedSoapInterventions = (appointment) => {
+            const getResolvedSoapInterventions = (appointment, client = null) => {
                 const manualSelections = Array.isArray(appointment?.selectedInterventions)
                     ? appointment.selectedInterventions.filter(Boolean)
                     : [];
                 const objectiveMatches = Array.isArray(appointment?.soap?.objectiveInterventionMatches)
                     ? appointment.soap.objectiveInterventionMatches.filter(Boolean)
                     : [];
-                return mergeInterventions(manualSelections, objectiveMatches);
+                return mergeInterventions(manualSelections, objectiveMatches)
+                    .filter(item => isInterventionAllowedForClient(item, client || findClient(selectedClientId)));
             };
 
             const ensureSoapObjectiveActionState = (appointment) => {
@@ -6165,11 +6268,11 @@
                 }
             };
 
-            const syncObjectiveInterventionsFromObjectiveText = (appointment, objectiveText) => {
+            const syncObjectiveInterventionsFromObjectiveText = (appointment, objectiveText, client = null) => {
                 if (!appointment) return [];
                 if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
 
-                const objectiveMatches = extractInterventionsFromObjective(objectiveText ?? appointment.soap.o ?? '');
+                const objectiveMatches = extractInterventionsFromObjective(objectiveText ?? appointment.soap.o ?? '', client);
                 appointment.soap.objectiveInterventionMatches = objectiveMatches;
 
                 updateSoapInterventionsValue(appointment, formatInterventionsByModality(objectiveMatches));
@@ -6251,8 +6354,10 @@
                 const persistent = (client?.persistentInstructions || '').trim();
                 const session = (appointment?.sessionInstructions || '').trim();
                 const pronounsContext = getPreferredPronounsContext(client);
+                const sessionType = getClientSessionType(client);
 
-                let context = '';
+                let context = `\n- **Client Session Type:** ${sessionType === 'couple' ? 'Couple' : 'Individual'}`;
+                context += '\n- **Couple-Only Intervention Rule:** Use interventions marked Couples only when the Client Session Type is Couple.';
                 if (pronounsContext) {
                     context += pronounsContext;
                 }
@@ -6327,7 +6432,7 @@
 
                 const explicitInterventionSignals = [
                     (appointment?.sessionInfo || '').trim(),
-                    ...(getResolvedSoapInterventions(appointment).map(item => item && item.trim()).filter(Boolean))
+                    ...(getResolvedSoapInterventions(appointment, client).map(item => item && item.trim()).filter(Boolean))
                 ].filter(Boolean);
 
                 return `
@@ -6369,8 +6474,17 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="intervention-group-body" data-drop-modality="${modality.replace(/"/g, '&quot;')}">
                             ${group.items.length > 0 ? group.items.map(entry => `
                                 <div class="intervention-row intervention-bank-row" draggable="true" data-bank-id="${entry.id}" data-bank-modality="${entry.modality.replace(/"/g, '&quot;')}">
-                                    <span style="min-width:0;">${entry.name}</span>
-                                    <button class="action-btn delete-btn" data-bank-id="${entry.id}" title="Remove intervention" style="width:20px;height:20px;">×</button>
+                                    <div class="intervention-bank-name">
+                                        <span>${entry.name}</span>
+                                        ${entry.couplesOnly ? '<span class="couples-only-badge">Couples only</span>' : ''}
+                                    </div>
+                                    <div class="intervention-bank-controls">
+                                        <label class="intervention-scope-toggle" title="Only offer this intervention for Couple sessions">
+                                            <input type="checkbox" class="intervention-couples-only-toggle" data-bank-id="${entry.id}" ${entry.couplesOnly ? 'checked' : ''}>
+                                            Couples only
+                                        </label>
+                                        <button class="action-btn delete-btn" data-bank-id="${entry.id}" title="Remove intervention" style="width:20px;height:20px;">×</button>
+                                    </div>
                                 </div>
                             `).join('') : `<div class="intervention-group-empty">Drag interventions here or add a new one under this modality.</div>`}
                         </div>
@@ -6384,7 +6498,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const appointment = findAppointment(client, selectedAppointmentId);
                 if (!appointment || !interventionPickerList) return;
                 const selected = new Set(appointment.selectedInterventions || []);
-                const entries = getInterventionBankEntries();
+                const entries = getInterventionBankEntriesForClient(client);
                 const groups = entries.reduce((map, entry) => {
                     if (entry.isHeader) return map;
                     const modality = normalizeInterventionModality(entry.modality);
@@ -6392,6 +6506,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     map.get(modality).push(entry);
                     return map;
                 }, new Map());
+
+                if (groups.size === 0) {
+                    interventionPickerList.innerHTML = '<div class="no-selection">No interventions are available for this client type. Mark interventions as Couples only when appropriate.</div>';
+                    return;
+                }
 
                 interventionPickerList.innerHTML = [...groups.entries()].map(([modality, groupEntries]) => `
                     <div class="intervention-group">
@@ -6402,7 +6521,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="intervention-group-body">
                             ${groupEntries.map(entry => `
                                 <label class="intervention-row" style="cursor:pointer;">
-                                    <span style="min-width:0;">${entry.name}</span>
+                                    <span class="intervention-bank-name"><span>${entry.name}</span>${entry.couplesOnly ? '<span class="couples-only-badge">Couples only</span>' : ''}</span>
                                     <input type="checkbox" class="picker-intervention" value="${entry.name.replace(/"/g, '&quot;')}" ${selected.has(entry.name) ? 'checked' : ''}>
                                 </label>
                             `).join('')}
@@ -7074,10 +7193,21 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return joinSoapBulletItems(orderedItems);
             };
 
+            const getClientDiagnosisNames = (client) => {
+                const names = getClientDiagnoses(client)
+                    .map(entry => String(entry?.name || '').trim())
+                    .filter(Boolean);
+                if (names.length > 0) return names;
+                return String(client?.diagnosis || '')
+                    .split(/\r?\n/)
+                    .map(value => value.replace(/^\s*[-*\u2022]\s*/, '').trim())
+                    .filter(Boolean);
+            };
+
             const buildDiagnosticSupportSessionContext = (client, appointment) => {
                 const soap = appointment?.soap || {};
                 const auditProofing = getAuditProofingData(appointment);
-                const resolvedInterventions = getResolvedSoapInterventions(appointment);
+                const resolvedInterventions = getResolvedSoapInterventions(appointment, client);
                 const interventionText = resolvedInterventions.length > 0
                     ? resolvedInterventions.join('\n')
                     : (soap.interventions || '');
@@ -7092,7 +7222,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     ['Symptom Pattern / Severity Context', auditProofing.symptoms],
                     ['Functional Impact', auditProofing.functionalImpact],
                     ['Progress / Response to Treatment', auditProofing.progressResponse],
-                    ['Medical Necessity Rationale', auditProofing.medicalNecessity]
+                    ['Clinician-Entered Medical Necessity Rationale', auditProofing.medicalNecessity]
                 ];
 
                 return sections
@@ -7100,23 +7230,46 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     .join('\n\n');
             };
 
-            const normalizeDiagnosticSupportFromAi = (aiPayload) => {
-                const value = aiPayload?.diagnostic_support
-                    ?? aiPayload?.diagnosticSupport
-                    ?? aiPayload?.statement
-                    ?? aiPayload?.support
-                    ?? '';
-                return (Array.isArray(value) ? value.join(' ') : String(value)).replace(/\s*\n+\s*/g, ' ').trim();
+            const normalizeSupportValue = (value) => {
+                const values = Array.isArray(value) ? value : [value];
+                return values.map(item => {
+                    if (item && typeof item === 'object') {
+                        const diagnosis = String(item.diagnosis ?? item.name ?? '').trim();
+                        const statement = String(item.statement ?? item.support ?? item.text ?? '').trim();
+                        if (diagnosis && statement) return `${diagnosis}: ${statement}`;
+                        return statement || diagnosis;
+                    }
+                    return String(item ?? '').trim();
+                }).filter(Boolean).join('\n\n').trim();
             };
 
+            const normalizeDiagnosticSupportFromAi = (aiPayload) => normalizeSupportValue(
+                aiPayload?.diagnostic_support
+                    ?? aiPayload?.diagnosticSupport
+                    ?? aiPayload?.statements
+                    ?? aiPayload?.statement
+                    ?? aiPayload?.support
+                    ?? ''
+            );
+
+            const normalizeMedicalNecessityFromAi = (aiPayload) => normalizeSupportValue(
+                aiPayload?.medical_necessity
+                    ?? aiPayload?.medicalNecessity
+                    ?? aiPayload?.medical_necessity_statement
+                    ?? aiPayload?.medicalNecessityStatement
+                    ?? aiPayload?.statement
+                    ?? ''
+            );
+
             const fetchDiagnosticSupportFromAI = async (client, appointment) => {
-                const diagnosis = String(client?.diagnosis || '').trim();
-                if (!diagnosis) {
-                    throw new Error('Enter the client diagnosis before generating Diagnostic Support.');
+                const diagnoses = getClientDiagnosisNames(client);
+                if (diagnoses.length === 0) {
+                    throw new Error('Enter at least one client diagnosis before generating Diagnostic Support.');
                 }
 
-                const systemPrompt = 'You are a behavioral-health documentation assistant. Write a concise, chart-ready Diagnostic Support statement from the documented diagnosis and session record. Use only facts explicitly documented in the supplied record. Explain how documented symptoms, observations, functional impact, and response to treatment are consistent with the diagnosis and support continued clinically necessary treatment when the record supports that conclusion. Do not invent symptoms, duration, severity, impairment, risk, criteria, or treatment response. If the record is insufficient, say so plainly and identify the missing documentation instead of overstating support. Do not include a heading, diagnosis code, bullet list, or disclaimer. Return only JSON in the exact form {"diagnostic_support":"..."}.';
-                const userPrompt = `Diagnosis to support:\n${diagnosis}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nWrite one concise Diagnostic Support statement in 2-4 sentences. Return only JSON in the exact form {"diagnostic_support":"..."}.`;
+                const diagnosisContext = diagnoses.map((diagnosis, index) => `${index + 1}. ${diagnosis}`).join('\n');
+                const systemPrompt = 'You are a behavioral-health documentation assistant writing chart-ready Diagnostic Support. Use only facts explicitly documented in the supplied current-session record. For every listed clinician-entered diagnosis, write a concise statement describing how the session content is clinically related to, addresses, or is consistent with that diagnosis. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis. Do not evaluate whether criteria are met. Do not mention missing duration, pervasiveness, somatic symptoms, bereavement, diagnostic sufficiency, or any other criteria gap. Never say the record is insufficient to substantiate a diagnosis. Do not invent symptoms, duration, severity, impairment, risk, treatment response, or progress. If a diagnosis-specific connection was not documented today, say only that no diagnosis-specific support was documented for that diagnosis in this session. Return one statement for each diagnosis, with the diagnosis name included for clarity, in JSON exactly as {"diagnostic_support":[{"diagnosis":"...","statement":"..."}]}.';
+                const userPrompt = `Documented diagnoses (treatment anchors):\n${diagnosisContext}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nWrite one 1-2 sentence Diagnostic Support statement for each diagnosis. Describe how this session supports the documented diagnosis; do not discuss whether the diagnosis is properly substantiated or whether diagnostic criteria are met. Return only JSON in the required form.`;
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
                 const diagnosticSupport = normalizeDiagnosticSupportFromAi(aiPayload);
                 if (!diagnosticSupport) {
@@ -7124,6 +7277,33 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
                 return diagnosticSupport;
             };
+
+            const fetchMedicalNecessityFromAI = async (client, appointment) => {
+                const diagnoses = getClientDiagnosisNames(client);
+                if (diagnoses.length === 0) {
+                    throw new Error('Enter at least one client diagnosis before generating Medical Necessity.');
+                }
+
+                const diagnosisContext = diagnoses.map((diagnosis, index) => `${index + 1}. ${diagnosis}`).join('\n');
+                const systemPrompt = 'You are a behavioral-health documentation assistant writing a concise, chart-ready Medical Necessity statement. Use only facts explicitly documented in the supplied current-session record and treatment context. Explain the documented current symptoms or clinical needs, functional impact, treatment focus, skilled interventions, and progress, response, or barriers when those facts are present. The statement must explicitly say that ongoing skilled treatment remains medically necessary (or use the equivalent phrase continued skilled treatment remains medically necessary) and explain why continued clinician skill is needed now. Do not generate medical necessity from diagnosis alone. Do not evaluate diagnostic criteria, discuss whether a diagnosis is substantiated, or list missing criteria. Do not invent symptoms, severity, impairment, risk, intervention delivery, response, progress, or functional effects. If an element is not documented, omit it rather than guessing. Return only JSON exactly as {"medical_necessity":"..."}.';
+                const userPrompt = `Documented diagnoses (treatment anchors):\n${diagnosisContext}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nWrite one 2-4 sentence Medical Necessity statement. Explicitly state why ongoing skilled treatment remains medically necessary based on the documented session and treatment needs. Return only JSON in the required form.`;
+                const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
+                const medicalNecessity = normalizeMedicalNecessityFromAi(aiPayload);
+                if (!medicalNecessity) {
+                    throw new Error('AI returned an empty Medical Necessity statement.');
+                }
+                return medicalNecessity;
+            };
+
+            const setSoapSupportRefreshState = (button, label, isLoading) => {
+                if (!button) return;
+                button.disabled = isLoading;
+                button.classList.toggle('is-loading', isLoading);
+                button.title = isLoading ? `Refreshing ${label}...` : `Refresh ${label}`;
+                button.setAttribute('aria-label', button.title);
+                button.setAttribute('aria-busy', String(isLoading));
+            };
+
             const refreshDiagnosticSupport = async () => {
                 const appointmentContext = getSelectedAppointmentContext();
                 const appointment = getAppointmentFromContext(appointmentContext);
@@ -7131,36 +7311,42 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (!client || !appointment) return;
 
                 const refreshButton = document.getElementById('refreshDiagnosticSupportBtn');
-                if (refreshButton) {
-                    refreshButton.disabled = true;
-                    refreshButton.classList.add('is-loading');
-                    refreshButton.title = 'Refreshing Diagnostic Support...';
-                    refreshButton.setAttribute('aria-label', refreshButton.title);
-                    refreshButton.setAttribute('aria-busy', 'true');
-                }
-
+                setSoapSupportRefreshState(refreshButton, 'Diagnostic Support', true);
                 try {
                     const diagnosticSupport = await fetchDiagnosticSupportFromAI(client, appointment);
                     if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
                     appointment.soap.diagnosticSupport = diagnosticSupport;
                     delete appointment.auditCheck;
                     markDirty();
-                    if (isCurrentAppointmentContext(appointmentContext)) {
-                        renderSoap();
-                    }
+                    if (isCurrentAppointmentContext(appointmentContext)) renderSoap();
                 } catch (error) {
                     console.error('Diagnostic Support refresh error:', error);
-                    if (isCurrentAppointmentContext(appointmentContext)) {
-                        alert(`Failed to refresh Diagnostic Support. ${error.message}`);
-                    }
+                    if (isCurrentAppointmentContext(appointmentContext)) alert(`Failed to refresh Diagnostic Support. ${error.message}`);
                 } finally {
-                    if (refreshButton?.isConnected) {
-                        refreshButton.disabled = false;
-                        refreshButton.classList.remove('is-loading');
-                        refreshButton.title = 'Refresh Diagnostic Support';
-                        refreshButton.setAttribute('aria-label', refreshButton.title);
-                        refreshButton.removeAttribute('aria-busy');
-                    }
+                    if (refreshButton?.isConnected) setSoapSupportRefreshState(refreshButton, 'Diagnostic Support', false);
+                }
+            };
+
+            const refreshMedicalNecessity = async () => {
+                const appointmentContext = getSelectedAppointmentContext();
+                const appointment = getAppointmentFromContext(appointmentContext);
+                const client = appointmentContext ? findClient(appointmentContext.clientId) : null;
+                if (!client || !appointment) return;
+
+                const refreshButton = document.getElementById('refreshMedicalNecessityBtn');
+                setSoapSupportRefreshState(refreshButton, 'Medical Necessity', true);
+                try {
+                    const medicalNecessity = await fetchMedicalNecessityFromAI(client, appointment);
+                    if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
+                    appointment.soap.medicalNecessity = medicalNecessity;
+                    delete appointment.auditCheck;
+                    markDirty();
+                    if (isCurrentAppointmentContext(appointmentContext)) renderSoap();
+                } catch (error) {
+                    console.error('Medical Necessity refresh error:', error);
+                    if (isCurrentAppointmentContext(appointmentContext)) alert(`Failed to refresh Medical Necessity. ${error.message}`);
+                } finally {
+                    if (refreshButton?.isConnected) setSoapSupportRefreshState(refreshButton, 'Medical Necessity', false);
                 }
             };
 
@@ -7904,7 +8090,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 const soapData = appointment.soap || { s: '', o: '', a: '', p: '' };
                 if (!Array.isArray(appointment.selectedInterventions)) appointment.selectedInterventions = [];
-                const objectiveDerivedInterventions = getObjectiveDerivedInterventions(appointment);
+                const objectiveDerivedInterventions = getObjectiveDerivedInterventions(appointment, client);
                 const interventions = formatInterventionsByModality(objectiveDerivedInterventions);
                 updateSoapInterventionsValue(appointment, interventions);
                 const auditResult = appointment.auditCheck || null;
@@ -7942,21 +8128,30 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-header"><span>Assessment</span>${renderSoapCopyButton('soapA', 'Assessment')}</div>
                         <textarea id="soapA" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.a || ''}</textarea>
                         ${(soapData.a_suggestion || []).map((s, i) => renderSuggestionBox('a', s, i)).join('')}
-                        <div class="diagnostic-support-block">
-                            <div class="diagnostic-support-header">
-                                <span>Diagnostic Support</span>
-                                <div class="soap-action-group">
-                                    <button id="refreshDiagnosticSupportBtn" type="button" class="copy-btn soap-icon-btn" title="Refresh Diagnostic Support" aria-label="Refresh Diagnostic Support">${SOAP_ICON_SVGS.refresh}</button>
-                                    ${renderSoapCopyButton('diagnosticSupport', 'Diagnostic Support')}
-                                </div>
-                            </div>
-                            <textarea id="diagnosticSupport" class="soap-textarea diagnostic-support-textarea" placeholder="Press Organize in Objective to generate a diagnostic support statement." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.diagnosticSupport || '')}</textarea>
-                        </div>
                     </div>
                     <div class="soap-section">
                         <div class="soap-header"><span>Plan</span>${renderSoapCopyButton('soapP', 'Plan')}</div>
                         <textarea id="soapP" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.p || ''}</textarea>
                         ${(soapData.p_suggestion || []).map((s, i) => renderSuggestionBox('p', s, i)).join('')}
+                    </div>
+                    <div class="soap-support-block">
+                        <div class="soap-support-header">
+                            <span>Diagnostic Support</span>
+                            <div class="soap-action-group">
+                                <button id="refreshDiagnosticSupportBtn" type="button" class="copy-btn soap-icon-btn" title="Refresh Diagnostic Support" aria-label="Refresh Diagnostic Support">${SOAP_ICON_SVGS.refresh}</button>
+                                ${renderSoapCopyButton('diagnosticSupport', 'Diagnostic Support')}
+                            </div>
+                        </div>
+                        <textarea id="diagnosticSupport" class="soap-textarea soap-support-textarea" placeholder="Press Organize in Objective to generate diagnosis-specific session support." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.diagnosticSupport || '')}</textarea>
+                    </div>
+                    <div class="soap-support-block">
+                        <div class="soap-support-header">
+                            <span>Medical Necessity</span>
+                            <div class="soap-action-group">
+                                <button id="refreshMedicalNecessityBtn" type="button" class="copy-btn soap-icon-btn" title="Refresh Medical Necessity" aria-label="Refresh Medical Necessity">${SOAP_ICON_SVGS.refresh}</button>
+                                ${renderSoapCopyButton('medicalNecessity', 'Medical Necessity')}</div>
+                        </div>
+                        <textarea id="medicalNecessity" class="soap-textarea soap-support-textarea" placeholder="Press Organize or Generate Note to create a medical necessity statement." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.medicalNecessity || getAuditProofingData(appointment).medicalNecessity || '')}</textarea>
                     </div>
                     <div class="soap-section">
                         <div class="soap-header"><span>Audit Check</span><button id="runSoapAuditBtn" class="copy-btn">Audit</button></div>
@@ -8336,6 +8531,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     diagnosis: '',
                     presentingProblem: '',
                     persistentInstructions: '',
+                    sessionType: 'individual',
                     appointments: [],
                     intakeSessions: [],
                     notes: [],
@@ -9198,12 +9394,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 generateNoteBtn.disabled = !appointment || !hasAppointmentGenerationInput(appointment);
             };
 
-            const saveDiagnosticSupport = (textarea) => {
+            const saveGeneratedSoapSupport = (textarea) => {
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
                 if (!appointment) return;
                 if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
-                appointment.soap.diagnosticSupport = textarea.value;
+                const fieldKey = textarea.id === 'medicalNecessity' ? 'medicalNecessity' : 'diagnosticSupport';
+                appointment.soap[fieldKey] = textarea.value;
                 delete appointment.auditCheck;
                 markDirty();
             };
@@ -9332,8 +9529,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             soapContentEl.addEventListener('input', (e) => {
                 if (e.target.matches('.soap-textarea')) {
-                    if (e.target.id === 'diagnosticSupport') {
-                        saveDiagnosticSupport(e.target);
+                    if (e.target.id === 'diagnosticSupport' || e.target.id === 'medicalNecessity') {
+                        saveGeneratedSoapSupport(e.target);
                         return;
                     }
                     handleBulletedInput(e, saveSoapNote);
@@ -9352,14 +9549,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             });
             soapContentEl.addEventListener('keydown', (e) => {
                 if (e.target.matches('.soap-textarea')) {
-                    if (e.target.id !== 'diagnosticSupport') {
+                    if (e.target.id !== 'diagnosticSupport' && e.target.id !== 'medicalNecessity') {
                         handleBulletedKeyDown(e);
                     }
                 }
             });
             soapContentEl.addEventListener('focus', (e) => {
                 if (e.target.matches('.soap-textarea')) {
-                    if (e.target.id === 'diagnosticSupport') return;
+                    if (e.target.id === 'diagnosticSupport' || e.target.id === 'medicalNecessity') return;
                     const textarea = e.target;
                     if (textarea.value.length === 0) {
                         textarea.value = '• ';
@@ -9395,6 +9592,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                  }
                  if (clickedButton?.id === 'refreshDiagnosticSupportBtn') {
                      void refreshDiagnosticSupport();
+                     return;
+                 }
+                 if (clickedButton?.id === 'refreshMedicalNecessityBtn') {
+                     void refreshMedicalNecessity();
                      return;
                  }
                  if (clickedButton?.id === 'selectInterventionsBtn') {
@@ -9516,7 +9717,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         alignSoapSectionsByObjectiveOrder(appointment.soap, { skipSections });
                     }
                 }
-                refreshObjectiveSuggestionInterventionMatches(appointment);
+                refreshObjectiveSuggestionInterventionMatches(appointment, client);
                 markDirty();
                 renderSoap();
 
@@ -9731,7 +9932,8 @@ Analyze the labeled clinical record in User Input and return only the required J
 - **Current Session:** The primary evidence for what occurred today, including Ct report, observable status, Writer actions, interventions, response, and change.
 - **Clinician-Entered Diagnosis:** A treatment anchor. It is not proof of today's symptoms, impairment, risk status, intervention delivery, response, or progress.
 - **Presenting Problem and Treatment Plan:** The intended clinical focus. Do not claim a goal/objective was addressed or that progress occurred unless current-session evidence supports it.
-- **Intervention Bank and Selected Interventions:** Use exact allowed names. A selected intervention is not proof that it was delivered unless the session record confirms it.
+                - **Intervention Bank and Selected Interventions:** Use exact allowed names. A selected intervention is not proof that it was delivered unless the session record confirms it.
+                - **Client Session Type:** For Individual sessions, never use an intervention marked Couples only. Couple sessions may use those entries when the session record supports them.
 - **Client Modality Lens:** A conceptual default only. Preserve explicitly documented techniques and never force-fit a modality.
 - **Persistent and Session Instructions:** Formatting or workflow preferences only. Session instructions override persistent instructions when they conflict, but neither may override evidence, privacy, safety, or output rules.
 - **Previous, imported, or AI-generated text:** Not new evidence unless the clinician explicitly confirms it in the current session record.
@@ -9742,11 +9944,13 @@ Analyze the labeled clinical record in User Input and return only the required J
 **SOAP Rules:**
 - **Subjective (S):** Document Ct's reported symptoms, concerns, goals, and relevant self-report. Include pattern, frequency, duration, intensity, and change only when documented. Do not convert diagnosis or clinician interpretation into Ct report.
 - **Objective (O):** Document observable status, mental-status findings, and actual Writer actions or interventions. Include Ct participation or response only when documented. Do not add an intervention, observation, or response merely to satisfy a format.
-- **Assessment (A):** Provide restrained clinical interpretation of the documented record. When supported, state the relationship to diagnosis, functional impact, response, progress toward the linked objective, barriers, risk status, and medical necessity for continued skilled care. Distinguish improved, worsened, unchanged, and not documented; never infer progress from the existence of a goal.
+                - **Assessment (A):** Provide restrained clinical interpretation of the documented record. When supported, state the relationship to diagnosis, functional impact, response, progress toward the linked objective, barriers, and risk status. Distinguish improved, worsened, unchanged, and not documented; never infer progress from the existence of a goal.
 - **Plan (P):** State concrete next steps, follow-up, homework, reassessment, coordination, or safety planning only when supported or clearly planned. Tie the plan to the active goal/objective and unresolved clinical need when documented.
-- **Interventions (I):** Select only exact names from the Intervention Bank that are explicitly documented or directly supported by a concrete Writer action. Do not infer, pad, or list a modality without a supported intervention. If none are supported, return "No interventions selected from the bank."
+                - **Interventions (I):** Select only exact names from the Intervention Bank that are explicitly documented or directly supported by a concrete Writer action. Do not infer, pad, or list a modality without a supported intervention. If none are supported, return "No interventions selected from the bank."
+                - **Diagnostic Support:** Return one concise chart-ready statement for each clinician-entered diagnosis in diagnosticSupport. Describe how this session's documented symptoms, observations, functional impact, intervention, response, or progress relates to that diagnosis. Do not evaluate, substantiate, validate, deny, or critique the diagnosis; do not discuss whether criteria are met or mention missing diagnostic criteria. If no diagnosis-specific connection was documented, state that no diagnosis-specific support was documented for that diagnosis in this session.
+                - **Medical Necessity:** Return a separate chart-ready statement in medicalNecessity. When the documented record supports ongoing care, explicitly state that ongoing skilled treatment remains medically necessary and explain the current symptom/clinical need, functional impact, treatment focus, skilled intervention, and progress, response, or barriers that support continued care. Do not generate medical necessity from diagnosis alone, and do not invent facts. This statement must not be folded into Assessment.
 
-**Audit-Support Field Mapping:** When provided, integrate Symptom Pattern / Severity Context into S, and Functional Impact, Progress / Response to Treatment, and Medical Necessity Rationale into A. Preserve the content faithfully, but do not print those field labels in the SOAP prose. Medical necessity must never be generated from diagnosis alone.
+                **Audit-Support Field Mapping:** When provided, integrate Symptom Pattern / Severity Context into S, and Functional Impact and Progress / Response to Treatment into A. Use Medical Necessity Rationale to ground the separate medicalNecessity field, not Assessment. Preserve the content faithfully, but do not print those field labels in the SOAP prose. Medical necessity must never be generated from diagnosis alone.
 
 **Suggestions:** Return concise suggestions only when useful. A suggestion may revise an exact generated bullet without changing its facts, or identify a specific missing documentation element. Suggestions must not add symptoms, severity, impairment, risk, interventions, client participation, response, progress, modality, or medical necessity. Do not assume interventions. Do not use a fixed suggestion count; an empty array is preferred when no supported suggestion exists.
 
@@ -9756,7 +9960,9 @@ Analyze the labeled clinical record in User Input and return only the required J
   "o": "• ...",
   "a": "• ...",
   "p": "• ...",
-  "i": "• ...",
+                  "i": "• ...",
+                  "diagnosticSupport": "...",
+                  "medicalNecessity": "...",
   "s_suggestion": [],
   "o_suggestion": [],
   "a_suggestion": [],
@@ -9831,11 +10037,16 @@ Requirements:
                 }
             };
             
-            const processAndStoreSoapData = (soapData, appointment) => {
+            const processAndStoreSoapData = (soapData, appointment, client = null) => {
                  if (!appointment.soap) appointment.soap = {};
                   delete appointment.auditCheck;
                   const auditProofing = getAuditProofingData(appointment);
                 const previousObjectiveText = String(appointment.soap.o || '');
+
+                const generatedDiagnosticSupport = normalizeDiagnosticSupportFromAi(soapData);
+                if (generatedDiagnosticSupport) appointment.soap.diagnosticSupport = generatedDiagnosticSupport;
+                const generatedMedicalNecessity = normalizeMedicalNecessityFromAi(soapData);
+                if (generatedMedicalNecessity) appointment.soap.medicalNecessity = generatedMedicalNecessity;
 
                   ensureSoapSectionOrderOverrides(appointment.soap);
                   SOAP_SORT_SECTION_KEYS.forEach(sectionKey => setSoapSectionOrderOverride(appointment.soap, sectionKey, false));
@@ -9877,15 +10088,12 @@ Requirements:
                         }
                     }
                     if (key === 'a') {
-                        // Functional Impact, Progress, and Medical Necessity belong in Assessment
+                        // Functional Impact and progress belong in Assessment; Medical Necessity has its own box.
                         if (!hasPendingSuggestionForText(suggestions, auditProofing.functionalImpact)) {
                             appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Functional Impact', auditProofing.functionalImpact);
                         }
                         if (!hasPendingSuggestionForText(suggestions, auditProofing.progressResponse)) {
                             appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Progress / Response to Treatment', auditProofing.progressResponse);
-                        }
-                        if (!hasPendingSuggestionForText(suggestions, auditProofing.medicalNecessity)) {
-                            appointment.soap[key] = appendAuditFieldToSection(appointment.soap[key], 'Medical Necessity Rationale', auditProofing.medicalNecessity);
                         }
                     }
                      
@@ -9895,7 +10103,7 @@ Requirements:
 
                  alignSoapSectionsByObjectiveOrder(appointment.soap);
 
-                 refreshObjectiveSuggestionInterventionMatches(appointment);
+                 refreshObjectiveSuggestionInterventionMatches(appointment, client);
                 if (previousObjectiveText !== String(appointment.soap.o || '')) {
                     const actionState = ensureSoapObjectiveActionState(appointment);
                     actionState.objectiveRevision += 1;
@@ -9921,7 +10129,7 @@ Requirements:
                     organizeObjectiveBtn.textContent = 'Organizing...';
                 }
 
-                let diagnosticSupportError = null;
+                const supportErrors = [];
                 try {
                     let organizedObjective;
                     try {
@@ -9943,22 +10151,31 @@ Requirements:
                         suppressEmptyAlert: true
                     });
 
-                    if (client?.diagnosis?.trim()) {
-                        try {
-                            const diagnosticSupport = await fetchDiagnosticSupportFromAI(client, appointment);
-                            appointment.soap.diagnosticSupport = diagnosticSupport;
-                            delete appointment.auditCheck;
-                            markDirty();
-                        } catch (error) {
-                            diagnosticSupportError = error;
-                            console.warn('Diagnostic Support AI generation failed.', error);
-                        }
+                    if (getClientDiagnosisNames(client).length === 0) {
+                        supportErrors.push('no client diagnosis is recorded');
                     } else {
-                        diagnosticSupportError = new Error('No client diagnosis is recorded.');
+                        const [diagnosticResult, medicalNecessityResult] = await Promise.allSettled([
+                            fetchDiagnosticSupportFromAI(client, appointment),
+                            fetchMedicalNecessityFromAI(client, appointment)
+                        ]);
+                        if (diagnosticResult.status === 'fulfilled') {
+                            appointment.soap.diagnosticSupport = diagnosticResult.value;
+                        } else {
+                            supportErrors.push(`Diagnostic Support could not be generated: ${diagnosticResult.reason?.message || diagnosticResult.reason}`);
+                            console.warn('Diagnostic Support AI generation failed.', diagnosticResult.reason);
+                        }
+                        if (medicalNecessityResult.status === 'fulfilled') {
+                            appointment.soap.medicalNecessity = medicalNecessityResult.value;
+                        } else {
+                            supportErrors.push(`Medical Necessity could not be generated: ${medicalNecessityResult.reason?.message || medicalNecessityResult.reason}`);
+                            console.warn('Medical Necessity AI generation failed.', medicalNecessityResult.reason);
+                        }
+                        delete appointment.auditCheck;
+                        markDirty();
                     }
 
-                    if (diagnosticSupportError) {
-                        alert(`Objective organized, but Diagnostic Support could not be generated. ${diagnosticSupportError.message}`);
+                    if (supportErrors.length > 0) {
+                        alert(`Objective organized, but support fields need attention: ${supportErrors.join('; ')}.`);
                     }
                 } catch (error) {
                     console.error('Objective organization error:', error);
@@ -9978,6 +10195,7 @@ Requirements:
                 const resolvedAppointmentContext = appointmentContext || getSelectedAppointmentContext();
                 const appointment = getAppointmentFromContext(resolvedAppointmentContext);
                 if (!appointment) return false;
+                const client = resolvedAppointmentContext ? findClient(resolvedAppointmentContext.clientId) : null;
 
                 const objectiveText = String(objectiveTextOverride ?? appointment.soap?.o ?? '').trim();
                 if (!objectiveText) {
@@ -9996,7 +10214,7 @@ Requirements:
                     setSoapActionButtonContent(generateInterventionsBtn, 'Refresh', false, true);
                 }
 
-                const bank = getInterventionBankNames();
+                const bank = getInterventionBankNames(client);
                 let success = false;
 
                 try {
@@ -10005,7 +10223,7 @@ Requirements:
                         interventions = await fetchObjectiveInterventionsFromAI(objectiveText, bank);
                     } catch (error) {
                         console.warn('Objective intervention AI generation failed; falling back to direct matching.', error);
-                        interventions = extractInterventionsFromObjective(objectiveText).slice(0, OBJECTIVE_INTERVENTION_MAX_COUNT);
+                        interventions = extractInterventionsFromObjective(objectiveText, client).slice(0, OBJECTIVE_INTERVENTION_MAX_COUNT);
                     }
 
                     appointment.soap.objectiveInterventionMatches = interventions;
@@ -10049,16 +10267,11 @@ Requirements:
 
                 const treatmentGoalsContext = getTreatmentGoalsContext(client);
                 const candidateObjectivesContext = getCandidateObjectivesContext(client);
-                const interventionContext = getInterventionContext(appointment);
+                const interventionContext = getInterventionContext(appointment, client);
                 const modalityLensContext = getClientSoapModalityContext(client, appointment);
                 const appointmentSessionInfo = appointment.sessionInfo || '';
                 const instructionsContext = getInstructionsContext(client, appointment);
-                const auditProofing = getAuditProofingData(appointment);
-                // Split audit-proofing into Subjective vs Assessment contexts
-                const auditProofingSubjective = auditProofing.symptoms ? `\n- **Audit (Subjective):**\n${auditProofing.symptoms}` : '';
-                const auditAssessmentParts = [auditProofing.functionalImpact, auditProofing.progressResponse, auditProofing.medicalNecessity].filter(Boolean).join('\n\n');
-                const auditProofingAssessment = auditAssessmentParts ? `\n- **Audit (Assessment):**\n${auditAssessmentParts}` : '';
-                const auditProofingContext = `${auditProofingSubjective}${auditProofingAssessment}`;
+                const auditProofingContext = getSoapAuditProofingContext(appointment);
 
                 const userPrompt = `- **Session Information (This Session):**\n${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${interventionContext}${auditProofingContext}${modalityLensContext}${instructionsContext}`;
 
@@ -10094,7 +10307,7 @@ Requirements:
                     let content = result.choices[0].message.content;
                     let soapData = JSON.parse(content);
 
-                    processAndStoreSoapData(soapData, appointment);
+                    processAndStoreSoapData(soapData, appointment, client);
 
                     markDirty();
                     renderSoap();
@@ -10126,17 +10339,12 @@ Requirements:
 
                 const treatmentGoalsContext = getTreatmentGoalsContext(client);
                 const candidateObjectivesContext = getCandidateObjectivesContext(client);
-                const interventionBankContext = getInterventionBankContext();
-                const selectedInterventionContext = getSelectedInterventionContext(appointment);
+                const interventionBankContext = getInterventionBankContext(client);
+                const selectedInterventionContext = getSelectedInterventionContext(appointment, client);
                 const modalityLensContext = getClientSoapModalityContext(client, appointment);
                 const appointmentSessionInfo = appointment.sessionInfo || '';
                 const instructionsContext = getInstructionsContext(client, appointment);
-                const auditProofing = getAuditProofingData(appointment);
-                // Split audit-proofing into Subjective vs Assessment contexts
-                const auditProofingSubjective = auditProofing.symptoms ? `\n- **Audit (Subjective):**\n${auditProofing.symptoms}` : '';
-                const auditAssessmentParts = [auditProofing.functionalImpact, auditProofing.progressResponse, auditProofing.medicalNecessity].filter(Boolean).join('\n\n');
-                const auditProofingAssessment = auditAssessmentParts ? `\n- **Audit (Assessment):**\n${auditAssessmentParts}` : '';
-                const auditProofingContext = `${auditProofingSubjective}${auditProofingAssessment}`;
+                const auditProofingContext = getSoapAuditProofingContext(appointment);
 
                 const userPrompt = `
 - **Session Information (This Session):**
@@ -10218,7 +10426,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     const content = result.candidates[0].content.parts[0].text;
                     const soapData = JSON.parse(content);
 
-                    processAndStoreSoapData(soapData, appointment);
+                    processAndStoreSoapData(soapData, appointment, client);
 
                     markDirty();
                     renderSoap();
@@ -10250,20 +10458,11 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
 
                 const treatmentGoalsContext = getTreatmentGoalsContext(client);
                 const candidateObjectivesContext = getCandidateObjectivesContext(client);
-                const interventionContext = getInterventionContext(appointment);
+                const interventionContext = getInterventionContext(appointment, client);
                 const modalityLensContext = getClientSoapModalityContext(client, appointment);
                 const appointmentSessionInfo = appointment.sessionInfo || '';
                 const instructionsContext = getInstructionsContext(client, appointment);
-                const auditProofing = getAuditProofingData(appointment);
-                const auditProofingLines = [
-                    auditProofing.symptoms ? `  - Symptom Pattern / Severity Context: ${auditProofing.symptoms}` : null,
-                    auditProofing.functionalImpact ? `  - Functional Impact: ${auditProofing.functionalImpact}` : null,
-                    auditProofing.progressResponse ? `  - Progress / Response to Treatment: ${auditProofing.progressResponse}` : null,
-                    auditProofing.medicalNecessity ? `  - Medical Necessity Rationale: ${auditProofing.medicalNecessity}` : null
-                ].filter(Boolean);
-                const auditProofingContext = auditProofingLines.length > 0
-                    ? `\n- **Audit-Proofing:**\n${auditProofingLines.join('\n')}`
-                    : '';
+                const auditProofingContext = getSoapAuditProofingContext(appointment);
 
                 const userPrompt = `
 - **Client Name:** ${client.name}
@@ -10345,7 +10544,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                         throw new Error(`The AI model returned malformed JSON that could not be automatically fixed. Check the browser console for the raw output. Details: ${parseError.message}`);
                     }
                     
-                    processAndStoreSoapData(soapData, appointment);
+                    processAndStoreSoapData(soapData, appointment, client);
                     
                     markDirty();
                     renderSoap();
@@ -10391,20 +10590,11 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
 
                 const treatmentGoalsContext = getTreatmentGoalsContext(client);
                 const candidateObjectivesContext = getCandidateObjectivesContext(client);
-                const interventionContext = getInterventionContext(appointment);
+                const interventionContext = getInterventionContext(appointment, client);
                 const modalityLensContext = getClientSoapModalityContext(client, appointment);
                 const appointmentSessionInfo = appointment.sessionInfo || '';
                 const instructionsContext = getInstructionsContext(client, appointment);
-                const auditProofing = getAuditProofingData(appointment);
-                const auditProofingLines = [
-                    auditProofing.symptoms ? `  - Symptom Pattern / Severity Context: ${auditProofing.symptoms}` : null,
-                    auditProofing.functionalImpact ? `  - Functional Impact: ${auditProofing.functionalImpact}` : null,
-                    auditProofing.progressResponse ? `  - Progress / Response to Treatment: ${auditProofing.progressResponse}` : null,
-                    auditProofing.medicalNecessity ? `  - Medical Necessity Rationale: ${auditProofing.medicalNecessity}` : null
-                ].filter(Boolean);
-                const auditProofingContext = auditProofingLines.length > 0
-                    ? `\n- **Audit-Proofing:**\n${auditProofingLines.join('\n')}`
-                    : '';
+                const auditProofingContext = getSoapAuditProofingContext(appointment);
 
                 const userPrompt = `
 - **Client Name:** ${client.name}
@@ -10470,7 +10660,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                         throw new Error(`The AI model returned malformed JSON that could not be automatically fixed. Check the console for the raw output. Details: ${parseError.message}`);
                     }
 
-                    processAndStoreSoapData(soapData, appointment);
+                    processAndStoreSoapData(soapData, appointment, client);
                     markDirty();
                     renderSoap();
 
@@ -11901,6 +12091,7 @@ This error cannot be fixed within this application's code; it requires a configu
                         name: text,
                         modality,
                         isHeader: false,
+                        couplesOnly: !!newInterventionCouplesOnly?.checked,
                         order: entries.length
                     });
                 }
@@ -11910,6 +12101,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 newInterventionInput.value = '';
                 if (newInterventionModalitySelect) newInterventionModalitySelect.value = '';
                 if (newInterventionModalityOther) newInterventionModalityOther.value = '';
+                if (newInterventionCouplesOnly) newInterventionCouplesOnly.checked = false;
                 syncInterventionModalityInputs();
             };
 
@@ -11921,6 +12113,15 @@ This error cannot be fixed within this application's code; it requires a configu
                     e.preventDefault();
                     submitInterventionBankEntry();
                 });
+            });
+            interventionBankList.addEventListener('change', (e) => {
+                const toggle = e.target.closest('.intervention-couples-only-toggle');
+                if (!toggle) return;
+                const entries = getInterventionBankEntries().map(entry => ({ ...entry }));
+                const entry = entries.find(item => item.id === toggle.dataset.bankId && !item.isHeader);
+                if (!entry) return;
+                entry.couplesOnly = toggle.checked;
+                commitInterventionBankEntries(entries);
             });
             interventionBankList.addEventListener('click', (e) => {
                 const btn = e.target.closest('button[data-bank-id]');
@@ -12001,7 +12202,9 @@ This error cannot be fixed within this application's code; it requires a configu
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
                 if (!appointment) return;
-                const selected = Array.from(interventionPickerList.querySelectorAll('.picker-intervention:checked')).map(input => input.value);
+                const selected = Array.from(interventionPickerList.querySelectorAll('.picker-intervention:checked'))
+                    .map(input => input.value)
+                    .filter(item => isInterventionAllowedForClient(item, client));
                 appointment.selectedInterventions = selected;
                 if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
                 delete appointment.auditCheck;
@@ -12537,6 +12740,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounSubject = clientPronouns.subject;
                 customPronounObject = clientPronouns.object;
                 customPronounPossessive = clientPronouns.possessive;
+                clientSessionTypeSelect.value = getClientSessionType(client);
                 customInstructionsModal.classList.remove('hidden');
                 persistentInstructionsInput.value = persistentInstructions;
                 sessionInstructionsInput.value = sessionInstructions;
@@ -12598,6 +12802,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 const appointment = findAppointment(client, selectedAppointmentId);
                 if (client) {
                     client.persistentInstructions = persistentInstructions;
+                    client.sessionType = normalizeClientSessionType(clientSessionTypeSelect.value);
                     client.preferredPronouns = {
                         value: preferredPronouns,
                         subject: preferredPronouns === 'custom' ? customPronounSubject : '',
@@ -12611,6 +12816,8 @@ This error cannot be fixed within this application's code; it requires a configu
                     if (appointment.customInstructions !== undefined) delete appointment.customInstructions;
                 }
                 markDirty();
+                renderInterventionPicker();
+                renderSoap();
             });
             clearCustomInstructionsBtn.addEventListener('click', () => {
                 persistentInstructionsInput.value = '';
@@ -12619,6 +12826,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounSubjectInput.value = '';
                 customPronounObjectInput.value = '';
                 customPronounPossessiveInput.value = '';
+                clientSessionTypeSelect.value = 'individual';
                 persistentInstructions = '';
                 sessionInstructions = '';
                 preferredPronouns = '';
@@ -12630,6 +12838,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 const appointment = findAppointment(client, selectedAppointmentId);
                 if (client) {
                     client.persistentInstructions = '';
+                    client.sessionType = 'individual';
                     client.preferredPronouns = {
                         value: '',
                         subject: '',
@@ -12642,6 +12851,8 @@ This error cannot be fixed within this application's code; it requires a configu
                     if (appointment.customInstructions !== undefined) delete appointment.customInstructions;
                 }
                 markDirty();
+                renderInterventionPicker();
+                renderSoap();
             });
             customInstructionsModalitiesListEl.addEventListener('change', (e) => {
                 if (!e.target.matches('.custom-instructions-modality-select')) return;

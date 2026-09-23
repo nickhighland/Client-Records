@@ -2795,7 +2795,7 @@
             <div class="header-title-group">
                 <h1>
                     SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.20" aria-label="SmartEMR version 3.0.20">v3.0.20</span>
+                    <span class="version-badge" title="SmartEMR version 3.0.21" aria-label="SmartEMR version 3.0.21">v3.0.21</span>
                 </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
@@ -6840,7 +6840,36 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 localStorage.setItem('vertexLocation', effectiveLocation);
             };
 
-            const requestVertexGenerateContent = async ({
+            const sleep = (milliseconds) => new Promise(resolve => setTimeout(resolve, milliseconds));
+            const VERTEX_MIN_REQUEST_GAP_MS = 750;
+            const VERTEX_429_RETRY_LIMIT = 3;
+            let vertexRequestQueue = Promise.resolve();
+            let vertexRequestLastFinishedAt = 0;
+
+            const enqueueVertexRequest = (operation) => {
+                const queuedRequest = vertexRequestQueue.then(async () => {
+                    const waitMs = VERTEX_MIN_REQUEST_GAP_MS - (Date.now() - vertexRequestLastFinishedAt);
+                    if (waitMs > 0) await sleep(waitMs);
+                    try {
+                        return await operation();
+                    } finally {
+                        vertexRequestLastFinishedAt = Date.now();
+                    }
+                });
+                vertexRequestQueue = queuedRequest.catch(() => undefined);
+                return queuedRequest;
+            };
+
+            const getVertexRetryAfterMs = (error, attempt) => {
+                const retryAfterMs = Number(error?.vertexRetryAfterMs);
+                if (Number.isFinite(retryAfterMs) && retryAfterMs > 0) {
+                    return Math.min(retryAfterMs, 30000);
+                }
+                const exponentialDelay = Math.min(30000, 1500 * (2 ** attempt));
+                return exponentialDelay + Math.floor(Math.random() * 250);
+            };
+
+            const requestVertexGenerateContentNow = async ({
                 accessToken,
                 allowErrorStatuses = [],
                 errorPrefix = 'Vertex API error',
@@ -6870,6 +6899,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     const errorText = await response.text();
                     const error = new Error(`${errorPrefix}: ${response.status} - ${errorText}`);
                     lastError = error;
+                    error.vertexStatus = response.status;
+                    error.vertexRetryAfterMs = Number(response.headers?.get?.('Retry-After')) * 1000;
 
                     if (requestLocation !== 'global'
                         && isVertexPublisherModelNotFound(response.status, errorText)) {
@@ -6889,6 +6920,42 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 throw lastError || new Error('Vertex API request failed.');
             };
+
+            const requestVertexGenerateContent = (options) => enqueueVertexRequest(async () => {
+                for (let attempt = 0; ; attempt += 1) {
+                    try {
+                        return await requestVertexGenerateContentNow(options);
+                    } catch (error) {
+                        if (error?.vertexStatus !== 429 || attempt >= VERTEX_429_RETRY_LIMIT) {
+                            if (error?.vertexStatus === 429) {
+                                const throttledError = new Error(
+                                    (options.errorPrefix || 'Vertex API error')
+                                    + ': Vertex temporarily throttled this request (429 RESOURCE_EXHAUSTED) after '
+                                    + (VERTEX_429_RETRY_LIMIT + 1)
+                                    + ' attempts. Please wait a moment and try again.'
+                                );
+                                throttledError.vertexStatus = 429;
+                                throttledError.isVertexRateLimited = true;
+                                throttledError.cause = error;
+                                throw throttledError;
+                            }
+                            throw error;
+                        }
+
+                        const delayMs = getVertexRetryAfterMs(error, attempt);
+                        console.warn(
+                            'Vertex request was rate-limited; retrying after '
+                            + delayMs
+                            + 'ms (attempt '
+                            + (attempt + 2)
+                            + ' of '
+                            + (VERTEX_429_RETRY_LIMIT + 1)
+                            + ').'
+                        );
+                        await sleep(delayMs);
+                    }
+                }
+            });
 
             const fetchGoalDraftsFromAI = async (diagnosis, shorthand, goalCount, objectiveCount, format, modalities, objectivesPerGoal) => {
                 if (!selectedModel) {
@@ -7293,6 +7360,28 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     throw new Error('AI returned an empty Medical Necessity statement.');
                 }
                 return medicalNecessity;
+            };
+
+            const fetchSupportFieldsFromAI = async (client, appointment) => {
+                const diagnoses = getClientDiagnosisNames(client);
+                if (diagnoses.length === 0) {
+                    throw new Error('Enter at least one client diagnosis before generating support fields.');
+                }
+
+                const diagnosisContext = diagnoses.map((diagnosis, index) => (index + 1) + '. ' + diagnosis).join('\n');
+                const systemPrompt = 'You are a behavioral-health documentation assistant writing two separate chart-ready support fields. Use only facts explicitly documented in the supplied current-session record and treatment context. For every listed clinician-entered diagnosis, write Diagnostic Support describing how this session is clinically related to, addresses, or is consistent with that diagnosis. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis, and do not discuss whether criteria are met. Write Medical Necessity as a separate concise statement explaining the documented current clinical need, functional impact, treatment focus, skilled interventions, and progress, response, or barriers. Medical Necessity must explicitly say that ongoing skilled treatment remains medically necessary (or equivalent wording) and explain why continued clinician skill is needed now. Do not generate medical necessity from diagnosis alone and do not invent facts. Return only JSON exactly as {"diagnostic_support":[{"diagnosis":"...","statement":"..."}],"medical_necessity":"..."}.';
+                const userPrompt = 'Documented diagnoses (treatment anchors):\n'
+                    + diagnosisContext
+                    + '\n\nComplete documented session record:\n'
+                    + buildDiagnosticSupportSessionContext(client, appointment)
+                    + '\n\nWrite one 1-2 sentence Diagnostic Support statement for each diagnosis and one 2-4 sentence Medical Necessity statement. Keep the fields separate and return only the required JSON.';
+                const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
+                const diagnosticSupport = normalizeDiagnosticSupportFromAi(aiPayload);
+                const medicalNecessity = normalizeMedicalNecessityFromAi(aiPayload);
+                if (!diagnosticSupport && !medicalNecessity) {
+                    throw new Error('AI returned empty Diagnostic Support and Medical Necessity fields.');
+                }
+                return { diagnosticSupport, medicalNecessity };
             };
 
             const setSoapSupportRefreshState = (button, label, isLoading) => {
@@ -10110,6 +10199,8 @@ Requirements:
                 }
              };
 
+            let objectiveOrganizationInFlight = false;
+
             const organizeObjectiveContent = async () => {
                 const appointmentContext = getSelectedAppointmentContext();
                 const appointment = getAppointmentFromContext(appointmentContext);
@@ -10122,6 +10213,8 @@ Requirements:
                     alert('Please enter at least two Objective bullet points before organizing.');
                     return;
                 }
+                if (objectiveOrganizationInFlight) return;
+                objectiveOrganizationInFlight = true;
 
                 const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
                 if (organizeObjectiveBtn) {
@@ -10154,21 +10247,22 @@ Requirements:
                     if (getClientDiagnosisNames(client).length === 0) {
                         supportErrors.push('no client diagnosis is recorded');
                     } else {
-                        const [diagnosticResult, medicalNecessityResult] = await Promise.allSettled([
-                            fetchDiagnosticSupportFromAI(client, appointment),
-                            fetchMedicalNecessityFromAI(client, appointment)
-                        ]);
-                        if (diagnosticResult.status === 'fulfilled') {
-                            appointment.soap.diagnosticSupport = diagnosticResult.value;
-                        } else {
-                            supportErrors.push(`Diagnostic Support could not be generated: ${diagnosticResult.reason?.message || diagnosticResult.reason}`);
-                            console.warn('Diagnostic Support AI generation failed.', diagnosticResult.reason);
-                        }
-                        if (medicalNecessityResult.status === 'fulfilled') {
-                            appointment.soap.medicalNecessity = medicalNecessityResult.value;
-                        } else {
-                            supportErrors.push(`Medical Necessity could not be generated: ${medicalNecessityResult.reason?.message || medicalNecessityResult.reason}`);
-                            console.warn('Medical Necessity AI generation failed.', medicalNecessityResult.reason);
+                        let supportFields = null;
+                        try {
+                            supportFields = await fetchSupportFieldsFromAI(client, appointment);
+                            if (supportFields.diagnosticSupport) {
+                                appointment.soap.diagnosticSupport = supportFields.diagnosticSupport;
+                            } else {
+                                supportErrors.push('Diagnostic Support was not returned.');
+                            }
+                            if (supportFields.medicalNecessity) {
+                                appointment.soap.medicalNecessity = supportFields.medicalNecessity;
+                            } else {
+                                supportErrors.push('Medical Necessity was not returned.');
+                            }
+                        } catch (error) {
+                            supportErrors.push('Diagnostic Support and Medical Necessity could not be generated: ' + (error?.message || error));
+                            console.warn('Combined support-field AI generation failed.', error);
                         }
                         delete appointment.auditCheck;
                         markDirty();
@@ -10181,6 +10275,7 @@ Requirements:
                     console.error('Objective organization error:', error);
                     alert(`Failed to organize Objective content. ${error.message}`);
                 } finally {
+                    objectiveOrganizationInFlight = false;
                     if (organizeObjectiveBtn?.isConnected) {
                         organizeObjectiveBtn.disabled = false;
                         setSoapActionButtonContent(organizeObjectiveBtn, 'Organize', isObjectiveOrganizeCompleted(appointment));

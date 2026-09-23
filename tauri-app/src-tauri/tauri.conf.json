@@ -1,6 +1,6 @@
 {
   "productName": "SmartEMR",
-  "version": "3.0.23",
+  "version": "3.0.24",
   "identifier": "com.clientrecords.tauriapp",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,7 +12,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "SmartEMR v3.0.23",
+        "title": "SmartEMR v3.0.24",
         "width": 1200,
         "height": 800
       }

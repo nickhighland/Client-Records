@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR</title>
+    <title>SmartEMR v3.0.23</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -104,7 +104,9 @@
             padding: 12px 20px;
             display: grid;
             grid-template-columns: minmax(0, 1fr) max-content;
-            grid-template-areas: "title actions";
+            grid-template-areas:
+                "title actions"
+                "utility utility";
             column-gap: 15px;
             row-gap: 8px;
             align-items: start;
@@ -150,18 +152,6 @@
             white-space: nowrap;
         }
 
-        .version-badge {
-            display: inline-block;
-            margin-left: 6px;
-            padding: 2px 7px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 999px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            vertical-align: middle;
-        }
-
         .app-mode-toggle {
             display: inline-flex;
             align-items: center;
@@ -179,6 +169,15 @@
             align-items: flex-end;
             gap: 6px;
             min-width: max-content;
+        }
+
+        .header-utility-row {
+            grid-area: utility;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) max-content;
+            gap: 15px;
+            align-items: center;
+            min-width: 0;
         }
 
         .app-mode-btn {
@@ -205,15 +204,17 @@
         }
 
         .header-column-controls {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
+            position: static;
+            transform: none;
             display: grid;
             grid-template-columns: repeat(4, max-content);
             gap: 8px;
             align-items: center;
             justify-content: center;
+            justify-self: center;
+            min-width: 0;
+            max-width: 100%;
+            overflow-x: auto;
             z-index: 15;
         }
 
@@ -246,6 +247,8 @@
         #autolockWrapper {
             margin-left: 0;
             justify-content: flex-end;
+            grid-column: 2;
+            justify-self: end;
         }
 
         .header-menu {
@@ -302,25 +305,8 @@
         }
 
         @media (max-width: 1380px) {
-            .header {
-                grid-template-areas:
-                    "title actions"
-                    "columns columns";
-            }
-
             .header-title-group {
                 flex-wrap: wrap;
-            }
-
-            .header-column-controls {
-                position: static;
-                left: auto;
-                top: auto;
-                transform: none;
-                grid-area: columns;
-                width: 100%;
-                justify-content: flex-start;
-                grid-template-columns: repeat(4, max-content);
             }
         }
 
@@ -2809,10 +2795,6 @@
     <div class="container" id="appContainer" style="display: none;">
         <div class="header">
             <div class="header-title-group">
-                <h1>
-                    SmartEMR
-                    <span class="version-badge" title="SmartEMR version 3.0.22" aria-label="SmartEMR version 3.0.22">v3.0.22</span>
-                </h1>
                 <div class="app-mode-toggle" aria-label="Application mode">
                     <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
                     <button id="appModeDsmBtn" class="app-mode-btn" type="button" aria-pressed="false">DSM-V-TR</button>
@@ -2820,11 +2802,27 @@
                     <button id="appModeSafetyPlanBtn" class="app-mode-btn" type="button" aria-pressed="false">Safety Plan</button>
                 </div>
             </div>
-            <div id="headerColumnControls" class="header-column-controls" aria-label="Column visibility controls">
-                <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
-                <button id="columnToggleAppointments" class="column-visibility-pill is-shown" type="button" title="Hide Appointments">Appointments</button>
-                <button id="columnToggleNotes" class="column-visibility-pill is-shown" type="button" title="Hide Notes">Notes</button>
-                <button id="columnToggleSoap" class="column-visibility-pill is-shown" type="button" title="Hide SOAP">SOAP</button>
+            <div class="header-utility-row" id="headerUtilityRow">
+                <div id="headerColumnControls" class="header-column-controls" aria-label="Column visibility controls">
+                    <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
+                    <button id="columnToggleAppointments" class="column-visibility-pill is-shown" type="button" title="Hide Appointments">Appointments</button>
+                    <button id="columnToggleNotes" class="column-visibility-pill is-shown" type="button" title="Hide Notes">Notes</button>
+                    <button id="columnToggleSoap" class="column-visibility-pill is-shown" type="button" title="Hide SOAP">SOAP</button>
+                </div>
+                <!-- Auto-lock session control stays on the same row as the column pills. -->
+                <div class="autolock-wrapper" id="autolockWrapper">
+                    <span class="autolock-label">Auto-lock Session</span>
+                    <select id="autolockSelect" class="autolock-select" title="Select auto-lock timeout">
+                        <option value="600000">10 min</option>
+                        <option value="900000">15 min</option>
+                        <option value="1800000">30 min</option>
+                        <option value="2700000">45 min</option>
+                        <option value="3600000">60 min</option>
+                        <option value="4500000">1 hr 15 min</option>
+                        <option value="5400000">1 hr 30 min</option>
+                    </select>
+                    <div id="autolockCountdown" class="autolock-countdown" style="display:none;"></div>
+                </div>
             </div>
             <div id="autoSaveIndicator" class="autosave-indicator" style="opacity: 0;">
                 <span id="saveStatus"></span>
@@ -2850,20 +2848,6 @@
                         </select>
                         <button id="lockScreenBtn" class="menu-item-btn" title="Lock Screen">Lock Screen</button>
                     </div>
-                </div>
-                <!-- Auto-lock session control stays beneath Menu at every window width. -->
-                <div class="autolock-wrapper" id="autolockWrapper">
-                    <span class="autolock-label">Auto-lock Session</span>
-                    <select id="autolockSelect" class="autolock-select" title="Select auto-lock timeout">
-                        <option value="600000">10 min</option>
-                        <option value="900000">15 min</option>
-                        <option value="1800000">30 min</option>
-                        <option value="2700000">45 min</option>
-                        <option value="3600000">60 min</option>
-                        <option value="4500000">1 hr 15 min</option>
-                        <option value="5400000">1 hr 30 min</option>
-                    </select>
-                    <div id="autolockCountdown" class="autolock-countdown" style="display:none;"></div>
                 </div>
             </div>
         </div>

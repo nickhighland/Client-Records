@@ -50,7 +50,8 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.doesNotMatch(html, /const goalRef = `G\$\{goalIndex \+ 1\}`/);
         assert.doesNotMatch(html, /\[\$\{obj\.ref\}\]/);
         assert.match(html, /Do not assume interventions, client participation, response, improvement, impairment, risk status, or medical necessity/);
-        assert.match(html, /Do not use a fixed suggestion count/);
+        assert.match(html, /Objective Suggestion Contract/);
+        assert.match(html, /For "o_suggestion", return \$\{SOAP_OBJECTIVE_SUGGESTION_MIN_COUNT\}-\$\{SOAP_OBJECTIVE_SUGGESTION_MAX_COUNT\} distinct/);
         assert.match(html, /const normalizeObjectiveLine =/);
         assert.doesNotMatch(html, /Writer engaged Ct in this intervention/);
         assert.doesNotMatch(html, /with Ct participation/);

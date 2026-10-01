@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.24</title>
+    <title>SmartEMR v3.0.25</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -9916,6 +9916,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 legacyImportedPrompt: ''
             });
             const SOAP_GOLDEN_THREAD_CHAIN = 'diagnosis -> presenting problem -> active treatment goal/objective -> current-session evidence -> documented intervention/modality -> Ct response -> symptom/function change -> progress or barrier -> medical necessity -> next treatment step';
+            const SOAP_OBJECTIVE_SUGGESTION_MIN_COUNT = 8;
+            const SOAP_OBJECTIVE_SUGGESTION_MAX_COUNT = 10;
             const GOLDEN_THREAD_SOAP_GUIDANCE_MARKER = 'SmartEMR Golden Thread Guidance v1';
             const GOLDEN_THREAD_SOAP_GUIDANCE_ADDENDUM = [
                 `${GOLDEN_THREAD_SOAP_GUIDANCE_MARKER}:`,
@@ -10042,7 +10044,9 @@ Analyze the labeled clinical record in User Input and return only the required J
 
                 **Audit-Support Field Mapping:** When provided, integrate Symptom Pattern / Severity Context into S, and Functional Impact and Progress / Response to Treatment into A. Use Medical Necessity Rationale to ground the separate medicalNecessity field, not Assessment. Preserve the content faithfully, but do not print those field labels in the SOAP prose. Medical necessity must never be generated from diagnosis alone.
 
-**Suggestions:** Return concise suggestions only when useful. A suggestion may revise an exact generated bullet without changing its facts, or identify a specific missing documentation element. Suggestions must not add symptoms, severity, impairment, risk, interventions, client participation, response, progress, modality, or medical necessity. Do not assume interventions. Do not use a fixed suggestion count; an empty array is preferred when no supported suggestion exists.
+**Suggestions:** Return concise suggestions only when useful. A suggestion may revise an exact generated bullet without changing its facts, or identify a specific missing documentation element. Suggestions must not add symptoms, severity, impairment, risk, interventions, client participation, response, progress, modality, or medical necessity. Do not assume interventions.
+
+**Objective Suggestion Contract:** For "o_suggestion", return ${SOAP_OBJECTIVE_SUGGESTION_MIN_COUNT}-${SOAP_OBJECTIVE_SUGGESTION_MAX_COUNT} distinct, chart-ready candidate boxes when the current session contains that many directly supported objective details. Prefer one candidate per distinct observable finding, Writer action or intervention, Ct participation or response, or other documented objective detail. Do not duplicate a fact with minor wording changes, introduce hypothetical content, or turn an unsupported treatment possibility into a suggestion. If fewer than ${SOAP_OBJECTIVE_SUGGESTION_MIN_COUNT} distinct supported details are present, return one candidate for each supported detail rather than padding the list. Keep other section suggestions limited to evidence-supported revisions or additions.
 
 **Locked Style Rules:** Preserve clinician shorthand such as "Ct" and refer to the clinician as "Writer". Keep each SOAP bullet self-contained and chart-ready. Do not expand shorthand or add parenthetical expansions. Return only valid JSON in this exact shape:
 {

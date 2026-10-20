@@ -1170,6 +1170,7 @@
         /* Goals and Objectives Styling */
         #goalsListInTab {
             padding: 2px 2px 12px !important;
+            container-type: inline-size;
         }
 
         .goal-item {
@@ -1190,6 +1191,7 @@
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
+            flex-wrap: wrap;
             gap: 12px;
             padding: 14px 16px;
             background: color-mix(in srgb, var(--panel-bg) 86%, #8e44ad 14%);
@@ -1198,7 +1200,7 @@
 
         .goal-heading {
             min-width: 0;
-            flex: 1 1 auto;
+            flex: 1 1 260px;
         }
 
         .goal-kicker,
@@ -1219,15 +1221,18 @@
             font-weight: 600;
             color: var(--text-color-primary);
             line-height: 1.45;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
+            word-break: normal;
         }
 
         .goal-header-right {
             display: flex;
-            flex: 0 0 auto;
+            flex: 0 1 auto;
             flex-direction: column;
             align-items: flex-end;
             gap: 8px;
+            min-width: 0;
+            max-width: 100%;
         }
 
         .goal-meta,
@@ -1237,6 +1242,11 @@
             display: flex;
             align-items: center;
             gap: 6px;
+        }
+
+        .goal-header-actions {
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .goal-meta {
@@ -1365,6 +1375,7 @@
         .objective-item {
             display: flex;
             align-items: flex-start;
+            flex-wrap: wrap;
             gap: 10px;
             margin: 0;
             padding: 10px 12px;
@@ -1391,7 +1402,7 @@
         .objective-main {
             display: flex;
             min-width: 0;
-            flex: 1 1 auto;
+            flex: 1 1 220px;
             flex-direction: column;
             gap: 3px;
         }
@@ -1405,7 +1416,8 @@
             min-width: 0;
             color: var(--text-color-primary);
             line-height: 1.4;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
+            word-break: normal;
         }
 
         .objective-text.completed {
@@ -1414,9 +1426,11 @@
         }
 
         .objective-controls {
-            flex: 0 0 auto;
+            flex: 0 1 auto;
             flex-wrap: wrap;
             justify-content: flex-end;
+            max-width: 100%;
+            margin-left: auto;
         }
 
         .objective-actions {
@@ -1471,6 +1485,26 @@
                 width: 100%;
                 justify-content: flex-end;
                 padding-left: 27px;
+            }
+        }
+
+        @container (max-width: 520px) {
+            .goal-header {
+                flex-direction: column;
+            }
+
+            .goal-header-right {
+                width: 100%;
+                align-items: stretch;
+            }
+
+            .goal-meta,
+            .goal-header-actions {
+                justify-content: flex-start;
+            }
+
+            .objective-controls {
+                width: 100%;
             }
         }
 

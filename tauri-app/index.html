@@ -1168,27 +1168,80 @@
         }
 
         /* Goals and Objectives Styling */
+        #goalsListInTab {
+            padding: 2px 2px 12px !important;
+        }
+
         .goal-item {
-            background: var(--item-bg);
-            margin-bottom: 12px;
-            padding: 12px;
-            border-radius: 6px;
-            border-left: 4px solid #8e44ad;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            background: var(--panel-bg);
+            margin-bottom: 16px;
+            border: 1px solid var(--panel-border);
+            border-left: 5px solid #8e44ad;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .goal-item:last-child {
+            margin-bottom: 0;
         }
 
         .goal-header {
             display: flex;
+            align-items: flex-start;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
+            gap: 12px;
+            padding: 14px 16px;
+            background: color-mix(in srgb, var(--panel-bg) 86%, #8e44ad 14%);
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .goal-heading {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .goal-kicker,
+        .objective-list-heading,
+        .objective-label {
+            color: var(--text-color-secondary);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .goal-kicker {
+            margin-bottom: 4px;
         }
 
         .goal-title {
             font-weight: 600;
             color: var(--text-color-primary);
-            flex-grow: 1;
-            margin-right: 8px;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .goal-header-right {
+            display: flex;
+            flex: 0 0 auto;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .goal-meta,
+        .goal-header-actions,
+        .objective-controls,
+        .objective-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .goal-meta {
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .goal-actions {
@@ -1202,12 +1255,72 @@
             opacity: 1;
         }
 
+        .goal-item:focus-within .goal-actions,
+        .objective-item:focus-within .objective-actions {
+            opacity: 1;
+        }
+
+        .plan-copy-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            min-height: 26px;
+            padding: 4px 8px;
+            border: 1px solid var(--panel-border);
+            border-radius: 5px;
+            background: var(--item-bg);
+            color: var(--text-color-primary);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .plan-copy-btn:hover {
+            background: var(--item-active-bg);
+            border-color: var(--item-active-border-color);
+        }
+
+        .plan-copy-btn:focus-visible {
+            outline: none;
+            border-color: var(--textarea-focus-border);
+            box-shadow: 0 0 0 2px var(--textarea-focus-shadow);
+        }
+
+        .plan-copy-btn.is-copied {
+            background: var(--item-active-bg);
+            border-color: var(--item-active-border-color);
+        }
+
+        .plan-copy-icon {
+            display: inline-flex;
+            width: 14px;
+            height: 14px;
+        }
+
+        .plan-copy-icon svg {
+            width: 14px;
+            height: 14px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
         .goal-status {
+            display: inline-flex;
+            align-items: center;
             padding: 2px 6px;
             border-radius: 12px;
+            background: color-mix(in srgb, var(--panel-border) 45%, transparent 55%);
+            color: var(--text-color-secondary);
             font-size: 0.75rem;
             font-weight: 600;
-            margin-right: 8px;
+            white-space: nowrap;
         }
 
         .goal-status.active {
@@ -1226,27 +1339,73 @@
         }
 
         .objective-list {
-            margin-top: 8px;
-            padding-left: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 0;
+            padding: 14px 16px 16px;
+        }
+
+        .objective-list-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 0 2px 2px;
+        }
+
+        .objective-count {
+            color: var(--text-color-secondary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: normal;
+            text-transform: none;
         }
 
         .objective-item {
             display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 0;
+            padding: 10px 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            background: var(--item-bg);
             font-size: 0.9rem;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .objective-item:hover {
+            border-color: var(--item-active-border-color);
+            box-shadow: 0 2px 7px rgba(0, 0, 0, 0.06);
         }
 
         .objective-checkbox {
-            width: 16px;
-            height: 16px;
+            flex: 0 0 auto;
+            width: 17px;
+            height: 17px;
+            margin-top: 2px;
             cursor: pointer;
         }
 
+        .objective-main {
+            display: flex;
+            min-width: 0;
+            flex: 1 1 auto;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .objective-label {
+            font-size: 0.68rem;
+            letter-spacing: 0.03em;
+        }
+
         .objective-text {
-            flex-grow: 1;
+            min-width: 0;
             color: var(--text-color-primary);
+            line-height: 1.4;
+            overflow-wrap: anywhere;
         }
 
         .objective-text.completed {
@@ -1254,20 +1413,65 @@
             color: var(--text-color-secondary);
         }
 
+        .objective-controls {
+            flex: 0 0 auto;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .objective-actions {
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        .objective-item:hover .objective-actions {
+            opacity: 1;
+        }
+
         .add-objective-btn {
             background: none;
             border: 1px dashed #8e44ad;
             color: #8e44ad;
-            padding: 4px 8px;
-            border-radius: 4px;
+            min-height: 34px;
+            padding: 7px 10px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 0.8rem;
-            margin-top: 8px;
             width: 100%;
         }
 
         .add-objective-btn:hover {
             background: rgba(142, 68, 173, 0.1);
+        }
+
+        @media (max-width: 520px) {
+            .goal-header {
+                flex-direction: column;
+            }
+
+            .goal-header-right {
+                width: 100%;
+                align-items: stretch;
+            }
+
+            .goal-meta,
+            .goal-header-actions {
+                justify-content: flex-start;
+            }
+
+            .objective-item {
+                flex-wrap: wrap;
+            }
+
+            .objective-main {
+                flex-basis: calc(100% - 27px);
+            }
+
+            .objective-controls {
+                width: 100%;
+                justify-content: flex-end;
+                padding-left: 27px;
+            }
         }
 
         .generator-card {
@@ -2990,7 +3194,7 @@
                             <span class="section-collapser-icon">▼</span>
                         </button>
                         <div id="goalsListSectionContent" class="section-collapsible-content" style="display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;">
-                            <div id="goalsListInTab" style="flex-grow: 1; overflow-y: auto; padding: 0;">
+                            <div id="goalsListInTab" style="flex-grow: 1; overflow-y: auto;">
                                 <div class="no-selection">Select a client to manage goals</div>
                             </div>
                         </div>
@@ -8132,6 +8336,62 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 generateNoteBtn.disabled = !appointment || !hasAppointmentGenerationInput(appointment);
             };
 
+            const getGoalStatusLabel = (status) => {
+                const normalizedStatus = String(status || 'active');
+                return normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1);
+            };
+
+            const getPlanCopyButtonMarkup = (label, className, datasetAttributes) => `
+                <button type="button" class="copy-btn plan-copy-btn ${className}" ${datasetAttributes} title="Copy ${label}" aria-label="Copy ${label}">
+                    <span class="plan-copy-icon">${SOAP_ICON_SVGS.copy}</span>
+                    <span>Copy</span>
+                </button>`;
+
+            const formatGoalCopyText = (goal) => [
+                `Goal: ${String(goal.title || '').trim()}`,
+                `Timeline: ${goal.timelineMonths || 12} months`,
+                `Status: ${getGoalStatusLabel(goal.status)}`
+            ].join('\n');
+
+            const formatObjectiveCopyText = (objective) => [
+                `Objective: ${String(objective.text || '').trim()}`,
+                `Timeline: ${objective.timelineMonths || 3} months`,
+                `Status: ${objective.completed ? 'Completed' : 'Active'}`
+            ].join('\n');
+
+            const setPlanCopyButtonFeedback = (button, label, copied) => {
+                if (!button) return;
+                button.classList.toggle('is-copied', copied);
+                button.innerHTML = copied
+                    ? '<span aria-hidden="true">✓</span><span>Copied</span>'
+                    : `<span class="plan-copy-icon">${SOAP_ICON_SVGS.copy}</span><span>Copy</span>`;
+                button.title = copied ? `${label} copied` : `Copy ${label}`;
+                button.setAttribute('aria-label', button.title);
+            };
+
+            const copyPlanItem = async (goalId, objectiveId, button) => {
+                const client = findClient(selectedClientId);
+                const goal = client?.goals?.find(item => item.id === goalId);
+                const objective = goal && objectiveId
+                    ? (goal.objectives || []).find(item => item.id === objectiveId)
+                    : null;
+                if (!goal || (objectiveId && !objective)) return;
+
+                const label = objective ? 'Objective' : 'Goal';
+                const text = objective ? formatObjectiveCopyText(objective) : formatGoalCopyText(goal);
+                try {
+                    await navigator.clipboard.writeText(text);
+                    setPlanCopyButtonFeedback(button, label, true);
+                    window.setTimeout(() => {
+                        if (button.isConnected) setPlanCopyButtonFeedback(button, label, false);
+                    }, 2000);
+                } catch (error) {
+                    console.error(`Failed to copy ${label.toLowerCase()}:`, error);
+                    setPlanCopyButtonFeedback(button, label, false);
+                    alert(`Could not copy the ${label.toLowerCase()} to the clipboard.`);
+                }
+            };
+
             const renderGoals = () => {
                 const client = recordViewClearedForSelectedClient ? null : findClient(selectedClientId);
                 addGoalBtnInTab.disabled = !client;
@@ -8151,30 +8411,50 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     return;
                 }
 
-                goalsListInTabEl.innerHTML = client.goals.map(goal => `
+                goalsListInTabEl.innerHTML = client.goals.map((goal, goalIndex) => `
                     <div class="goal-item" data-goal-id="${goal.id}">
                         <div class="goal-header">
-                            <div class="goal-title">${escapeGoalDraftHtml(goal.title)}</div>
-                            <div style="display: flex; align-items: center;">
-                                <div class="goal-status" style="margin-right: 8px;">${goal.timelineMonths || 12} mo</div>
-                                <div class="goal-status ${goal.status}">${goal.status.charAt(0).toUpperCase() + goal.status.slice(1)}</div>
-                                <div class="goal-actions">
-                                    <button class="action-btn edit-btn" title="Edit Goal">✏️</button>
-                                    <button class="action-btn timeline-btn" title="Edit Goal Timeline">⏱</button>
-                                    <button class="action-btn archive-btn" title="Change Status">⚡</button>
-                                    <button class="action-btn delete-btn" title="Delete Goal">×</button>
+                            <div class="goal-heading">
+                                <div class="goal-kicker">Goal ${goalIndex + 1}</div>
+                                <div class="goal-title">${escapeGoalDraftHtml(goal.title)}</div>
+                            </div>
+                            <div class="goal-header-right">
+                                <div class="goal-meta">
+                                    <div class="goal-status">${goal.timelineMonths || 12} mo</div>
+                                    <div class="goal-status ${goal.status || 'active'}">${getGoalStatusLabel(goal.status)}</div>
+                                </div>
+                                <div class="goal-header-actions">
+                                    ${getPlanCopyButtonMarkup('Goal', 'goal-copy-btn', 'data-copy-type="goal"')}
+                                    <div class="goal-actions">
+                                        <button class="action-btn edit-btn" title="Edit Goal">✏️</button>
+                                        <button class="action-btn timeline-btn" title="Edit Goal Timeline">⏱</button>
+                                        <button class="action-btn archive-btn" title="Change Status">⚡</button>
+                                        <button class="action-btn delete-btn" title="Delete Goal">×</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="objective-list">
-                            ${(goal.objectives || []).map(obj => `
+                            <div class="objective-list-heading">
+                                <span>Objectives</span>
+                                <span class="objective-count">${(goal.objectives || []).length} total</span>
+                            </div>
+                            ${(goal.objectives || []).map((obj, objectiveIndex) => `
                                 <div class="objective-item" data-objective-id="${obj.id}">
-                                    <input type="checkbox" class="objective-checkbox" ${obj.completed ? 'checked' : ''}>
-                                    <span class="objective-text ${obj.completed ? 'completed' : ''}">${escapeGoalDraftHtml(obj.text)}</span>
-                                    <span class="goal-status" style="margin-left: 6px;">${obj.timelineMonths || 3} mo</span>
-                                    <button class="action-btn edit-objective-btn" title="Edit Objective" style="opacity: 0; width: 16px; height: 16px; font-size: 10px; background:#3498db;">✏️</button>
-                                    <button class="action-btn timeline-objective-btn" title="Edit Objective Timeline" style="opacity: 0; width: 16px; height: 16px; font-size: 10px; background:#e67e22;">⏱</button>
-                                    <button class="action-btn delete-btn" title="Delete Objective" style="opacity: 0; width: 16px; height: 16px; font-size: 10px;">×</button>
+                                    <input type="checkbox" class="objective-checkbox" aria-label="Mark objective ${objectiveIndex + 1} complete" ${obj.completed ? 'checked' : ''}>
+                                    <div class="objective-main">
+                                        <div class="objective-label">Objective ${objectiveIndex + 1}</div>
+                                        <span class="objective-text ${obj.completed ? 'completed' : ''}">${escapeGoalDraftHtml(obj.text)}</span>
+                                    </div>
+                                    <div class="objective-controls">
+                                        <span class="goal-status">${obj.timelineMonths || 3} mo</span>
+                                        ${getPlanCopyButtonMarkup('Objective', 'objective-copy-btn', 'data-copy-type="objective"')}
+                                        <div class="objective-actions">
+                                            <button class="action-btn edit-objective-btn" title="Edit Objective" style="width: 16px; height: 16px; font-size: 10px; background:#3498db;">✏️</button>
+                                            <button class="action-btn timeline-objective-btn" title="Edit Objective Timeline" style="width: 16px; height: 16px; font-size: 10px; background:#e67e22;">⏱</button>
+                                            <button class="action-btn delete-btn" title="Delete Objective" style="width: 16px; height: 16px; font-size: 10px;">×</button>
+                                        </div>
+                                    </div>
                                 </div>
                             `).join('')}
                             <button class="add-objective-btn" data-goal-id="${goal.id}">+ Add Objective</button>
@@ -12099,54 +12379,43 @@ This error cannot be fixed within this application's code; it requires a configu
             goalsListInTabEl.addEventListener('click', (e) => {
                 const goalItem = e.target.closest('.goal-item');
                 if (!goalItem) return;
-                
+
                 const goalId = goalItem.dataset.goalId;
-                
-                if (e.target.classList.contains('add-objective-btn')) {
-                    addObjective(goalId);
-                } else if (e.target.classList.contains('objective-checkbox')) {
-                    const objectiveItem = e.target.closest('.objective-item');
-                    const objectiveId = objectiveItem.dataset.objectiveId;
+                const objectiveItem = e.target.closest('.objective-item');
+                const clickedButton = e.target.closest?.('button');
+
+                if (e.target.classList.contains('objective-checkbox')) {
+                    const objectiveId = objectiveItem?.dataset.objectiveId;
+                    if (!objectiveId) return;
                     toggleObjective(goalId, objectiveId);
-                } else if (e.target.classList.contains('edit-objective-btn')) {
-                    const objectiveItem = e.target.closest('.objective-item');
-                    const objectiveId = objectiveItem.dataset.objectiveId;
+                } else if (clickedButton?.classList.contains('goal-copy-btn')) {
+                    copyPlanItem(goalId, null, clickedButton);
+                } else if (clickedButton?.classList.contains('objective-copy-btn')) {
+                    const objectiveId = objectiveItem?.dataset.objectiveId;
+                    if (!objectiveId) return;
+                    copyPlanItem(goalId, objectiveId, clickedButton);
+                } else if (clickedButton?.classList.contains('add-objective-btn')) {
+                    addObjective(goalId);
+                } else if (clickedButton?.classList.contains('edit-objective-btn')) {
+                    const objectiveId = objectiveItem?.dataset.objectiveId;
+                    if (!objectiveId) return;
                     editObjective(goalId, objectiveId);
-                } else if (e.target.classList.contains('timeline-objective-btn')) {
-                    const objectiveItem = e.target.closest('.objective-item');
-                    const objectiveId = objectiveItem.dataset.objectiveId;
+                } else if (clickedButton?.classList.contains('timeline-objective-btn')) {
+                    const objectiveId = objectiveItem?.dataset.objectiveId;
+                    if (!objectiveId) return;
                     editObjectiveTimeline(goalId, objectiveId);
-                } else if (e.target.closest('.objective-item') && e.target.classList.contains('delete-btn')) {
-                    const objectiveItem = e.target.closest('.objective-item');
+                } else if (clickedButton?.classList.contains('delete-btn') && objectiveItem) {
                     const objectiveId = objectiveItem.dataset.objectiveId;
+                    if (!objectiveId) return;
                     deleteObjective(goalId, objectiveId);
-                } else if (e.target.classList.contains('edit-btn')) {
+                } else if (clickedButton?.classList.contains('edit-btn')) {
                     editGoal(goalId);
-                } else if (e.target.classList.contains('timeline-btn')) {
+                } else if (clickedButton?.classList.contains('timeline-btn')) {
                     editGoalTimeline(goalId);
-                } else if (e.target.classList.contains('archive-btn')) {
+                } else if (clickedButton?.classList.contains('archive-btn')) {
                     changeGoalStatus(goalId);
-                } else if (e.target.classList.contains('delete-btn')) {
+                } else if (clickedButton?.classList.contains('delete-btn')) {
                     deleteGoal(goalId);
-                }
-            });
-
-            // Show/hide objective delete buttons on hover
-            goalsListInTabEl.addEventListener('mouseover', (e) => {
-                const objectiveItem = e.target.closest('.objective-item');
-                if (objectiveItem) {
-                    objectiveItem.querySelectorAll('.action-btn').forEach(btn => {
-                        btn.style.opacity = '1';
-                    });
-                }
-            });
-
-            goalsListInTabEl.addEventListener('mouseout', (e) => {
-                const objectiveItem = e.target.closest('.objective-item');
-                if (objectiveItem) {
-                    objectiveItem.querySelectorAll('.action-btn').forEach(btn => {
-                        btn.style.opacity = '0';
-                    });
                 }
             });
 

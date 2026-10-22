@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.30</title>
+    <title>SmartEMR v3.0.31</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -1658,6 +1658,38 @@
         .setting-input {
             width: 100%;
             box-sizing: border-box;
+        }
+        .client-contact-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto auto auto;
+            align-items: start;
+            gap: 8px;
+        }
+        .client-contact-row .client-contact-input {
+            min-width: 0;
+            margin: 0;
+        }
+        .client-contact-row .client-contact-input:disabled {
+            opacity: 0.82;
+            cursor: not-allowed;
+        }
+        .client-contact-lock {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 34px;
+            color: var(--text-color-secondary);
+            font-size: 0.78rem;
+            white-space: nowrap;
+        }
+        .client-contact-validation {
+            grid-column: 1 / -1;
+            min-height: 1em;
+            color: #b91c1c;
+            font-size: 0.75rem;
+        }
+        [data-theme="dark"] .client-contact-validation {
+            color: #fca5a5;
         }
         .goal-generator-controls {
             display: grid;
@@ -3319,7 +3351,7 @@
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px;">
                                     <div>
                                         <div style="font-size: 0.98rem; font-weight: 700;">Contact Information</div>
-                                        <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 2px;">Track multiple phone numbers and email addresses for this client.</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 2px;">Track multiple phone numbers and email addresses. Existing entries remain as entered and are locked; use Edit to change one.</div>
                                     </div>
                                 </div>
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
@@ -5021,13 +5053,56 @@
                 }, Math.max(1000, nextDay.getTime() - now.getTime()));
             };
             const normalizeClientContactEntries = (entries) => {
-                if (Array.isArray(entries)) {
-                    return entries.map(entry => typeof entry === 'string' ? entry : String(entry ?? ''));
+                const rawEntries = Array.isArray(entries)
+                    ? entries
+                    : (typeof entries === 'string' && entries.length ? [entries] : []);
+
+                return rawEntries.map(entry => {
+                    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+                        const rawValue = Object.prototype.hasOwnProperty.call(entry, 'value')
+                            ? entry.value
+                            : (entry.number ?? entry.phone ?? entry.email ?? entry.address ?? '');
+                        return {
+                            // Preserve the stored value exactly during migration. Formatting is
+                            // applied only to values entered after this feature is enabled.
+                            value: String(rawValue ?? ''),
+                            locked: entry.locked !== false
+                        };
+                    }
+
+                    return {
+                        value: String(entry ?? ''),
+                        locked: true
+                    };
+                });
+            };
+            const getClientContactEntryValue = (entry) => {
+                if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+                    return String(entry.value ?? '');
                 }
-                if (typeof entries === 'string') {
-                    return entries.trim() ? [entries.trim()] : [];
+                return String(entry ?? '');
+            };
+            const isClientContactEntryLocked = (entry) => {
+                return !(entry && typeof entry === 'object' && !Array.isArray(entry)) || entry.locked !== false;
+            };
+            const formatClientPhoneInput = (value) => {
+                const digits = String(value ?? '').replace(/\D/g, '').slice(0, 10);
+                if (!digits) return '';
+                if (digits.length <= 3) return `(${digits}`;
+                if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+                return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+            };
+            const CLIENT_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const getClientContactValidationMessage = (type, value) => {
+                const normalizedValue = String(value ?? '').trim();
+                if (!normalizedValue) return '';
+                if (type === 'phones' && !/^\(\d{3}\) \d{3}-\d{4}$/.test(normalizedValue)) {
+                    return 'Enter a 10-digit phone number.';
                 }
-                return [];
+                if (type === 'emails' && !CLIENT_EMAIL_PATTERN.test(normalizedValue)) {
+                    return 'Enter an email address containing @ and a period (.).';
+                }
+                return '';
             };
             const ensureClientContactInfo = (client) => {
                 if (!client || typeof client !== 'object') {
@@ -5159,7 +5234,9 @@
                     if (!Array.isArray(client.notes)) client.notes = [];
                     if (!Array.isArray(client.intakeSessions)) client.intakeSessions = [];
                     if (!Array.isArray(client.goals)) client.goals = [];
+                    const contactInfoBeforeNormalization = JSON.stringify(client.contactInfo);
                     ensureClientContactInfo(client);
+                    if (contactInfoBeforeNormalization !== JSON.stringify(client.contactInfo)) dataMigrated = true;
                     const previousSessionType = client.sessionType;
                     client.sessionType = normalizeClientSessionType(client.sessionType ?? client.clientType);
                     if (previousSessionType !== client.sessionType) dataMigrated = true;
@@ -8151,21 +8228,59 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                     entries.forEach((entry, index) => {
                         const row = document.createElement('div');
-                        row.style.display = 'flex';
-                        row.style.alignItems = 'center';
-                        row.style.gap = '8px';
+                        row.className = 'client-contact-row';
+                        row.dataset.contactType = config.type;
+                        row.dataset.contactIndex = String(index);
+
+                        const entryValue = getClientContactEntryValue(entry);
+                        const locked = isClientContactEntryLocked(entry);
+                        const validationMessage = !locked
+                            ? getClientContactValidationMessage(config.type, entryValue)
+                            : '';
 
                         const input = document.createElement('input');
                         input.type = config.inputType;
                         input.className = 'setting-input client-contact-input';
                         input.placeholder = config.placeholder;
-                        input.value = entry;
-                        input.disabled = disabled;
+                        input.value = entryValue;
+                        input.disabled = disabled || locked;
                         input.dataset.contactType = config.type;
                         input.dataset.contactIndex = String(index);
-                        input.style.margin = '0';
-                        input.style.flex = '1 1 auto';
-                        input.style.minWidth = '0';
+                        input.inputMode = config.type === 'phones' ? 'tel' : 'email';
+                        input.autocomplete = config.type === 'phones' ? 'tel' : 'email';
+                        input.maxLength = config.type === 'phones' ? 14 : 254;
+                        input.setAttribute('aria-label', `${config.label} ${index + 1}`);
+                        input.setAttribute('aria-invalid', validationMessage ? 'true' : 'false');
+                        input.setCustomValidity(validationMessage);
+
+                        const lockLabel = document.createElement('label');
+                        lockLabel.className = 'client-contact-lock';
+                        lockLabel.title = locked
+                            ? 'Unlock this entry before editing it.'
+                            : 'Lock this entry to prevent accidental changes.';
+
+                        const lockCheckbox = document.createElement('input');
+                        lockCheckbox.type = 'checkbox';
+                        lockCheckbox.className = 'client-contact-lock-checkbox';
+                        lockCheckbox.checked = locked;
+                        lockCheckbox.disabled = disabled;
+                        lockCheckbox.dataset.contactType = config.type;
+                        lockCheckbox.dataset.contactIndex = String(index);
+                        lockCheckbox.setAttribute('aria-label', `Lock ${config.label.toLowerCase()} ${index + 1}`);
+                        lockLabel.appendChild(lockCheckbox);
+                        lockLabel.appendChild(document.createTextNode(' Lock'));
+
+                        const editBtn = document.createElement('button');
+                        editBtn.type = 'button';
+                        editBtn.className = 'btn client-contact-edit-btn';
+                        editBtn.textContent = 'Edit';
+                        editBtn.title = locked ? 'Unlock this entry for editing' : 'Focus this entry for editing';
+                        editBtn.disabled = disabled;
+                        editBtn.dataset.contactType = config.type;
+                        editBtn.dataset.contactIndex = String(index);
+                        editBtn.style.padding = '6px 10px';
+                        editBtn.style.flex = '0 0 auto';
+                        editBtn.style.background = 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)';
 
                         const removeBtn = document.createElement('button');
                         removeBtn.type = 'button';
@@ -8178,14 +8293,24 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         removeBtn.style.flex = '0 0 auto';
                         removeBtn.style.background = 'linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%)';
 
+                        const validation = document.createElement('div');
+                        validation.className = 'client-contact-validation';
+                        validation.setAttribute('role', 'alert');
+                        validation.textContent = validationMessage;
+                        validation.style.display = validationMessage ? 'block' : 'none';
+
                         row.appendChild(input);
                         row.appendChild(removeBtn);
+                        row.appendChild(lockLabel);
+                        row.appendChild(editBtn);
+                        row.appendChild(validation);
                         listEl.appendChild(row);
                     });
                 };
 
                 renderContactList(clientPhoneListEl, contactInfo.phones, {
                     type: 'phones',
+                    label: 'Phone number',
                     inputType: 'tel',
                     placeholder: 'Enter phone number',
                     selectPrompt: 'Select a client to add phone numbers.',
@@ -8194,6 +8319,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 renderContactList(clientEmailListEl, contactInfo.emails, {
                     type: 'emails',
+                    label: 'Email address',
                     inputType: 'email',
                     placeholder: 'Enter email address',
                     selectPrompt: 'Select a client to add email addresses.',
@@ -8204,13 +8330,29 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (addEmailAddressBtn) addEmailAddressBtn.disabled = disabled;
             };
 
+            const updateRenderedClientContactValidation = (type, index, value) => {
+                const row = document.querySelector(`.client-contact-row[data-contact-type="${type}"][data-contact-index="${index}"]`);
+                if (!row) return;
+                const input = row.querySelector('.client-contact-input');
+                const validation = row.querySelector('.client-contact-validation');
+                const message = getClientContactValidationMessage(type, value);
+                if (input) {
+                    input.setCustomValidity(message);
+                    input.setAttribute('aria-invalid', message ? 'true' : 'false');
+                }
+                if (validation) {
+                    validation.textContent = message;
+                    validation.style.display = message ? 'block' : 'none';
+                }
+            };
+
             const addClientContactEntry = (type) => {
                 const client = findClient(selectedClientId);
                 if (!client) return;
 
                 const contactInfo = ensureClientContactInfo(client);
                 const listKey = type === 'emails' ? 'emails' : 'phones';
-                contactInfo[listKey].push('');
+                contactInfo[listKey].push({ value: '', locked: false });
                 markDirty();
                 renderDetails();
 
@@ -8228,8 +8370,65 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const listKey = type === 'emails' ? 'emails' : 'phones';
                 if (!Array.isArray(contactInfo[listKey]) || index < 0 || index >= contactInfo[listKey].length) return;
 
-                contactInfo[listKey][index] = value;
+                const entry = contactInfo[listKey][index];
+                if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+                    entry.value = String(value ?? '');
+                } else {
+                    contactInfo[listKey][index] = {
+                        value: String(value ?? ''),
+                        locked: false
+                    };
+                }
                 markDirty();
+            };
+
+            const setClientContactLock = (type, index, locked) => {
+                const client = findClient(selectedClientId);
+                if (!client) return false;
+
+                const contactInfo = ensureClientContactInfo(client);
+                const listKey = type === 'emails' ? 'emails' : 'phones';
+                if (!Array.isArray(contactInfo[listKey]) || index < 0 || index >= contactInfo[listKey].length) return false;
+
+                const entry = contactInfo[listKey][index];
+                const value = getClientContactEntryValue(entry);
+                if (locked) {
+                    const validationMessage = getClientContactValidationMessage(type, value);
+                    if (validationMessage) {
+                        const checkbox = document.querySelector(`.client-contact-lock-checkbox[data-contact-type="${type}"][data-contact-index="${index}"]`);
+                        if (checkbox) checkbox.checked = false;
+                        updateRenderedClientContactValidation(type, index, value);
+                        document.querySelector(`.client-contact-input[data-contact-type="${type}"][data-contact-index="${index}"]`)?.focus();
+                        return false;
+                    }
+                }
+
+                entry.locked = !!locked;
+                markDirty();
+                renderDetails();
+                if (!locked) {
+                    setTimeout(() => {
+                        document.querySelector(`.client-contact-input[data-contact-type="${type}"][data-contact-index="${index}"]`)?.focus();
+                    }, 0);
+                }
+                return true;
+            };
+
+            const editClientContactEntry = (type, index) => {
+                const client = findClient(selectedClientId);
+                if (!client) return;
+
+                const contactInfo = ensureClientContactInfo(client);
+                const listKey = type === 'emails' ? 'emails' : 'phones';
+                const entry = contactInfo[listKey]?.[index];
+                if (!entry) return;
+
+                if (isClientContactEntryLocked(entry)) {
+                    setClientContactLock(type, index, false);
+                    return;
+                }
+
+                document.querySelector(`.client-contact-input[data-contact-type="${type}"][data-contact-index="${index}"]`)?.focus();
             };
 
             const removeClientContactEntry = (type, index) => {
@@ -9675,9 +9874,30 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const type = e.target.dataset.contactType;
                 const index = parseInt(e.target.dataset.contactIndex || '-1', 10);
                 if (!type || index < 0) return;
-                updateClientContactEntry(type, index, e.target.value);
+                const value = type === 'phones'
+                    ? formatClientPhoneInput(e.target.value)
+                    : e.target.value;
+                if (e.target.value !== value) e.target.value = value;
+                updateClientContactEntry(type, index, value);
+                updateRenderedClientContactValidation(type, index, value);
+            });
+            contactContentEl.addEventListener('change', (e) => {
+                const lockCheckbox = e.target.closest('.client-contact-lock-checkbox');
+                if (!lockCheckbox) return;
+                const type = lockCheckbox.dataset.contactType;
+                const index = parseInt(lockCheckbox.dataset.contactIndex || '-1', 10);
+                if (!type || index < 0) return;
+                setClientContactLock(type, index, lockCheckbox.checked);
             });
             contactContentEl.addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.client-contact-edit-btn');
+                if (editBtn) {
+                    const type = editBtn.dataset.contactType;
+                    const index = parseInt(editBtn.dataset.contactIndex || '-1', 10);
+                    if (!type || index < 0) return;
+                    editClientContactEntry(type, index);
+                    return;
+                }
                 const removeBtn = e.target.closest('.client-contact-remove-btn');
                 if (!removeBtn) return;
                 const type = removeBtn.dataset.contactType;

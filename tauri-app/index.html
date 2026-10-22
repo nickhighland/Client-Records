@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.29</title>
+    <title>SmartEMR v3.0.30</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -6426,6 +6426,7 @@
                     actionState.objectiveRevision += 1;
                     delete appointment.soap.diagnosticSupport;
                     delete appointment.soap.medicalNecessity;
+                    delete appointment.soap.presentingProblem;
                     appointment.soap.objectiveInterventionMatches = [];
                     appointment.soap.interventions = '';
                     actionState.organizedRevision = null;
@@ -6515,12 +6516,15 @@
                 }
 
                 const supportButtons = [
+                    document.getElementById('refreshPresentingProblemBtn'),
                     document.getElementById('refreshDiagnosticSupportBtn'),
                     document.getElementById('refreshMedicalNecessityBtn')
                 ].filter(Boolean);
                 supportButtons.forEach(button => {
                     button.disabled = !objectiveOrganized;
-                    const label = button.id === 'refreshDiagnosticSupportBtn'
+                    const label = button.id === 'refreshPresentingProblemBtn'
+                        ? 'Refresh Presenting Problem'
+                        : button.id === 'refreshDiagnosticSupportBtn'
                         ? 'Refresh Diagnostic Support'
                         : 'Refresh Medical Necessity';
                     button.title = objectiveOrganized ? label : 'Press Organize in Objective first';
@@ -7539,7 +7543,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     ? resolvedInterventions.join('\n')
                     : (soap.interventions || '');
                 const sections = [
-                    ['Presenting Problem', client?.presentingProblem],
+                    ['Documented Presenting Problem', client?.presentingProblem],
                     ['Session Information', appointment?.sessionInfo],
                     ['Subjective', soap.s],
                     ['Objective', soap.o],
@@ -7576,6 +7580,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     ?? aiPayload?.statements
                     ?? aiPayload?.statement
                     ?? aiPayload?.support
+                    ?? ''
+            );
+
+            const normalizeSoapPresentingProblemFromAi = (aiPayload) => normalizeSupportValue(
+                aiPayload?.presenting_problem
+                    ?? aiPayload?.presentingProblem
+                    ?? aiPayload?.presenting_problem_statement
+                    ?? aiPayload?.problem
                     ?? ''
             );
 
@@ -7622,26 +7634,37 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return medicalNecessity;
             };
 
+            const fetchPresentingProblemFromAI = async (client, appointment) => {
+                const documentedPresentingProblem = String(client?.presentingProblem || '').trim();
+                const systemPrompt = 'You are a behavioral-health documentation assistant writing one concise, chart-ready Presenting Problem statement for a SOAP note. Combine the documented presenting problem with the clinical problem evidenced in the complete current-session record. Describe how the presenting problem appeared in today\'s session using only explicitly documented facts. Do not diagnose, invent symptoms, severity, duration, impairment, risk, interventions, response, progress, or history. Do not list techniques or repeat the SOAP note. Keep it to 1-2 sentences, ideally 25-45 words and never more than 55 words. If the documented presenting problem is not reflected in today\'s record, state only the documented connection that is supported and do not imply unobserved symptoms. Return only JSON exactly as {"presenting_problem":"..."}.';
+                const userPrompt = `Documented Presenting Problem (treatment context):\n${documentedPresentingProblem || '- Not documented'}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nWrite one concise Presenting Problem statement that combines the documented presenting problem with the problem evidenced in today\'s session. Return only JSON in the required form.`;
+                const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
+                const presentingProblem = normalizeSoapPresentingProblemFromAi(aiPayload);
+                if (!presentingProblem) {
+                    throw new Error('AI returned an empty Presenting Problem statement.');
+                }
+                return presentingProblem;
+            };
+
             const fetchSupportFieldsFromAI = async (client, appointment) => {
                 const diagnoses = getClientDiagnosisNames(client);
-                if (diagnoses.length === 0) {
-                    throw new Error('Enter at least one client diagnosis before generating support fields.');
-                }
-
-                const diagnosisContext = diagnoses.map((diagnosis, index) => (index + 1) + '. ' + diagnosis).join('\n');
-                const systemPrompt = 'You are a behavioral-health documentation assistant writing two separate chart-ready support fields. Use only facts explicitly documented in the supplied current-session record and treatment context. For every listed clinician-entered diagnosis, write Diagnostic Support describing how this session is clinically related to, addresses, or is consistent with that diagnosis. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis, and do not discuss whether criteria are met. For Medical Necessity, use the clinician-entered diagnosis or diagnoses as treatment anchors and balance them with the current session: name or clearly reference the relevant diagnosis, connect it to the session-documented clinical need, and state the focused treatment need that supports continued care. Use this style: "Ongoing skilled treatment remains medically necessary to address [session-documented clinical need] in the context of [documented diagnosis], focusing on [documented treatment targets] to mitigate [documented functional impact or risk]." Keep it to one sentence, ideally 25-45 words and never more than 55 words. Diagnosis alone is not evidence; do not invent a symptom-diagnosis relationship. Do not list interventions, techniques, progress, response, or collateral events unless one is essential to explain the current need. Do not evaluate diagnostic criteria or explain why the diagnosis is valid. Do not invent facts. Return only JSON exactly as {"diagnostic_support":[{"diagnosis":"...","statement":"..."}],"medical_necessity":"..."}.';
+                const diagnosisContext = diagnoses.length > 0
+                    ? diagnoses.map((diagnosis, index) => (index + 1) + '. ' + diagnosis).join('\n')
+                    : '- None documented';
+                const systemPrompt = 'You are a behavioral-health documentation assistant writing three separate chart-ready support fields. Use only facts explicitly documented in the supplied current-session record and treatment context. For Presenting Problem, combine the documented presenting problem with the clinical problem evidenced in today\'s session; describe how that problem appeared in the session without inventing symptoms, severity, duration, impairment, risk, interventions, response, progress, or history. Keep Presenting Problem to 1-2 sentences, ideally 25-45 words and never more than 55 words. For every listed clinician-entered diagnosis, write Diagnostic Support describing how this session is clinically related to, addresses, or is consistent with that diagnosis. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis, and do not discuss whether criteria are met. For Medical Necessity, use the clinician-entered diagnosis or diagnoses as treatment anchors and balance them with the current session: name or clearly reference the relevant diagnosis, connect it to the session-documented clinical need, and state the focused treatment need that supports continued care. Use this style: "Ongoing skilled treatment remains medically necessary to address [session-documented clinical need] in the context of [documented diagnosis], focusing on [documented treatment targets] to mitigate [documented functional impact or risk]." Keep Medical Necessity to one sentence, ideally 25-45 words and never more than 55 words. Diagnosis alone is not evidence; do not invent a symptom-diagnosis relationship. Do not list interventions, techniques, progress, response, or collateral events unless one is essential to explain the current need. Do not evaluate diagnostic criteria or explain why the diagnosis is valid. If no diagnosis is listed, return an empty diagnostic_support array and an empty medical_necessity string while still writing Presenting Problem. Return only JSON exactly as {"presenting_problem":"...","diagnostic_support":[{"diagnosis":"...","statement":"..."}],"medical_necessity":"..."}.';
                 const userPrompt = 'Documented diagnoses (treatment anchors):\n'
                     + diagnosisContext
                     + '\n\nComplete documented session record:\n'
                     + buildDiagnosticSupportSessionContext(client, appointment)
-                    + '\n\nWrite one 1-2 sentence Diagnostic Support statement for each diagnosis and exactly one concise Medical Necessity sentence. Keep the fields separate and return only the required JSON.';
+                    + '\n\nWrite one concise Presenting Problem statement, one 1-2 sentence Diagnostic Support statement for each listed diagnosis, and exactly one concise Medical Necessity sentence when diagnoses are documented. Keep the fields separate and return only the required JSON.';
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
+                const presentingProblem = normalizeSoapPresentingProblemFromAi(aiPayload);
                 const diagnosticSupport = normalizeDiagnosticSupportFromAi(aiPayload);
                 const medicalNecessity = normalizeMedicalNecessityFromAi(aiPayload);
-                if (!diagnosticSupport && !medicalNecessity) {
-                    throw new Error('AI returned empty Diagnostic Support and Medical Necessity fields.');
+                if (!presentingProblem && !diagnosticSupport && !medicalNecessity) {
+                    throw new Error('AI returned empty Presenting Problem, Diagnostic Support, and Medical Necessity fields.');
                 }
-                return { diagnosticSupport, medicalNecessity };
+                return { presentingProblem, diagnosticSupport, medicalNecessity };
             };
 
             const setSoapSupportRefreshState = (button, label, isLoading) => {
@@ -7677,6 +7700,33 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     if (isCurrentAppointmentContext(appointmentContext)) alert(`Failed to refresh Diagnostic Support. ${error.message}`);
                 } finally {
                     if (refreshButton?.isConnected) setSoapSupportRefreshState(refreshButton, 'Diagnostic Support', false);
+                }
+            };
+
+            const refreshPresentingProblem = async () => {
+                const appointmentContext = getSelectedAppointmentContext();
+                const appointment = getAppointmentFromContext(appointmentContext);
+                const client = appointmentContext ? findClient(appointmentContext.clientId) : null;
+                if (!client || !appointment) return;
+                if (!isObjectiveOrganizeCompleted(appointment)) {
+                    alert('Complete the Objective section and press Organize before generating Presenting Problem.');
+                    return;
+                }
+
+                const refreshButton = document.getElementById('refreshPresentingProblemBtn');
+                setSoapSupportRefreshState(refreshButton, 'Presenting Problem', true);
+                try {
+                    const presentingProblem = await fetchPresentingProblemFromAI(client, appointment);
+                    if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
+                    appointment.soap.presentingProblem = presentingProblem;
+                    delete appointment.auditCheck;
+                    markDirty();
+                    if (isCurrentAppointmentContext(appointmentContext)) renderSoap();
+                } catch (error) {
+                    console.error('Presenting Problem refresh error:', error);
+                    if (isCurrentAppointmentContext(appointmentContext)) alert(`Failed to refresh Presenting Problem. ${error.message}`);
+                } finally {
+                    if (refreshButton?.isConnected) setSoapSupportRefreshState(refreshButton, 'Presenting Problem', false);
                 }
             };
 
@@ -8381,17 +8431,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     <span>Copy</span>
                 </button>`;
 
-            const formatGoalCopyText = (goal) => [
-                `Goal: ${String(goal.title || '').trim()}`,
-                `Timeline: ${goal.timelineMonths || 12} months`,
-                `Status: ${getGoalStatusLabel(goal.status)}`
-            ].join('\n');
+            const formatGoalCopyText = (goal) => String(goal.title || '').trim();
 
-            const formatObjectiveCopyText = (objective) => [
-                `Objective: ${String(objective.text || '').trim()}`,
-                `Timeline: ${objective.timelineMonths || 3} months`,
-                `Status: ${objective.completed ? 'Completed' : 'Active'}`
-            ].join('\n');
+            const formatObjectiveCopyText = (objective) => String(objective.text || '').trim();
 
             const setPlanCopyButtonFeedback = (button, label, copied) => {
                 if (!button) return;
@@ -8570,6 +8612,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-header"><span>Plan</span>${renderSoapCopyButton('soapP', 'Plan')}</div>
                         <textarea id="soapP" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.p || ''}</textarea>
                         ${(soapData.p_suggestion || []).map((s, i) => renderSuggestionBox('p', s, i)).join('')}
+                    </div>
+                    <div class="soap-support-block">
+                        <div class="soap-support-header">
+                            <span>Presenting Problem</span>
+                            <div class="soap-action-group">
+                                <button id="refreshPresentingProblemBtn" type="button" class="copy-btn soap-icon-btn" title="${objectiveOrganized ? 'Refresh Presenting Problem' : 'Press Organize in Objective first'}" aria-label="${objectiveOrganized ? 'Refresh Presenting Problem' : 'Press Organize in Objective first'}"${objectiveOrganized ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
+                                ${renderSoapCopyButton('presentingProblem', 'Presenting Problem')}
+                            </div>
+                        </div>
+                        <textarea id="presentingProblem" class="soap-textarea soap-support-textarea" placeholder="Press Organize in Objective to generate a session-based presenting problem." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.presentingProblem || '')}</textarea>
                     </div>
                     <div class="soap-support-block">
                         <div class="soap-support-header">
@@ -9836,7 +9888,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const appointment = findAppointment(client, selectedAppointmentId);
                 if (!appointment) return;
                 if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
-                const fieldKey = textarea.id === 'medicalNecessity' ? 'medicalNecessity' : 'diagnosticSupport';
+                const fieldKey = textarea.id === 'medicalNecessity'
+                    ? 'medicalNecessity'
+                    : textarea.id === 'presentingProblem'
+                        ? 'presentingProblem'
+                        : 'diagnosticSupport';
                 appointment.soap[fieldKey] = textarea.value;
                 delete appointment.auditCheck;
                 markDirty();
@@ -9966,7 +10022,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             soapContentEl.addEventListener('input', (e) => {
                 if (e.target.matches('.soap-textarea')) {
-                    if (e.target.id === 'diagnosticSupport' || e.target.id === 'medicalNecessity') {
+                    if (e.target.id === 'diagnosticSupport' || e.target.id === 'medicalNecessity' || e.target.id === 'presentingProblem') {
                         saveGeneratedSoapSupport(e.target);
                         return;
                     }
@@ -9986,14 +10042,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             });
             soapContentEl.addEventListener('keydown', (e) => {
                 if (e.target.matches('.soap-textarea')) {
-                    if (e.target.id !== 'diagnosticSupport' && e.target.id !== 'medicalNecessity') {
+                    if (e.target.id !== 'diagnosticSupport' && e.target.id !== 'medicalNecessity' && e.target.id !== 'presentingProblem') {
                         handleBulletedKeyDown(e);
                     }
                 }
             });
             soapContentEl.addEventListener('focus', (e) => {
                 if (e.target.matches('.soap-textarea')) {
-                    if (e.target.id === 'diagnosticSupport' || e.target.id === 'medicalNecessity') return;
+                    if (e.target.id === 'diagnosticSupport' || e.target.id === 'medicalNecessity' || e.target.id === 'presentingProblem') return;
                     const textarea = e.target;
                     if (textarea.value.length === 0) {
                         textarea.value = '• ';
@@ -10029,6 +10085,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                  }
                  if (clickedButton?.id === 'refreshDiagnosticSupportBtn') {
                      void refreshDiagnosticSupport();
+                     return;
+                 }
+                 if (clickedButton?.id === 'refreshPresentingProblemBtn') {
+                     void refreshPresentingProblem();
                      return;
                  }
                  if (clickedButton?.id === 'refreshMedicalNecessityBtn') {
@@ -10385,7 +10445,7 @@ Analyze the labeled clinical record in User Input and return only the required J
 - **Objective (O):** Document observable status, mental-status findings, and actual Writer actions or interventions. Include Ct participation or response only when documented. Do not add an intervention, observation, or response merely to satisfy a format.
                 - **Assessment (A):** Provide restrained clinical interpretation of the documented record. When supported, state the relationship to diagnosis, functional impact, response, progress toward the linked objective, barriers, and risk status. Distinguish improved, worsened, unchanged, and not documented; never infer progress from the existence of a goal.
 - **Plan (P):** State concrete next steps, follow-up, homework, reassessment, coordination, or safety planning only when supported or clearly planned. Tie the plan to the active goal/objective and unresolved clinical need when documented.
-                - **Post-Objective Workflow:** During core SOAP generation, return only S, O, A, P, and their evidence-preserving suggestions. Do not return intervention selections, Diagnostic Support, or Medical Necessity. Those fields are generated only after the clinician completes Objective and presses Organize.
+                - **Post-Objective Workflow:** During core SOAP generation, return only S, O, A, P, and their evidence-preserving suggestions. Do not return intervention selections, Presenting Problem, Diagnostic Support, or Medical Necessity. Those fields are generated only after the clinician completes Objective and presses Organize.
                 - **Audit-Support Field Mapping:** When provided, integrate Symptom Pattern / Severity Context into S, and Functional Impact and Progress / Response to Treatment into A. Do not generate or repeat a Medical Necessity statement during core SOAP generation.
 
 **Suggestions:** Return concise suggestions only when useful. A suggestion may revise an exact generated bullet without changing its facts, or identify a specific missing documentation element. Suggestions must not add symptoms, severity, impairment, risk, interventions, client participation, response, progress, modality, or medical necessity. Do not assume interventions.
@@ -10483,6 +10543,7 @@ Requirements:
                 // values when a new core SOAP note replaces the current one.
                 delete appointment.soap.diagnosticSupport;
                 delete appointment.soap.medicalNecessity;
+                delete appointment.soap.presentingProblem;
                 appointment.soap.objectiveInterventionMatches = [];
                 const objectiveActionState = ensureSoapObjectiveActionState(appointment);
                 objectiveActionState.organizedRevision = null;
@@ -10596,12 +10657,18 @@ Requirements:
                         suppressEmptyAlert: true
                     });
 
-                    if (getClientDiagnosisNames(client).length === 0) {
-                        supportErrors.push('no client diagnosis is recorded');
-                    } else {
-                        let supportFields = null;
-                        try {
-                            supportFields = await fetchSupportFieldsFromAI(client, appointment);
+                    const diagnoses = getClientDiagnosisNames(client);
+                    let supportFields = null;
+                    try {
+                        supportFields = await fetchSupportFieldsFromAI(client, appointment);
+                        if (supportFields.presentingProblem) {
+                            appointment.soap.presentingProblem = supportFields.presentingProblem;
+                        } else {
+                            supportErrors.push('Presenting Problem was not returned.');
+                        }
+                        if (diagnoses.length === 0) {
+                            supportErrors.push('no client diagnosis is recorded');
+                        } else {
                             if (supportFields.diagnosticSupport) {
                                 appointment.soap.diagnosticSupport = supportFields.diagnosticSupport;
                             } else {
@@ -10612,13 +10679,13 @@ Requirements:
                             } else {
                                 supportErrors.push('Medical Necessity was not returned.');
                             }
-                        } catch (error) {
-                            supportErrors.push('Diagnostic Support and Medical Necessity could not be generated: ' + (error?.message || error));
-                            console.warn('Combined support-field AI generation failed.', error);
                         }
-                        delete appointment.auditCheck;
-                        markDirty();
+                    } catch (error) {
+                        supportErrors.push('Presenting Problem, Diagnostic Support, and Medical Necessity could not be generated: ' + (error?.message || error));
+                        console.warn('Combined support-field AI generation failed.', error);
                     }
+                    delete appointment.auditCheck;
+                    markDirty();
 
                     if (supportErrors.length > 0) {
                         alert(`Objective organized, but support fields need attention: ${supportErrors.join('; ')}.`);

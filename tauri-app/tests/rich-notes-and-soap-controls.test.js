@@ -25,6 +25,15 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.doesNotMatch(html, /data-target="soapS"[^>]*>Copy<\/button>/);
     });
 
+    test(`${path} copies only goal and objective text`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+
+        assert.match(html, /const formatGoalCopyText = \(goal\) => String\(goal\.title \|\| ''\)\.trim\(\);/);
+        assert.match(html, /const formatObjectiveCopyText = \(objective\) => String\(objective\.text \|\| ''\)\.trim\(\);/);
+        assert.doesNotMatch(html, /const formatGoalCopyText = \(goal\) => \[/);
+        assert.doesNotMatch(html, /const formatObjectiveCopyText = \(objective\) => \[/);
+    });
+
     test(`${path} explains the SOAP golden thread and evidence boundaries`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 

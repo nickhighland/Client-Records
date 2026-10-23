@@ -13,10 +13,14 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /slice\(0, 10\)/);
         assert.match(html, /const CLIENT_EMAIL_PATTERN = \/\^\[\^\\s@\]\+@\[\^\\s@\]\+\\\.\[\^\\s@\]\+\$\//);
         assert.match(html, /const CONTACT_ICON_SVGS =/);
+        assert.match(html, /grid-template-columns: auto minmax\(0, 1fr\) auto auto;/);
         assert.match(html, /className = 'client-contact-icon-btn client-contact-copy-btn'/);
-        assert.match(html, /className = 'client-contact-icon-btn client-contact-edit-btn'/);
-        assert.match(html, /className = 'client-contact-icon-btn client-contact-lock-btn'/);
+        assert.match(html, /className = locked\s*\?\s*'client-contact-icon-btn client-contact-edit-btn'\s*:\s*'client-contact-icon-btn client-contact-lock-btn'/);
+        assert.match(html, /innerHTML = locked \? CONTACT_ICON_SVGS\.edit : CONTACT_ICON_SVGS\.check/);
         assert.match(html, /className = 'client-contact-icon-btn client-contact-remove-btn'/);
+        assert.match(html, /row\.appendChild\(editLockBtn\);[\s\S]*row\.appendChild\(input\);[\s\S]*row\.appendChild\(removeBtn\);[\s\S]*row\.appendChild\(copyBtn\);/);
+        assert.doesNotMatch(html, /const editBtn = document\.createElement\('button'\)/);
+        assert.doesNotMatch(html, /const lockBtn = document\.createElement\('button'\)/);
         assert.doesNotMatch(html, /client-contact-lock-checkbox/);
         assert.match(html, /contactInfo\[listKey\]\.push\(\{ value: '', locked: false \}\);/);
         assert.match(html, /const setClientContactLock =/);

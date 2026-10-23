@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
+const config = JSON.parse(await readFile(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
+
 for (const path of ['index.html', 'src/index.html']) {
     test(`${path} keeps Menu separate and aligns Auto-lock Session with the column pills`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -21,13 +23,12 @@ for (const path of ['index.html', 'src/index.html']) {
         const autoLockIndex = html.indexOf('<div class="autolock-wrapper"', utilityRowIndex);
         assert.ok(headerActionsIndex >= 0 && menuIndex > headerActionsIndex);
         assert.ok(utilityRowIndex >= 0 && columnPillsIndex > utilityRowIndex && autoLockIndex > columnPillsIndex);
-        assert.match(html, /<title>SmartEMR v3\.0\.25<\/title>/);
+        assert.match(html, new RegExp(`<title>SmartEMR v${config.version}<\/title>`));
         assert.doesNotMatch(html, /class="version-badge"/);
         assert.doesNotMatch(html, /<h1>[\s\S]*?SmartEMR/);
     });
 }
 
 test('Tauri window title includes the current SmartEMR version', async () => {
-    const config = JSON.parse(await readFile(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
-    assert.equal(config.app.windows[0].title, 'SmartEMR v3.0.25');
+    assert.equal(config.app.windows[0].title, `SmartEMR v${config.version}`);
 });

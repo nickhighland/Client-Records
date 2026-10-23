@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.32</title>
+    <title>SmartEMR v3.0.33</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -1661,7 +1661,7 @@
         }
         .client-contact-row {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) repeat(4, auto);
+            grid-template-columns: auto minmax(0, 1fr) auto auto;
             align-items: start;
             gap: 8px;
         }
@@ -8298,6 +8298,18 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         input.setAttribute('aria-invalid', validationMessage ? 'true' : 'false');
                         input.setCustomValidity(validationMessage);
 
+                        const editLockBtn = document.createElement('button');
+                        editLockBtn.type = 'button';
+                        editLockBtn.className = locked
+                            ? 'client-contact-icon-btn client-contact-edit-btn'
+                            : 'client-contact-icon-btn client-contact-lock-btn';
+                        editLockBtn.innerHTML = locked ? CONTACT_ICON_SVGS.edit : CONTACT_ICON_SVGS.check;
+                        editLockBtn.title = locked ? 'Edit contact entry' : 'Save contact entry';
+                        editLockBtn.setAttribute('aria-label', editLockBtn.title);
+                        editLockBtn.disabled = disabled;
+                        editLockBtn.dataset.contactType = config.type;
+                        editLockBtn.dataset.contactIndex = String(index);
+
                         const copyBtn = document.createElement('button');
                         copyBtn.type = 'button';
                         copyBtn.className = 'client-contact-icon-btn client-contact-copy-btn';
@@ -8307,26 +8319,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         copyBtn.disabled = disabled;
                         copyBtn.dataset.contactType = config.type;
                         copyBtn.dataset.contactIndex = String(index);
-
-                        const editBtn = document.createElement('button');
-                        editBtn.type = 'button';
-                        editBtn.className = 'client-contact-icon-btn client-contact-edit-btn';
-                        editBtn.innerHTML = CONTACT_ICON_SVGS.edit;
-                        editBtn.title = locked ? 'Unlock this entry for editing' : 'Focus this entry for editing';
-                        editBtn.setAttribute('aria-label', editBtn.title);
-                        editBtn.disabled = disabled;
-                        editBtn.dataset.contactType = config.type;
-                        editBtn.dataset.contactIndex = String(index);
-
-                        const lockBtn = document.createElement('button');
-                        lockBtn.type = 'button';
-                        lockBtn.className = 'client-contact-icon-btn client-contact-lock-btn';
-                        lockBtn.innerHTML = CONTACT_ICON_SVGS.check;
-                        lockBtn.title = locked ? 'Locked' : 'Save and lock entry';
-                        lockBtn.setAttribute('aria-label', lockBtn.title);
-                        lockBtn.disabled = disabled || locked;
-                        lockBtn.dataset.contactType = config.type;
-                        lockBtn.dataset.contactIndex = String(index);
 
                         const removeBtn = document.createElement('button');
                         removeBtn.type = 'button';
@@ -8344,11 +8336,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         validation.textContent = validationMessage;
                         validation.style.display = validationMessage ? 'block' : 'none';
 
+                        row.appendChild(editLockBtn);
                         row.appendChild(input);
-                        row.appendChild(copyBtn);
-                        row.appendChild(editBtn);
-                        row.appendChild(lockBtn);
                         row.appendChild(removeBtn);
+                        row.appendChild(copyBtn);
                         row.appendChild(validation);
                         listEl.appendChild(row);
                     });

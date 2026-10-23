@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.31</title>
+    <title>SmartEMR v3.0.32</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -1661,7 +1661,7 @@
         }
         .client-contact-row {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto auto auto;
+            grid-template-columns: minmax(0, 1fr) repeat(4, auto);
             align-items: start;
             gap: 8px;
         }
@@ -1673,14 +1673,53 @@
             opacity: 0.82;
             cursor: not-allowed;
         }
-        .client-contact-lock {
+        .client-contact-icon-btn {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            justify-content: center;
+            width: 30px;
             min-height: 34px;
-            color: var(--text-color-secondary);
-            font-size: 0.78rem;
-            white-space: nowrap;
+            padding: 5px;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-color-primary);
+            cursor: pointer;
+            line-height: 1;
+        }
+        .client-contact-icon-btn:hover:not(:disabled) {
+            background: var(--item-active-bg);
+            border-color: var(--item-active-border-color);
+        }
+        .client-contact-icon-btn:focus-visible {
+            outline: none;
+            border-color: var(--textarea-focus-border);
+            box-shadow: 0 0 0 2px var(--textarea-focus-shadow);
+        }
+        .client-contact-icon-btn:disabled {
+            opacity: 0.55;
+            cursor: default;
+        }
+        .client-contact-icon-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .client-contact-copy-btn {
+            color: #2563eb;
+        }
+        .client-contact-edit-btn {
+            color: #2563eb;
+        }
+        .client-contact-lock-btn:not(:disabled) {
+            color: #15803d;
+        }
+        .client-contact-remove-btn {
+            color: #b91c1c;
         }
         .client-contact-validation {
             grid-column: 1 / -1;
@@ -6555,6 +6594,12 @@
                 refresh: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 11a8.1 8.1 0 0 0-14.7-4.8L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8.1 8.1 0 0 0 14.7 4.8L21 15"></path><path d="M21 20v-5h-5"></path></svg>',
                 check: '<span class="soap-action-complete" aria-hidden="true">✓</span>'
             };
+            const CONTACT_ICON_SVGS = {
+                copy: SOAP_ICON_SVGS.copy,
+                edit: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>',
+                check: '<span aria-hidden="true">✓</span>',
+                remove: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"></path></svg>'
+            };
             const renderSoapCopyButton = (targetId, label) => {
                 return `<button type="button" class="copy-btn soap-icon-btn" data-target="${targetId}" title="Copy ${label}" aria-label="Copy ${label}">${SOAP_ICON_SVGS.copy}</button>`;
             };
@@ -8253,45 +8298,45 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         input.setAttribute('aria-invalid', validationMessage ? 'true' : 'false');
                         input.setCustomValidity(validationMessage);
 
-                        const lockLabel = document.createElement('label');
-                        lockLabel.className = 'client-contact-lock';
-                        lockLabel.title = locked
-                            ? 'Unlock this entry before editing it.'
-                            : 'Lock this entry to prevent accidental changes.';
-
-                        const lockCheckbox = document.createElement('input');
-                        lockCheckbox.type = 'checkbox';
-                        lockCheckbox.className = 'client-contact-lock-checkbox';
-                        lockCheckbox.checked = locked;
-                        lockCheckbox.disabled = disabled;
-                        lockCheckbox.dataset.contactType = config.type;
-                        lockCheckbox.dataset.contactIndex = String(index);
-                        lockCheckbox.setAttribute('aria-label', `Lock ${config.label.toLowerCase()} ${index + 1}`);
-                        lockLabel.appendChild(lockCheckbox);
-                        lockLabel.appendChild(document.createTextNode(' Lock'));
+                        const copyBtn = document.createElement('button');
+                        copyBtn.type = 'button';
+                        copyBtn.className = 'client-contact-icon-btn client-contact-copy-btn';
+                        copyBtn.innerHTML = CONTACT_ICON_SVGS.copy;
+                        copyBtn.title = `Copy ${config.label.toLowerCase()}`;
+                        copyBtn.setAttribute('aria-label', copyBtn.title);
+                        copyBtn.disabled = disabled;
+                        copyBtn.dataset.contactType = config.type;
+                        copyBtn.dataset.contactIndex = String(index);
 
                         const editBtn = document.createElement('button');
                         editBtn.type = 'button';
-                        editBtn.className = 'btn client-contact-edit-btn';
-                        editBtn.textContent = 'Edit';
+                        editBtn.className = 'client-contact-icon-btn client-contact-edit-btn';
+                        editBtn.innerHTML = CONTACT_ICON_SVGS.edit;
                         editBtn.title = locked ? 'Unlock this entry for editing' : 'Focus this entry for editing';
+                        editBtn.setAttribute('aria-label', editBtn.title);
                         editBtn.disabled = disabled;
                         editBtn.dataset.contactType = config.type;
                         editBtn.dataset.contactIndex = String(index);
-                        editBtn.style.padding = '6px 10px';
-                        editBtn.style.flex = '0 0 auto';
-                        editBtn.style.background = 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)';
+
+                        const lockBtn = document.createElement('button');
+                        lockBtn.type = 'button';
+                        lockBtn.className = 'client-contact-icon-btn client-contact-lock-btn';
+                        lockBtn.innerHTML = CONTACT_ICON_SVGS.check;
+                        lockBtn.title = locked ? 'Locked' : 'Save and lock entry';
+                        lockBtn.setAttribute('aria-label', lockBtn.title);
+                        lockBtn.disabled = disabled || locked;
+                        lockBtn.dataset.contactType = config.type;
+                        lockBtn.dataset.contactIndex = String(index);
 
                         const removeBtn = document.createElement('button');
                         removeBtn.type = 'button';
-                        removeBtn.className = 'btn client-contact-remove-btn';
-                        removeBtn.textContent = 'Remove';
+                        removeBtn.className = 'client-contact-icon-btn client-contact-remove-btn';
+                        removeBtn.innerHTML = CONTACT_ICON_SVGS.remove;
+                        removeBtn.title = `Remove ${config.label.toLowerCase()}`;
+                        removeBtn.setAttribute('aria-label', removeBtn.title);
                         removeBtn.disabled = disabled;
                         removeBtn.dataset.contactType = config.type;
                         removeBtn.dataset.contactIndex = String(index);
-                        removeBtn.style.padding = '6px 10px';
-                        removeBtn.style.flex = '0 0 auto';
-                        removeBtn.style.background = 'linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%)';
 
                         const validation = document.createElement('div');
                         validation.className = 'client-contact-validation';
@@ -8300,9 +8345,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         validation.style.display = validationMessage ? 'block' : 'none';
 
                         row.appendChild(input);
-                        row.appendChild(removeBtn);
-                        row.appendChild(lockLabel);
+                        row.appendChild(copyBtn);
                         row.appendChild(editBtn);
+                        row.appendChild(lockBtn);
+                        row.appendChild(removeBtn);
                         row.appendChild(validation);
                         listEl.appendChild(row);
                     });
@@ -8395,8 +8441,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (locked) {
                     const validationMessage = getClientContactValidationMessage(type, value);
                     if (validationMessage) {
-                        const checkbox = document.querySelector(`.client-contact-lock-checkbox[data-contact-type="${type}"][data-contact-index="${index}"]`);
-                        if (checkbox) checkbox.checked = false;
                         updateRenderedClientContactValidation(type, index, value);
                         document.querySelector(`.client-contact-input[data-contact-type="${type}"][data-contact-index="${index}"]`)?.focus();
                         return false;
@@ -8429,6 +8473,39 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
 
                 document.querySelector(`.client-contact-input[data-contact-type="${type}"][data-contact-index="${index}"]`)?.focus();
+            };
+
+            const setClientContactCopyButtonFeedback = (button, label, copied) => {
+                if (!button) return;
+                button.innerHTML = copied ? CONTACT_ICON_SVGS.check : CONTACT_ICON_SVGS.copy;
+                button.title = copied ? `${label} copied` : `Copy ${label}`;
+                button.setAttribute('aria-label', button.title);
+            };
+
+            const copyClientContactEntry = async (type, index, button) => {
+                const client = findClient(selectedClientId);
+                if (!client) return;
+
+                const contactInfo = ensureClientContactInfo(client);
+                const listKey = type === 'emails' ? 'emails' : 'phones';
+                const entry = contactInfo[listKey]?.[index];
+                const value = getClientContactEntryValue(entry);
+                const label = type === 'emails' ? 'Email address' : 'Phone number';
+                if (!value) {
+                    alert(`There is no ${label.toLowerCase()} to copy.`);
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(value);
+                    setClientContactCopyButtonFeedback(button, label, true);
+                    window.setTimeout(() => {
+                        if (button.isConnected) setClientContactCopyButtonFeedback(button, label, false);
+                    }, 2000);
+                } catch (error) {
+                    console.error(`Failed to copy ${label.toLowerCase()}:`, error);
+                    alert(`Could not copy the ${label.toLowerCase()}.`);
+                }
             };
 
             const removeClientContactEntry = (type, index) => {
@@ -9881,21 +9958,29 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 updateClientContactEntry(type, index, value);
                 updateRenderedClientContactValidation(type, index, value);
             });
-            contactContentEl.addEventListener('change', (e) => {
-                const lockCheckbox = e.target.closest('.client-contact-lock-checkbox');
-                if (!lockCheckbox) return;
-                const type = lockCheckbox.dataset.contactType;
-                const index = parseInt(lockCheckbox.dataset.contactIndex || '-1', 10);
-                if (!type || index < 0) return;
-                setClientContactLock(type, index, lockCheckbox.checked);
-            });
             contactContentEl.addEventListener('click', (e) => {
+                const copyBtn = e.target.closest('.client-contact-copy-btn');
+                if (copyBtn) {
+                    const type = copyBtn.dataset.contactType;
+                    const index = parseInt(copyBtn.dataset.contactIndex || '-1', 10);
+                    if (!type || index < 0) return;
+                    void copyClientContactEntry(type, index, copyBtn);
+                    return;
+                }
                 const editBtn = e.target.closest('.client-contact-edit-btn');
                 if (editBtn) {
                     const type = editBtn.dataset.contactType;
                     const index = parseInt(editBtn.dataset.contactIndex || '-1', 10);
                     if (!type || index < 0) return;
                     editClientContactEntry(type, index);
+                    return;
+                }
+                const lockBtn = e.target.closest('.client-contact-lock-btn');
+                if (lockBtn) {
+                    const type = lockBtn.dataset.contactType;
+                    const index = parseInt(lockBtn.dataset.contactIndex || '-1', 10);
+                    if (!type || index < 0) return;
+                    setClientContactLock(type, index, true);
                     return;
                 }
                 const removeBtn = e.target.closest('.client-contact-remove-btn');

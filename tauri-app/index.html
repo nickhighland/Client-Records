@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.33</title>
+    <title>SmartEMR v3.0.34</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2369,6 +2369,90 @@
             border-top: 1px solid var(--modal-header-border);
         }
 
+        .soap-configuration-modal {
+            max-width: min(900px, 94vw);
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .soap-configuration-scroll {
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .soap-config-toolbar,
+        .soap-config-name-row {
+            display: flex;
+            align-items: end;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .soap-config-toolbar > div,
+        .soap-config-name-row > div {
+            flex: 1 1 260px;
+            min-width: 220px;
+        }
+
+        .soap-config-section-card {
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            background: var(--panel-bg);
+            padding: 12px;
+        }
+
+        .soap-config-section-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .soap-config-section-row {
+            display: grid;
+            grid-template-columns: auto auto minmax(0, 1fr);
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            background: var(--input-bg);
+            cursor: grab;
+        }
+
+        .soap-config-section-row.dragging {
+            opacity: 0.45;
+        }
+
+        .soap-config-section-row.drop-target {
+            outline: 2px dashed var(--button-primary-bg, #3498db);
+            outline-offset: -2px;
+            background: color-mix(in srgb, var(--input-bg) 78%, var(--button-primary-bg, #3498db) 22%);
+        }
+
+        .soap-config-drag-handle {
+            color: var(--text-color-secondary);
+            font-size: 1.1rem;
+            letter-spacing: -2px;
+            user-select: none;
+        }
+
+        .soap-config-section-row.is-disabled {
+            opacity: 0.62;
+        }
+
+        .soap-config-section-label {
+            font-weight: 700;
+        }
+
+        .soap-config-section-description {
+            color: var(--text-color-secondary);
+            font-size: 0.8rem;
+            line-height: 1.35;
+            margin-top: 2px;
+        }
+
         .guide-scroll h4 {
             margin: 0.75rem 0 0.4rem;
             font-size: 1rem;
@@ -3507,6 +3591,16 @@
             </div>
 
             <div style="margin-bottom: 1rem;">
+                <label for="clientSoapPlatformSelect" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">SOAP Platform <span style="color: #b91c1c;">*</span></label>
+                <select id="clientSoapPlatformSelect" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                    <option value="">Select a SOAP platform (required)</option>
+                </select>
+                <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 4px;">
+                    Assign the platform whose SOAP section order and enabled fields should be used for this client. A platform must be assigned before generating a SOAP note.
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
                 <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Client Modality Lens (SOAP Default)</label>
                 <div style="font-size: 0.82rem; color: var(--text-color-secondary); margin-bottom: 8px;">
                     SOAP generation uses this as the default lens for this client. If session details explicitly indicate different interventions/modalities, those interventions are preserved as written.
@@ -3680,6 +3774,14 @@
             </div>
 
             <div style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">SOAP Configuration</h3>
+                <div style="color: var(--text-color-secondary); font-size: 0.9rem; line-height: 1.45; margin-bottom: 0.75rem;">
+                    Create platform-specific SOAP templates, choose which sections are included, and drag sections into the order each platform requires.
+                </div>
+                <button id="openSoapConfigurationBtn" class="btn" type="button">Open SOAP Configuration</button>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
                 <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">Data Management</h3>
                 <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
                      <button id="exportBtn" class="btn">Export Data</button>
@@ -3711,6 +3813,48 @@
                         <div id="biometricEnrollmentHelp" style="font-size: 0.78rem; color: var(--text-color-secondary); margin-top: 0.65rem;"></div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SOAP Platform Configuration Modal -->
+    <div id="soapConfigurationModal" class="modal-overlay hidden">
+        <div class="modal-content soap-configuration-modal">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">SOAP Configuration</h2>
+                <button id="closeSoapConfigurationBtn" type="button" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <div class="soap-configuration-scroll">
+                <div class="instructions-modal-intro">
+                    Create a configuration for each documentation platform. Check the sections that should appear in that platform's SOAP note, then drag rows to set their order. Changes apply to clients assigned to the selected platform.
+                </div>
+                <div class="soap-config-toolbar">
+                    <div>
+                        <label for="soapPlatformSelect" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Platform</label>
+                        <select id="soapPlatformSelect" class="setting-input"></select>
+                    </div>
+                    <button id="deleteSoapPlatformBtn" type="button" class="btn" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">Delete Platform</button>
+                </div>
+                <div class="soap-config-name-row">
+                    <div>
+                        <label for="soapPlatformNameInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Platform Name</label>
+                        <input id="soapPlatformNameInput" class="setting-input" type="text" placeholder="e.g., Headway">
+                    </div>
+                    <button id="saveSoapPlatformNameBtn" type="button" class="btn save-btn">Save Name</button>
+                    <div>
+                        <label for="newSoapPlatformNameInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Create Platform</label>
+                        <input id="newSoapPlatformNameInput" class="setting-input" type="text" placeholder="New platform name">
+                    </div>
+                    <button id="addSoapPlatformBtn" type="button" class="btn">Add Platform</button>
+                </div>
+                <div class="soap-config-section-card">
+                    <div style="font-size: 1rem; font-weight: 700;">SOAP Sections</div>
+                    <div style="font-size: 0.82rem; color: var(--text-color-secondary); margin-top: 4px;">Drag the handle to reorder sections. Uncheck a section to leave it out of this platform's note.</div>
+                    <div id="soapPlatformSectionsList" class="soap-config-section-list" aria-live="polite"></div>
+                </div>
+            </div>
+            <div class="instructions-modal-actions">
+                <button id="doneSoapConfigurationBtn" type="button" class="btn save-btn" style="flex-grow: 1;">Done</button>
             </div>
         </div>
     </div>
@@ -4357,6 +4501,17 @@
             const checkForUpdatesAsterisk = document.getElementById('checkForUpdatesAsterisk');
             const settingsModal = document.getElementById('settingsModal');
             const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+            const openSoapConfigurationBtn = document.getElementById('openSoapConfigurationBtn');
+            const soapConfigurationModal = document.getElementById('soapConfigurationModal');
+            const closeSoapConfigurationBtn = document.getElementById('closeSoapConfigurationBtn');
+            const doneSoapConfigurationBtn = document.getElementById('doneSoapConfigurationBtn');
+            const soapPlatformSelect = document.getElementById('soapPlatformSelect');
+            const soapPlatformNameInput = document.getElementById('soapPlatformNameInput');
+            const saveSoapPlatformNameBtn = document.getElementById('saveSoapPlatformNameBtn');
+            const newSoapPlatformNameInput = document.getElementById('newSoapPlatformNameInput');
+            const addSoapPlatformBtn = document.getElementById('addSoapPlatformBtn');
+            const deleteSoapPlatformBtn = document.getElementById('deleteSoapPlatformBtn');
+            const soapPlatformSectionsList = document.getElementById('soapPlatformSectionsList');
             const informedConsentBtn = document.getElementById('informedConsentBtn');
             const soapAuditGuideBtn = document.getElementById('soapAuditGuideBtn');
             const soapInstructionsBtn = document.getElementById('soapInstructionsBtn');
@@ -4435,6 +4590,7 @@
             const sessionInstructionsInput = document.getElementById('sessionInstructionsInput');
             const preferredPronounsSelect = document.getElementById('preferredPronounsSelect');
             const clientSessionTypeSelect = document.getElementById('clientSessionTypeSelect');
+            const clientSoapPlatformSelect = document.getElementById('clientSoapPlatformSelect');
             const customPronounsWrapEl = document.getElementById('customPronounsWrap');
             const customPronounSubjectInput = document.getElementById('customPronounSubjectInput');
             const customPronounObjectInput = document.getElementById('customPronounObjectInput');
@@ -4511,7 +4667,7 @@
             const goalsListToggleBtn = document.getElementById('goalsListToggleBtn');
 
             // App State
-            let data = { clients: [], archivedClients: [] };
+            let data = { clients: [], archivedClients: [], soapPlatforms: [] };
             let deletedItems = { clients: [], appointments: [], notes: [], intakes: [] };
             let selectedClientId = null;
             let selectedAppointmentId = null;
@@ -4533,6 +4689,8 @@
             let selectedModel = null;
             let persistentInstructions = '';
             let activeNotesTab = 'clientDetails';
+            let activeSoapPlatformId = null;
+            let draggedSoapPlatformSectionKey = null;
 
             const updateNotesTabUI = () => {
                 const activeTabMap = {
@@ -4676,6 +4834,7 @@
                 archivedClients: [],
                 todaySessionClientIds: [],
                 interventionBank: [...DEFAULT_INTERVENTION_BANK],
+                soapPlatforms: getDefaultSoapPlatforms(),
                 aiInstructions: {
                     soapPromptSections: getDefaultSoapInstructionSections(),
                     treatmentGoalsPromptSections: getDefaultTreatmentGoalInstructionSections(),
@@ -5258,6 +5417,7 @@
                 if (!Array.isArray(data.clients)) data.clients = [];
                 if (!Array.isArray(data.archivedClients)) data.archivedClients = [];
                 if (!Array.isArray(data.todaySessionClientIds)) data.todaySessionClientIds = [];
+                if (normalizeSoapPlatforms()) dataMigrated = true;
 
                 const activeClientIds = new Set((data.clients || []).map(client => client.id));
                 const seenTodaySessionIds = new Set();
@@ -5284,6 +5444,10 @@
                     if (typeof client.presentingProblem !== 'string') client.presentingProblem = '';
                     if (typeof client.persistentInstructions !== 'string') client.persistentInstructions = '';
                     if (typeof client.nextSessionNotes !== 'string') client.nextSessionNotes = '';
+                    if (typeof client.soapPlatformId !== 'string') {
+                        client.soapPlatformId = '';
+                        dataMigrated = true;
+                    }
                     if (!client.preferredPronouns || typeof client.preferredPronouns !== 'object') {
                         client.preferredPronouns = {
                             value: '',
@@ -6741,9 +6905,27 @@
                 const session = (appointment?.sessionInstructions || '').trim();
                 const pronounsContext = getPreferredPronounsContext(client);
                 const sessionType = getClientSessionType(client);
+                const soapPlatform = getClientSoapPlatform(client);
 
                 let context = `\n- **Client Session Type:** ${sessionType === 'couple' ? 'Couple' : 'Individual'}`;
                 context += '\n- **Couple-Only Intervention Rule:** Use interventions marked Couples only when the Client Session Type is Couple.';
+                if (soapPlatform) {
+                    const enabledSectionKeys = getSoapPlatformSectionKeys(client, false);
+                    const enabledSections = enabledSectionKeys
+                        .map(sectionKey => getSoapPlatformSectionDefinition(sectionKey)?.label)
+                        .filter(Boolean);
+                    const disabledSections = SOAP_PLATFORM_SECTION_DEFS
+                        .filter(section => !enabledSectionKeys.includes(section.key))
+                        .map(section => section.label);
+                    context += `\n- **SOAP Platform:** ${soapPlatform.name}`;
+                    context += `\n- **SOAP Sections (in order):** ${enabledSections.join(' -> ') || 'None'}`;
+                    if (disabledSections.length > 0) {
+                        context += `\n- **SOAP Sections Disabled for This Platform:** ${disabledSections.join(', ')}`;
+                    }
+                    context += '\n- **SOAP Platform Rule:** Generate content for enabled sections only, in the configured order. Do not add disabled sections or extra sections.';
+                } else {
+                    context += '\n- **SOAP Platform:** Not assigned. SOAP generation is blocked until a platform is assigned in Instructions.';
+                }
                 if (pronounsContext) {
                     context += pronounsContext;
                 }
@@ -7768,25 +7950,39 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return presentingProblem;
             };
 
-            const fetchSupportFieldsFromAI = async (client, appointment) => {
+            const fetchSupportFieldsFromAI = async (client, appointment, requestedFields = ['presentingProblem', 'diagnosticSupport', 'medicalNecessity']) => {
+                const requested = new Set(Array.isArray(requestedFields) ? requestedFields : []);
+                if (requested.size === 0) return {};
                 const diagnoses = getClientDiagnosisNames(client);
                 const diagnosisContext = diagnoses.length > 0
                     ? diagnoses.map((diagnosis, index) => (index + 1) + '. ' + diagnosis).join('\n')
                     : '- None documented';
-                const systemPrompt = 'You are a behavioral-health documentation assistant writing three separate chart-ready support fields. Use only facts explicitly documented in the supplied current-session record and treatment context. For Presenting Problem, combine the documented presenting problem with the clinical problem evidenced in today\'s session; describe how that problem appeared in the session without inventing symptoms, severity, duration, impairment, risk, interventions, response, progress, or history. Keep Presenting Problem to 1-2 sentences, ideally 25-45 words and never more than 55 words. For every listed clinician-entered diagnosis, write Diagnostic Support describing how this session is clinically related to, addresses, or is consistent with that diagnosis. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis, and do not discuss whether criteria are met. For Medical Necessity, use the clinician-entered diagnosis or diagnoses as treatment anchors and balance them with the current session: name or clearly reference the relevant diagnosis, connect it to the session-documented clinical need, and state the focused treatment need that supports continued care. Use this style: "Ongoing skilled treatment remains medically necessary to address [session-documented clinical need] in the context of [documented diagnosis], focusing on [documented treatment targets] to mitigate [documented functional impact or risk]." Keep Medical Necessity to one sentence, ideally 25-45 words and never more than 55 words. Diagnosis alone is not evidence; do not invent a symptom-diagnosis relationship. Do not list interventions, techniques, progress, response, or collateral events unless one is essential to explain the current need. Do not evaluate diagnostic criteria or explain why the diagnosis is valid. If no diagnosis is listed, return an empty diagnostic_support array and an empty medical_necessity string while still writing Presenting Problem. Return only JSON exactly as {"presenting_problem":"...","diagnostic_support":[{"diagnosis":"...","statement":"..."}],"medical_necessity":"..."}.';
+                const fieldInstructions = [];
+                if (requested.has('presentingProblem')) {
+                    fieldInstructions.push('For Presenting Problem, combine the documented presenting problem with the clinical problem evidenced in today\'s session; describe how that problem appeared in the session without inventing symptoms, severity, duration, impairment, risk, interventions, response, progress, or history. Keep it to 1-2 sentences, ideally 25-45 words and never more than 55 words.');
+                }
+                if (requested.has('diagnosticSupport')) {
+                    fieldInstructions.push('For Diagnostic Support, write one concise statement for every listed clinician-entered diagnosis describing how this session is clinically related to, addresses, or is consistent with that diagnosis. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis, and do not discuss whether criteria are met.');
+                }
+                if (requested.has('medicalNecessity')) {
+                    fieldInstructions.push('For Medical Necessity, use the clinician-entered diagnosis or diagnoses as treatment anchors and balance them with the current session. Name or clearly reference the relevant diagnosis, connect it to the session-documented clinical need, and state the focused treatment need that supports continued care. Use this style: "Ongoing skilled treatment remains medically necessary to address [session-documented clinical need] in the context of [documented diagnosis], focusing on [documented treatment targets] to mitigate [documented functional impact or risk]." Keep it to one sentence, ideally 25-45 words and never more than 55 words.');
+                }
+                const systemPrompt = `You are a behavioral-health documentation assistant writing only the requested chart-ready support fields. Use only facts explicitly documented in the supplied current-session record and treatment context. ${fieldInstructions.join(' ')} Diagnosis alone is not evidence; do not invent a symptom-diagnosis relationship. Do not list interventions, techniques, progress, response, or collateral events unless one is essential to explain the current need. Do not evaluate diagnostic criteria or explain why the diagnosis is valid. If no diagnosis is listed, return an empty diagnostic_support array and an empty medical_necessity string. Do not write or return fields that were not requested. Return only JSON with the requested keys using these names: presenting_problem, diagnostic_support, medical_necessity.`;
                 const userPrompt = 'Documented diagnoses (treatment anchors):\n'
                     + diagnosisContext
                     + '\n\nComplete documented session record:\n'
                     + buildDiagnosticSupportSessionContext(client, appointment)
-                    + '\n\nWrite one concise Presenting Problem statement, one 1-2 sentence Diagnostic Support statement for each listed diagnosis, and exactly one concise Medical Necessity sentence when diagnoses are documented. Keep the fields separate and return only the required JSON.';
+                    + `\n\nRequested fields: ${[...requested].join(', ')}. Write only the requested fields, keep them separate, and return only the required JSON.`;
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
-                const presentingProblem = normalizeSoapPresentingProblemFromAi(aiPayload);
-                const diagnosticSupport = normalizeDiagnosticSupportFromAi(aiPayload);
-                const medicalNecessity = normalizeMedicalNecessityFromAi(aiPayload);
-                if (!presentingProblem && !diagnosticSupport && !medicalNecessity) {
-                    throw new Error('AI returned empty Presenting Problem, Diagnostic Support, and Medical Necessity fields.');
+                const result = {
+                    presentingProblem: requested.has('presentingProblem') ? normalizeSoapPresentingProblemFromAi(aiPayload) : '',
+                    diagnosticSupport: requested.has('diagnosticSupport') ? normalizeDiagnosticSupportFromAi(aiPayload) : '',
+                    medicalNecessity: requested.has('medicalNecessity') ? normalizeMedicalNecessityFromAi(aiPayload) : ''
+                };
+                if (!Object.values(result).some(Boolean)) {
+                    throw new Error('AI returned empty requested SOAP support fields.');
                 }
-                return { presentingProblem, diagnosticSupport, medicalNecessity };
+                return result;
             };
 
             const setSoapSupportRefreshState = (button, label, isLoading) => {
@@ -8832,6 +9028,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 const soapData = appointment.soap || { s: '', o: '', a: '', p: '' };
                 if (!Array.isArray(appointment.selectedInterventions)) appointment.selectedInterventions = [];
+                const soapPlatform = getClientSoapPlatform(client);
                 const objectiveOrganized = isObjectiveOrganizeCompleted(appointment);
                 const objectiveDerivedInterventions = objectiveOrganized
                     ? getObjectiveDerivedInterventions(appointment, client)
@@ -8913,6 +9110,23 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-header"><span>Audit Check</span><button id="runSoapAuditBtn" class="copy-btn">Audit</button></div>
                         ${renderAuditResults(auditResult)}
                     </div>`;
+
+                const renderedSoapSections = Array.from(soapContentEl.children);
+                const soapSectionsByKey = new Map();
+                SOAP_PLATFORM_DEFAULT_ORDER.forEach((sectionKey, index) => {
+                    const sectionElement = renderedSoapSections[index];
+                    if (sectionElement) soapSectionsByKey.set(sectionKey, sectionElement);
+                });
+                const configuredSoapSections = getSoapPlatformSectionKeysForAppointment(client, appointment);
+                soapContentEl.replaceChildren(
+                    ...configuredSoapSections.map(sectionKey => soapSectionsByKey.get(sectionKey)).filter(Boolean)
+                );
+                if (!soapPlatform) {
+                    const platformWarning = document.createElement('div');
+                    platformWarning.className = 'no-selection';
+                    platformWarning.textContent = 'Assign this client to a SOAP platform in Instructions before generating a SOAP note.';
+                    soapContentEl.prepend(platformWarning);
+                }
                 
                 // After rendering, resize all textareas
                 soapContentEl.querySelectorAll('.soap-textarea').forEach(el => {
@@ -9287,6 +9501,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     diagnosis: '',
                     presentingProblem: '',
                     persistentInstructions: '',
+                    soapPlatformId: '',
                     sessionType: 'individual',
                     appointments: [],
                     intakeSessions: [],
@@ -10567,6 +10782,253 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
             ];
 
+            const SOAP_PLATFORM_SECTION_DEFS = [
+                { key: 's', label: 'Subjective', description: 'Client-reported concerns, symptoms, goals, and relevant self-report.' },
+                { key: 'o', label: 'Objective', description: 'Observable status, mental-status findings, and documented Writer actions.' },
+                { key: 'interventions', label: 'Interventions', description: 'Interventions identified from the organized Objective content.' },
+                { key: 'a', label: 'Assessment', description: 'Clinical interpretation, diagnosis and goal linkage, progress, barriers, and risk when supported.' },
+                { key: 'p', label: 'Plan', description: 'Documented next steps, follow-up, homework, coordination, or safety planning.' },
+                { key: 'presentingProblem', label: 'Presenting Problem', description: 'The documented presenting problem combined with how it appeared in the current session.' },
+                { key: 'diagnosticSupport', label: 'Diagnostic Support', description: 'Diagnosis-specific support tied to the current session record.' },
+                { key: 'medicalNecessity', label: 'Medical Necessity', description: 'A brief diagnosis- and session-based statement supporting continued skilled care.' },
+                { key: 'auditCheck', label: 'Audit Check', description: 'The audit-readiness review for the completed SOAP note.' }
+            ];
+            const SOAP_PLATFORM_SECTION_KEY_SET = new Set(SOAP_PLATFORM_SECTION_DEFS.map(def => def.key));
+            const SOAP_PLATFORM_DEFAULT_ORDER = SOAP_PLATFORM_SECTION_DEFS.map(def => def.key);
+            const SOAP_PLATFORM_DEFAULT_ID = 'standard';
+
+            const createDefaultSoapPlatform = () => ({
+                id: SOAP_PLATFORM_DEFAULT_ID,
+                name: 'Standard',
+                sections: SOAP_PLATFORM_DEFAULT_ORDER.map(key => ({ key, enabled: true }))
+            });
+
+            const getDefaultSoapPlatforms = () => [createDefaultSoapPlatform()];
+
+            const normalizeSoapPlatformSections = (rawSections) => {
+                const source = Array.isArray(rawSections) ? rawSections : [];
+                const seen = new Set();
+                const normalized = [];
+                source.forEach(entry => {
+                    const key = typeof entry === 'string' ? entry : entry?.key;
+                    if (!SOAP_PLATFORM_SECTION_KEY_SET.has(key) || seen.has(key)) return;
+                    seen.add(key);
+                    normalized.push({
+                        key,
+                        enabled: typeof entry === 'object' ? entry.enabled !== false : true
+                    });
+                });
+                SOAP_PLATFORM_DEFAULT_ORDER.forEach(key => {
+                    if (seen.has(key)) return;
+                    normalized.push({ key, enabled: true });
+                });
+                return normalized;
+            };
+
+            const normalizeSoapPlatforms = () => {
+                const previous = JSON.stringify(data.soapPlatforms);
+                const source = Array.isArray(data.soapPlatforms) ? data.soapPlatforms : [];
+                const usedIds = new Set();
+                const normalized = source.map((platform, index) => {
+                    let id = String(platform?.id || '').trim() || `soap-platform-${index + 1}`;
+                    while (usedIds.has(id)) id = `${id}-${index + 1}`;
+                    usedIds.add(id);
+                    const name = String(platform?.name || '').trim() || `Platform ${index + 1}`;
+                    return {
+                        id,
+                        name,
+                        sections: normalizeSoapPlatformSections(platform?.sections)
+                    };
+                });
+                data.soapPlatforms = normalized.length > 0 ? normalized : getDefaultSoapPlatforms();
+                return JSON.stringify(data.soapPlatforms) !== previous;
+            };
+
+            const getSoapPlatformById = (platformId) => {
+                const id = String(platformId || '').trim();
+                if (!id || !Array.isArray(data.soapPlatforms)) return null;
+                return data.soapPlatforms.find(platform => platform.id === id) || null;
+            };
+
+            const getClientSoapPlatform = (client) => getSoapPlatformById(client?.soapPlatformId);
+
+            const getDefaultSoapPlatformId = () => Array.isArray(data.soapPlatforms) && data.soapPlatforms.length > 0
+                ? data.soapPlatforms[0].id
+                : '';
+
+            const getSoapPlatformSectionKeys = (client, useDefaultWhenUnassigned = true) => {
+                const platform = getClientSoapPlatform(client);
+                if (!platform) return useDefaultWhenUnassigned ? [...SOAP_PLATFORM_DEFAULT_ORDER] : [];
+                return platform.sections.filter(section => section.enabled).map(section => section.key);
+            };
+
+            const isSoapPlatformSectionEnabled = (client, sectionKey) => {
+                const platform = getClientSoapPlatform(client);
+                return !!platform?.sections?.some(section => section.key === sectionKey && section.enabled);
+            };
+
+            const getSoapPlatformSectionDefinition = (sectionKey) => SOAP_PLATFORM_SECTION_DEFS.find(def => def.key === sectionKey);
+
+            const createSoapPlatformSnapshot = (platform) => platform ? ({
+                platformId: platform.id,
+                platformName: platform.name,
+                sections: (platform.sections || []).map(section => ({
+                    key: section.key,
+                    enabled: section.enabled !== false
+                }))
+            }) : null;
+
+            const getSoapPlatformSnapshotSectionKeys = (snapshot) => {
+                if (!Array.isArray(snapshot?.sections)) return null;
+                const seen = new Set();
+                const enabledKeys = [];
+                snapshot.sections.forEach(entry => {
+                    const key = typeof entry === 'string' ? entry : entry?.key;
+                    if (!SOAP_PLATFORM_SECTION_KEY_SET.has(key) || seen.has(key)) return;
+                    seen.add(key);
+                    if (typeof entry === 'string' || entry.enabled !== false) enabledKeys.push(key);
+                });
+                return enabledKeys;
+            };
+
+            const getSoapPlatformSectionKeysForAppointment = (client, appointment) => {
+                const snapshotKeys = getSoapPlatformSnapshotSectionKeys(appointment?.soapPlatformSnapshot);
+                if (snapshotKeys) return snapshotKeys;
+                // Existing appointments predate platform assignment. Keep their legacy layout intact.
+                return [...SOAP_PLATFORM_DEFAULT_ORDER];
+            };
+
+            const captureSoapPlatformSnapshot = (appointment, client) => {
+                const platform = getClientSoapPlatform(client);
+                if (appointment && platform) appointment.soapPlatformSnapshot = createSoapPlatformSnapshot(platform);
+            };
+
+            const getActiveSoapPlatform = () => getSoapPlatformById(activeSoapPlatformId);
+
+            const renderClientSoapPlatformOptions = (selectedId = null) => {
+                if (!clientSoapPlatformSelect) return;
+                const requestedId = selectedId === null ? clientSoapPlatformSelect.value || '' : selectedId;
+                clientSoapPlatformSelect.innerHTML = '';
+
+                const unassignedOption = document.createElement('option');
+                unassignedOption.value = '';
+                unassignedOption.textContent = 'Select a SOAP platform (required)';
+                clientSoapPlatformSelect.appendChild(unassignedOption);
+
+                (data.soapPlatforms || []).forEach(platform => {
+                    const option = document.createElement('option');
+                    option.value = platform.id;
+                    option.textContent = platform.name;
+                    clientSoapPlatformSelect.appendChild(option);
+                });
+
+                clientSoapPlatformSelect.value = getSoapPlatformById(requestedId)?.id || '';
+            };
+
+            const renderSoapPlatformConfiguration = () => {
+                const normalized = normalizeSoapPlatforms();
+                if (normalized) markDirty();
+                if (!getSoapPlatformById(activeSoapPlatformId)) {
+                    activeSoapPlatformId = getDefaultSoapPlatformId();
+                }
+
+                const activePlatform = getActiveSoapPlatform();
+                if (!activePlatform) return;
+
+                soapPlatformSelect.innerHTML = '';
+                (data.soapPlatforms || []).forEach(platform => {
+                    const option = document.createElement('option');
+                    option.value = platform.id;
+                    option.textContent = platform.name;
+                    soapPlatformSelect.appendChild(option);
+                });
+                soapPlatformSelect.value = activePlatform.id;
+                soapPlatformNameInput.value = activePlatform.name;
+                deleteSoapPlatformBtn.disabled = (data.soapPlatforms || []).length <= 1;
+
+                soapPlatformSectionsList.innerHTML = '';
+                activePlatform.sections.forEach(section => {
+                    const definition = getSoapPlatformSectionDefinition(section.key);
+                    if (!definition) return;
+
+                    const row = document.createElement('div');
+                    row.className = `soap-config-section-row${section.enabled ? '' : ' is-disabled'}`;
+                    row.draggable = true;
+                    row.dataset.sectionKey = section.key;
+
+                    const dragHandle = document.createElement('span');
+                    dragHandle.className = 'soap-config-drag-handle';
+                    dragHandle.textContent = '⋮⋮';
+                    dragHandle.setAttribute('aria-hidden', 'true');
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = section.enabled;
+                    checkbox.className = 'soap-config-section-toggle';
+                    checkbox.setAttribute('aria-label', `Enable ${definition.label}`);
+                    checkbox.addEventListener('change', () => {
+                        section.enabled = checkbox.checked;
+                        row.classList.toggle('is-disabled', !section.enabled);
+                        markDirty();
+                        renderSoap();
+                    });
+
+                    const textWrap = document.createElement('div');
+                    textWrap.className = 'soap-config-section-label';
+                    const label = document.createElement('strong');
+                    label.textContent = definition.label;
+                    const description = document.createElement('span');
+                    description.className = 'soap-config-section-description';
+                    description.textContent = definition.description;
+                    textWrap.append(label, description);
+
+                    row.append(dragHandle, checkbox, textWrap);
+                    row.addEventListener('dragstart', event => {
+                        draggedSoapPlatformSectionKey = section.key;
+                        row.classList.add('dragging');
+                        if (event.dataTransfer) {
+                            event.dataTransfer.effectAllowed = 'move';
+                            event.dataTransfer.setData('text/plain', section.key);
+                        }
+                    });
+                    row.addEventListener('dragend', () => {
+                        draggedSoapPlatformSectionKey = null;
+                        row.classList.remove('dragging');
+                        soapPlatformSectionsList.querySelectorAll('.drop-target').forEach(target => target.classList.remove('drop-target'));
+                    });
+                    row.addEventListener('dragover', event => {
+                        event.preventDefault();
+                        if (draggedSoapPlatformSectionKey && draggedSoapPlatformSectionKey !== section.key) {
+                            row.classList.add('drop-target');
+                        }
+                    });
+                    row.addEventListener('dragleave', event => {
+                        if (!row.contains(event.relatedTarget)) row.classList.remove('drop-target');
+                    });
+                    row.addEventListener('drop', event => {
+                        event.preventDefault();
+                        const draggedKey = draggedSoapPlatformSectionKey || event.dataTransfer?.getData('text/plain');
+                        if (!draggedKey || draggedKey === section.key) return;
+                        const fromIndex = activePlatform.sections.findIndex(item => item.key === draggedKey);
+                        const toIndex = activePlatform.sections.findIndex(item => item.key === section.key);
+                        if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+                        const [movedSection] = activePlatform.sections.splice(fromIndex, 1);
+                        activePlatform.sections.splice(activePlatform.sections.findIndex(item => item.key === section.key), 0, movedSection);
+                        markDirty();
+                        renderSoapPlatformConfiguration();
+                        renderSoap();
+                    });
+                    soapPlatformSectionsList.appendChild(row);
+                });
+            };
+
+            const createSoapPlatformId = () => {
+                if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                    return `soap-platform-${crypto.randomUUID()}`;
+                }
+                return `soap-platform-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            };
+
             const TREATMENT_GOAL_INSTRUCTION_SECTION_DEFS = [
                 {
                     key: 'clinicalFocus',
@@ -10811,6 +11273,15 @@ Requirements:
                     alert('SOAP note generation is only available for appointments, not Notes or Intake Sessions.');
                     return;
                 }
+                const client = findClient(selectedClientId);
+                if (!client) {
+                    alert('Select a client and assign a SOAP platform in Instructions before generating a SOAP note.');
+                    return;
+                }
+                if (!getClientSoapPlatform(client)) {
+                    alert('Assign this client to a SOAP platform in Instructions before generating a SOAP note.');
+                    return;
+                }
                 if (!selectedModel) {
                     alert('Please connect to a provider and select a model in Settings.');
                     return;
@@ -10830,6 +11301,7 @@ Requirements:
             
             const processAndStoreSoapData = (soapData, appointment, client = null) => {
                  if (!appointment.soap) appointment.soap = {};
+                captureSoapPlatformSnapshot(appointment, client);
                   delete appointment.auditCheck;
                   const auditProofing = getAuditProofingData(appointment);
                 const previousObjectiveText = String(appointment.soap.o || '');
@@ -10946,39 +11418,62 @@ Requirements:
                     markObjectiveOrganizeCompleted(appointment);
                     delete appointment.auditCheck;
                     markDirty();
-                    await generateObjectiveInterventions({
-                        objectiveTextOverride: appointment.soap.o,
-                        appointmentContext,
-                        renderAfter: false,
-                        suppressEmptyAlert: true
-                    });
+                    const interventionsEnabled = isSoapPlatformSectionEnabled(client, 'interventions');
+                    if (interventionsEnabled) {
+                        await generateObjectiveInterventions({
+                            objectiveTextOverride: appointment.soap.o,
+                            appointmentContext,
+                            renderAfter: false,
+                            suppressEmptyAlert: true
+                        });
+                    } else {
+                        appointment.soap.objectiveInterventionMatches = [];
+                        appointment.soap.interventions = '';
+                    }
 
                     const diagnoses = getClientDiagnosisNames(client);
+                    const requestedSupportFields = ['presentingProblem', 'diagnosticSupport', 'medicalNecessity']
+                        .filter(sectionKey => isSoapPlatformSectionEnabled(client, sectionKey));
                     let supportFields = null;
-                    try {
-                        supportFields = await fetchSupportFieldsFromAI(client, appointment);
-                        if (supportFields.presentingProblem) {
-                            appointment.soap.presentingProblem = supportFields.presentingProblem;
-                        } else {
-                            supportErrors.push('Presenting Problem was not returned.');
-                        }
-                        if (diagnoses.length === 0) {
-                            supportErrors.push('no client diagnosis is recorded');
-                        } else {
-                            if (supportFields.diagnosticSupport) {
-                                appointment.soap.diagnosticSupport = supportFields.diagnosticSupport;
+                    if (requestedSupportFields.length > 0) {
+                        try {
+                            if (requestedSupportFields.length === 3) {
+                                supportFields = await fetchSupportFieldsFromAI(client, appointment);
                             } else {
-                                supportErrors.push('Diagnostic Support was not returned.');
+                                supportFields = await fetchSupportFieldsFromAI(client, appointment, requestedSupportFields);
                             }
-                            if (supportFields.medicalNecessity) {
-                                appointment.soap.medicalNecessity = supportFields.medicalNecessity;
-                            } else {
-                                supportErrors.push('Medical Necessity was not returned.');
+                            if (requestedSupportFields.includes('presentingProblem')) {
+                                if (supportFields.presentingProblem) {
+                                    appointment.soap.presentingProblem = supportFields.presentingProblem;
+                                } else {
+                                    supportErrors.push('Presenting Problem was not returned.');
+                                }
                             }
+                            if (requestedSupportFields.includes('diagnosticSupport')) {
+                                if (supportFields.diagnosticSupport) {
+                                    appointment.soap.diagnosticSupport = supportFields.diagnosticSupport;
+                                } else {
+                                    supportErrors.push('Diagnostic Support was not returned.');
+                                }
+                            }
+                            if (requestedSupportFields.includes('medicalNecessity')) {
+                                if (supportFields.medicalNecessity) {
+                                    appointment.soap.medicalNecessity = supportFields.medicalNecessity;
+                                } else {
+                                    supportErrors.push('Medical Necessity was not returned.');
+                                }
+                            }
+                            const diagnosisSupportRequested = requestedSupportFields.some(field => ['diagnosticSupport', 'medicalNecessity'].includes(field));
+                            if (diagnosisSupportRequested && diagnoses.length === 0) {
+                                supportErrors.push('no client diagnosis is recorded');
+                            }
+                        } catch (error) {
+                            const requestedLabels = requestedSupportFields
+                                .map(field => getSoapPlatformSectionDefinition(field)?.label || field)
+                                .join(', ');
+                            supportErrors.push(`${requestedLabels} could not be generated: ${error?.message || error}`);
+                            console.warn('Combined support-field AI generation failed.', error);
                         }
-                    } catch (error) {
-                        supportErrors.push('Presenting Problem, Diagnostic Support, and Medical Necessity could not be generated: ' + (error?.message || error));
-                        console.warn('Combined support-field AI generation failed.', error);
                     }
                     delete appointment.auditCheck;
                     markDirty();
@@ -13532,6 +14027,75 @@ This error cannot be fixed within this application's code; it requires a configu
                 applyTreatmentGoalsInstructions(getDefaultTreatmentGoalInstructionSections());
                 treatmentGoalsInstructionsModal?.classList.add('hidden');
             });
+            openSoapConfigurationBtn?.addEventListener('click', () => {
+                normalizeSoapPlatforms();
+                activeSoapPlatformId = getSoapPlatformById(activeSoapPlatformId)?.id || getDefaultSoapPlatformId();
+                renderSoapPlatformConfiguration();
+                renderClientSoapPlatformOptions(clientSoapPlatformSelect?.value || '');
+                settingsModal?.classList.add('hidden');
+                soapConfigurationModal?.classList.remove('hidden');
+            });
+            closeSoapConfigurationBtn?.addEventListener('click', () => soapConfigurationModal?.classList.add('hidden'));
+            doneSoapConfigurationBtn?.addEventListener('click', () => soapConfigurationModal?.classList.add('hidden'));
+            soapConfigurationModal?.addEventListener('click', event => {
+                if (event.target.id === 'soapConfigurationModal') soapConfigurationModal.classList.add('hidden');
+            });
+            soapPlatformSelect?.addEventListener('change', () => {
+                activeSoapPlatformId = soapPlatformSelect.value;
+                renderSoapPlatformConfiguration();
+            });
+            saveSoapPlatformNameBtn?.addEventListener('click', () => {
+                const platform = getActiveSoapPlatform();
+                const name = soapPlatformNameInput.value.trim();
+                if (!platform) return;
+                if (!name) {
+                    alert('Enter a platform name before saving.');
+                    soapPlatformNameInput.focus();
+                    return;
+                }
+                platform.name = name;
+                markDirty();
+                renderSoapPlatformConfiguration();
+                renderClientSoapPlatformOptions(clientSoapPlatformSelect?.value || '');
+                renderSoap();
+            });
+            addSoapPlatformBtn?.addEventListener('click', () => {
+                const name = newSoapPlatformNameInput.value.trim();
+                if (!name) {
+                    alert('Enter a platform name before adding it.');
+                    newSoapPlatformNameInput.focus();
+                    return;
+                }
+                const platform = {
+                    id: createSoapPlatformId(),
+                    name,
+                    sections: SOAP_PLATFORM_DEFAULT_ORDER.map(key => ({ key, enabled: true }))
+                };
+                data.soapPlatforms.push(platform);
+                activeSoapPlatformId = platform.id;
+                newSoapPlatformNameInput.value = '';
+                markDirty();
+                renderSoapPlatformConfiguration();
+                renderClientSoapPlatformOptions(clientSoapPlatformSelect?.value || '');
+                renderSoap();
+            });
+            deleteSoapPlatformBtn?.addEventListener('click', () => {
+                if ((data.soapPlatforms || []).length <= 1) {
+                    alert('Keep at least one SOAP platform configuration.');
+                    return;
+                }
+                const platform = getActiveSoapPlatform();
+                if (!platform || !confirm(`Delete the ${platform.name} SOAP platform configuration?`)) return;
+                data.soapPlatforms = data.soapPlatforms.filter(item => item.id !== platform.id);
+                [...(data.clients || []), ...(data.archivedClients || [])].forEach(client => {
+                    if (client.soapPlatformId === platform.id) client.soapPlatformId = '';
+                });
+                activeSoapPlatformId = getDefaultSoapPlatformId();
+                markDirty();
+                renderSoapPlatformConfiguration();
+                renderClientSoapPlatformOptions(clientSoapPlatformSelect?.value || '');
+                renderSoap();
+            });
             customInstructionsBtn.addEventListener('click', () => {
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
@@ -13546,6 +14110,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounObject = clientPronouns.object;
                 customPronounPossessive = clientPronouns.possessive;
                 clientSessionTypeSelect.value = getClientSessionType(client);
+                renderClientSoapPlatformOptions(client?.soapPlatformId || '');
                 customInstructionsModal.classList.remove('hidden');
                 persistentInstructionsInput.value = persistentInstructions;
                 sessionInstructionsInput.value = sessionInstructions;
@@ -13608,6 +14173,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 if (client) {
                     client.persistentInstructions = persistentInstructions;
                     client.sessionType = normalizeClientSessionType(clientSessionTypeSelect.value);
+                    client.soapPlatformId = getSoapPlatformById(clientSoapPlatformSelect.value)?.id || '';
                     client.preferredPronouns = {
                         value: preferredPronouns,
                         subject: preferredPronouns === 'custom' ? customPronounSubject : '',
@@ -13638,12 +14204,14 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounSubject = '';
                 customPronounObject = '';
                 customPronounPossessive = '';
+                clientSoapPlatformSelect.value = '';
                 updatePronounCustomInputsState();
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
                 if (client) {
                     client.persistentInstructions = '';
                     client.sessionType = 'individual';
+                    client.soapPlatformId = '';
                     client.preferredPronouns = {
                         value: '',
                         subject: '',

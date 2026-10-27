@@ -10,6 +10,9 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const fetchDiagnosticSupportFromAI =/);
         assert.match(html, /const fetchMedicalNecessityFromAI =/);
         assert.match(html, /const normalizeSoapPresentingProblemFromAi =/);
+        assert.match(html, /const normalizeCoupleCollectiveReferences =/);
+        assert.match(html, /Couple Collective Grammar/);
+        assert.match(html, /Never write "Ct\\'s" for a couple/);
         assert.match(html, /combine the documented presenting problem with the clinical problem evidenced/);
         assert.match(html, /Do not return intervention selections, Presenting Problem, Diagnostic Support, or Medical Necessity/);
         assert.match(html, /Never say the record is insufficient to substantiate a diagnosis/);

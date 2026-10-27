@@ -14,7 +14,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const fetchSupportFieldsFromAI =/);
         assert.match(html, /presenting_problem/);
         assert.match(html, /supportFields = await fetchSupportFieldsFromAI\(client, appointment\)/);
-        assert.match(html, /appointment\.soap\.presentingProblem = supportFields\.presentingProblem/);
+        assert.match(html, /appointment\.soap\.presentingProblem = normalizeCoupleCollectiveReferences\(supportFields\.presentingProblem, client\)/);
         assert.match(html, /let objectiveOrganizationInFlight = false/);
         assert.doesNotMatch(html, /const \[diagnosticResult, medicalNecessityResult\] = await Promise\.allSettled/);
     });

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.39</title>
+    <title>SmartEMR v3.0.40</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -7162,7 +7162,27 @@
                     const role = sessionType === 'family' ? `; role: ${(member?.role || '').trim() || 'not assigned'}` : '';
                     return `\n- **Session Member ${index + 1}:** ${name}${role}; pronouns: ${getSessionMemberPronounsLabel(member)}`;
                 }).join('');
-                return `\n- **${heading}:**${memberLines}\n- **Session Member Pronoun Rule:** Use each member's name and assigned pronouns consistently when referring to them.`;
+                const collectiveGrammarRule = sessionType === 'couple'
+                    ? '\n- **Couple Collective Grammar Rule:** When referring to both members together, use "Cts" as the collective subject and "Cts\'" as the collective possessive. Never write "Ct\'s" for a couple. Use "Ct\'s" only for one singular client; use each named member\'s name and assigned pronouns for individual references.'
+                    : '';
+                return `\n- **${heading}:**${memberLines}\n- **Session Member Pronoun Rule:** Use each member's name and assigned pronouns consistently when referring to them.${collectiveGrammarRule}`;
+            };
+
+            const normalizeCoupleCollectiveReferences = (value, client) => {
+                if (getClientSessionType(client) !== 'couple') return value;
+                if (typeof value === 'string') {
+                    return value.replace(/\bCt(['’])s\b/g, 'Cts$1');
+                }
+                if (Array.isArray(value)) {
+                    return value.map(item => normalizeCoupleCollectiveReferences(item, client));
+                }
+                if (value && typeof value === 'object') {
+                    return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+                        key,
+                        normalizeCoupleCollectiveReferences(item, client)
+                    ]));
+                }
+                return value;
             };
 
             const SOAP_CLIENT_REQUIREMENT_LABELS = {
@@ -8364,7 +8384,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 try {
                     const diagnosticSupport = await fetchDiagnosticSupportFromAI(client, appointment);
                     if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
-                    appointment.soap.diagnosticSupport = diagnosticSupport;
+                    appointment.soap.diagnosticSupport = normalizeCoupleCollectiveReferences(diagnosticSupport, client);
                     delete appointment.auditCheck;
                     markDirty();
                     if (isCurrentAppointmentContext(appointmentContext)) renderSoap();
@@ -8391,7 +8411,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 try {
                     const presentingProblem = await fetchPresentingProblemFromAI(client, appointment);
                     if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
-                    appointment.soap.presentingProblem = presentingProblem;
+                    appointment.soap.presentingProblem = normalizeCoupleCollectiveReferences(presentingProblem, client);
                     delete appointment.auditCheck;
                     markDirty();
                     if (isCurrentAppointmentContext(appointmentContext)) renderSoap();
@@ -8418,7 +8438,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 try {
                     const medicalNecessity = await fetchMedicalNecessityFromAI(client, appointment);
                     if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
-                    appointment.soap.medicalNecessity = medicalNecessity;
+                    appointment.soap.medicalNecessity = normalizeCoupleCollectiveReferences(medicalNecessity, client);
                     delete appointment.auditCheck;
                     markDirty();
                     if (isCurrentAppointmentContext(appointmentContext)) renderSoap();
@@ -11747,6 +11767,7 @@ Analyze the labeled clinical record in User Input and return only the required J
 - **Presenting Problem and Treatment Plan:** The intended clinical focus. Do not claim a goal/objective was addressed or that progress occurred unless current-session evidence supports it.
                 - **Intervention Bank and Selected Interventions:** Use exact allowed names. A selected intervention is not proof that it was delivered unless the session record confirms it.
                 - **Client Session Type:** For Individual sessions, never use an intervention marked Couples only. Couple sessions may use those entries when the session record supports them.
+                - **Couple Collective Grammar:** In Couple / Partnership sessions, use "Cts" for both members as a collective subject and "Cts'" for their collective possessive. Never use "Ct's" for a couple. Use "Ct's" only for one singular client, and use each named member's assigned pronouns for individual references.
 - **Client Modality Lens:** A conceptual default only. Preserve explicitly documented techniques and never force-fit a modality.
 - **Persistent and Session Instructions:** Formatting or workflow preferences only. Session instructions override persistent instructions when they conflict, but neither may override evidence, privacy, safety, or output rules.
 - **Previous, imported, or AI-generated text:** Not new evidence unless the clinician explicitly confirms it in the current session record.
@@ -11857,6 +11878,7 @@ Requirements:
             };
             
             const processAndStoreSoapData = (soapData, appointment, client = null) => {
+                soapData = normalizeCoupleCollectiveReferences(soapData, client);
                  if (!appointment.soap) appointment.soap = {};
                 captureSoapPlatformSnapshot(appointment, client);
                   delete appointment.auditCheck;
@@ -12001,21 +12023,21 @@ Requirements:
                             }
                             if (requestedSupportFields.includes('presentingProblem')) {
                                 if (supportFields.presentingProblem) {
-                                    appointment.soap.presentingProblem = supportFields.presentingProblem;
+                                    appointment.soap.presentingProblem = normalizeCoupleCollectiveReferences(supportFields.presentingProblem, client);
                                 } else {
                                     supportErrors.push('Presenting Problem was not returned.');
                                 }
                             }
                             if (requestedSupportFields.includes('diagnosticSupport')) {
                                 if (supportFields.diagnosticSupport) {
-                                    appointment.soap.diagnosticSupport = supportFields.diagnosticSupport;
+                                    appointment.soap.diagnosticSupport = normalizeCoupleCollectiveReferences(supportFields.diagnosticSupport, client);
                                 } else {
                                     supportErrors.push('Diagnostic Support was not returned.');
                                 }
                             }
                             if (requestedSupportFields.includes('medicalNecessity')) {
                                 if (supportFields.medicalNecessity) {
-                                    appointment.soap.medicalNecessity = supportFields.medicalNecessity;
+                                    appointment.soap.medicalNecessity = normalizeCoupleCollectiveReferences(supportFields.medicalNecessity, client);
                                 } else {
                                     supportErrors.push('Medical Necessity was not returned.');
                                 }

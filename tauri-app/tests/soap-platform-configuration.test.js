@@ -12,6 +12,12 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /id="clientSoapPlatformSelect"/);
         assert.match(html, /id="preferredPronounsSelect"/);
         assert.match(html, /id="clientSessionTypeSelect"/);
+        assert.match(html, /option value="family">Family/);
+        assert.match(html, /id="sessionMembersWrap"/);
+        assert.match(html, /id="sessionMembersList"/);
+        assert.match(html, /const hasAssignedSessionMembers =/);
+        assert.match(html, /const getSessionMembersContext =/);
+        assert.match(html, /session-member-role/);
         assert.match(html, /const SOAP_PLATFORM_SECTION_DEFS =/);
         assert.match(html, /const getDefaultSoapPlatforms =/);
         assert.match(html, /const normalizeSoapPlatforms =/);
@@ -19,7 +25,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const hasAssignedClientPreferredPronouns =/);
         assert.match(html, /const hasAssignedClientSessionType =/);
         assert.match(html, /const getMissingSoapClientRequirements =/);
-        assert.match(html, /client\.sessionTypeAssigned = normalizedSessionType === 'couple'/);
+        assert.match(html, /client\.sessionTypeAssigned = normalizedSessionType === 'couple' \|\| normalizedSessionType === 'family'/);
         assert.match(html, /row\.draggable = true/);
         assert.match(html, /row\.addEventListener\('dragstart'/);
         assert.match(html, /row\.addEventListener\('drop'/);
@@ -43,9 +49,11 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const missingSoapRequirements = getMissingSoapClientRequirements\(client\);/);
         assert.match(html, /getSoapGenerationRequirementMessage\(missingSoapRequirements\)/);
         assert.match(html, /Before generating a SOAP note, assign this client/);
+        assert.match(html, /sessionMembers: 'all session members, their roles for family sessions, and their pronouns'/);
+        assert.match(html, /client\.sessionTypeAssigned = clientSessionTypeSelect\.value === 'individual'[\s\S]*clientSessionTypeSelect\.value === 'family'/);
+        assert.match(html, /client\.sessionMembers = normalizeSessionMembers\(sessionMembersDraft\)/);
         assert.match(html, /renderClientSoapPlatformOptions\(client\?\.soapPlatformId \|\| ''\)/);
         assert.match(html, /client\.soapPlatformId = getSoapPlatformById\(clientSoapPlatformSelect\.value\)\?\.id \|\| ''/);
-        assert.match(html, /client\.sessionTypeAssigned = clientSessionTypeSelect\.value === 'individual' \|\| clientSessionTypeSelect\.value === 'couple'/);
         assert.match(html, /clientSessionTypeSelect\.value = hasAssignedClientSessionType\(client\) \? getClientSessionType\(client\) : ''/);
     });
 

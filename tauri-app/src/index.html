@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.37</title>
+    <title>SmartEMR v3.0.38</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -1798,6 +1798,67 @@
             gap: 8px;
             margin-top: 8px;
         }
+        .session-members-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .session-member-row {
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 10px;
+            background: var(--panel-bg);
+        }
+        .session-member-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-color-primary);
+        }
+        .session-member-fields {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 8px;
+        }
+        .session-member-custom-pronouns {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .session-member-custom-pronouns label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-color-secondary);
+        }
+        .session-member-remove-btn {
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-color-secondary);
+            cursor: pointer;
+            padding: 3px 8px;
+        }
+        .session-member-remove-btn:hover:not(:disabled) {
+            color: #b91c1c;
+            border-color: #b91c1c;
+        }
+        .session-member-remove-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        @media (max-width: 680px) {
+            .session-member-custom-pronouns {
+                grid-template-columns: 1fr;
+            }
+        }
         .modality-option {
             display: flex;
             align-items: center;
@@ -3561,7 +3622,7 @@
                 </div>
             </div>
 
-            <div style="margin-bottom: 1rem;">
+            <div id="clientPreferredPronounsWrap" style="margin-bottom: 1rem;">
                 <label for="preferredPronounsSelect" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Client Preferred Pronouns <span style="color: #b91c1c;">*</span></label>
                 <select id="preferredPronounsSelect" required style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
                     <option value="">Select pronouns (required)</option>
@@ -3592,10 +3653,20 @@
                     <option value="">Select session type (required)</option>
                     <option value="individual">Individual</option>
                     <option value="couple">Couple</option>
+                    <option value="family">Family</option>
                 </select>
                 <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 4px;">
                     Assign the session type before generating a SOAP note. Couple sessions include interventions marked Couples only; those interventions are hidden from Individual sessions and excluded from their AI context.
                 </div>
+            </div>
+
+            <div id="sessionMembersWrap" class="hidden" style="margin-bottom: 1rem;">
+                <label style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Session Members <span style="color: #b91c1c;">*</span></label>
+                <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 4px;">
+                    Add every member of the couple, partnership, or family. Each member needs a name and pronouns; family sessions also require each member's role.
+                </div>
+                <div id="sessionMembersList" class="session-members-list"></div>
+                <button id="addSessionMemberBtn" type="button" class="btn" style="margin-top: 8px;">+ Add Member</button>
             </div>
 
             <div style="margin-bottom: 1rem;">
@@ -4599,6 +4670,10 @@
             const preferredPronounsSelect = document.getElementById('preferredPronounsSelect');
             const clientSessionTypeSelect = document.getElementById('clientSessionTypeSelect');
             const clientSoapPlatformSelect = document.getElementById('clientSoapPlatformSelect');
+            const clientPreferredPronounsWrapEl = document.getElementById('clientPreferredPronounsWrap');
+            const sessionMembersWrapEl = document.getElementById('sessionMembersWrap');
+            const sessionMembersListEl = document.getElementById('sessionMembersList');
+            const addSessionMemberBtn = document.getElementById('addSessionMemberBtn');
             const customPronounsWrapEl = document.getElementById('customPronounsWrap');
             const customPronounSubjectInput = document.getElementById('customPronounSubjectInput');
             const customPronounObjectInput = document.getElementById('customPronounObjectInput');
@@ -4731,6 +4806,7 @@
             let customPronounSubject = '';
             let customPronounObject = '';
             let customPronounPossessive = '';
+            let sessionMembersDraft = [];
             let generatedGoalsDraft = [];
             let generatedPresentingProblemDraft = '';
             let activeGoalGeneratorClientId = null;
@@ -4809,6 +4885,16 @@
                 'she/hers': { subject: 'she', object: 'her', possessive: 'hers' },
                 'they/them': { subject: 'they', object: 'them', possessive: 'their' }
             };
+            const PRONOUN_SELECT_OPTIONS = [
+                { value: '', label: 'Select pronouns (required)' },
+                { value: 'he/him/his', label: 'he/him/his' },
+                { value: 'she/hers', label: 'she/her/hers' },
+                { value: 'they/them', label: 'they/them/their' },
+                { value: 'custom', label: 'Custom' }
+            ];
+            const getPronounSelectOptionsMarkup = (selectedValue = '') => PRONOUN_SELECT_OPTIONS
+                .map(option => `<option value="${option.value}" ${option.value === selectedValue ? 'selected' : ''}>${option.label}</option>`)
+                .join('');
             const getGoogleAccessToken = async (serviceAccountJson) => {
                 try {
                     const { invoke } = window.__TAURI__.core;
@@ -5397,11 +5483,44 @@
             };
             const normalizeClientSessionType = (value) => {
                 const normalized = String(value ?? '').trim().toLowerCase();
+                if (normalized === 'family' || normalized === 'families') return 'family';
                 return normalized === 'couple' || normalized === 'couples' ? 'couple' : 'individual';
             };
             const getClientSessionType = (client) => normalizeClientSessionType(client?.sessionType ?? client?.clientType);
             const hasAssignedClientSessionType = (client) => client?.sessionTypeAssigned === true;
             const isCoupleClient = (client) => getClientSessionType(client) === 'couple';
+            const normalizePreferredPronounRecord = (value) => {
+                const source = value && typeof value === 'object' ? value : {};
+                return {
+                    value: typeof source.value === 'string' ? source.value.trim() : '',
+                    subject: typeof source.subject === 'string' ? source.subject.trim() : '',
+                    object: typeof source.object === 'string' ? source.object.trim() : '',
+                    possessive: typeof source.possessive === 'string' ? source.possessive.trim() : ''
+                };
+            };
+            const createEmptySessionMember = () => ({
+                id: crypto.randomUUID(),
+                name: '',
+                role: '',
+                preferredPronouns: normalizePreferredPronounRecord()
+            });
+            const normalizeSessionMembers = (value) => {
+                const source = Array.isArray(value) ? value : [];
+                const usedIds = new Set();
+                return source.map((member, index) => {
+                    const sourceMember = member && typeof member === 'object' ? member : {};
+                    let id = typeof sourceMember.id === 'string' ? sourceMember.id.trim() : '';
+                    while (!id || usedIds.has(id)) id = crypto.randomUUID();
+                    usedIds.add(id);
+                    return {
+                        id,
+                        name: typeof sourceMember.name === 'string' ? sourceMember.name.trim() : '',
+                        role: typeof sourceMember.role === 'string' ? sourceMember.role.trim() : '',
+                        preferredPronouns: normalizePreferredPronounRecord(sourceMember.preferredPronouns ?? sourceMember.pronouns)
+                    };
+                });
+            };
+            const getClientSessionMembers = (client) => Array.isArray(client?.sessionMembers) ? client.sessionMembers : [];
             const getSelectedAppointmentContext = () => {
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
@@ -5453,7 +5572,7 @@
                     if (typeof client.sessionTypeAssigned !== 'boolean') {
                         // Existing couple assignments are unambiguous. Existing individual values
                         // may be the historical default, so require confirmation in Instructions.
-                        client.sessionTypeAssigned = normalizedSessionType === 'couple';
+                        client.sessionTypeAssigned = normalizedSessionType === 'couple' || normalizedSessionType === 'family';
                         dataMigrated = true;
                     }
                     if (typeof client.diagnosis !== 'string') client.diagnosis = '';
@@ -5477,6 +5596,9 @@
                     if (typeof client.preferredPronouns.subject !== 'string') client.preferredPronouns.subject = '';
                     if (typeof client.preferredPronouns.object !== 'string') client.preferredPronouns.object = '';
                     if (typeof client.preferredPronouns.possessive !== 'string') client.preferredPronouns.possessive = '';
+                    const previousSessionMembers = JSON.stringify(client.sessionMembers);
+                    client.sessionMembers = normalizeSessionMembers(client.sessionMembers);
+                    if (previousSessionMembers !== JSON.stringify(client.sessionMembers)) dataMigrated = true;
                     client.goals.forEach(goal => {
                         if (!goal.timelineMonths) goal.timelineMonths = 12;
                         if (!Array.isArray(goal.objectives)) goal.objectives = [];
@@ -6855,14 +6977,7 @@
             };
 
             const getClientPreferredPronouns = (client) => {
-                if (!client || !client.preferredPronouns || typeof client.preferredPronouns !== 'object') {
-                    return { value: '', subject: '', object: '', possessive: '' };
-                }
-                const value = (client.preferredPronouns.value || '').trim();
-                const subject = (client.preferredPronouns.subject || '').trim();
-                const object = (client.preferredPronouns.object || '').trim();
-                const possessive = (client.preferredPronouns.possessive || '').trim();
-                return { value, subject, object, possessive };
+                return normalizePreferredPronounRecord(client?.preferredPronouns);
             };
 
             const getPreferredPronounsContext = (client) => {
@@ -6879,8 +6994,8 @@
                 return `\n- **Client Preferred Pronouns:** ${pronouns.value} (subject: ${preset.subject}, object: ${preset.object}, possessive: ${preset.possessive})\n- **Pronoun Usage Rule:** Use these pronouns consistently when referring to Ct.`;
             };
 
-            const hasAssignedClientPreferredPronouns = (client) => {
-                const pronouns = getClientPreferredPronouns(client);
+            const hasAssignedPreferredPronounRecord = (value) => {
+                const pronouns = normalizePreferredPronounRecord(value);
                 if (!pronouns.value) return false;
                 if (pronouns.value === 'custom') {
                     return Boolean(pronouns.subject && pronouns.object && pronouns.possessive);
@@ -6888,17 +7003,67 @@
                 return Boolean(PRONOUN_PRESETS[pronouns.value]);
             };
 
+            const hasAssignedClientPreferredPronouns = (client) => hasAssignedPreferredPronounRecord(client?.preferredPronouns);
+
+            const getSessionMemberPronounsLabel = (member) => {
+                const pronouns = normalizePreferredPronounRecord(member?.preferredPronouns);
+                if (!hasAssignedPreferredPronounRecord(pronouns)) return 'not assigned';
+                if (pronouns.value === 'custom') {
+                    return `custom (subject: ${pronouns.subject}, object: ${pronouns.object}, possessive: ${pronouns.possessive})`;
+                }
+                const preset = PRONOUN_PRESETS[pronouns.value];
+                return `${pronouns.value} (subject: ${preset.subject}, object: ${preset.object}, possessive: ${preset.possessive})`;
+            };
+
+            const hasAssignedSessionMembers = (client) => {
+                const sessionType = getClientSessionType(client);
+                if (sessionType !== 'couple' && sessionType !== 'family') return true;
+                const members = getClientSessionMembers(client);
+                return members.length >= 2 && members.every(member => {
+                    const hasName = typeof member?.name === 'string' && member.name.trim().length > 0;
+                    const hasRole = sessionType !== 'family'
+                        || (typeof member?.role === 'string' && member.role.trim().length > 0);
+                    return hasName && hasRole && hasAssignedPreferredPronounRecord(member?.preferredPronouns);
+                });
+            };
+
+            const getSessionMembersContext = (client) => {
+                const sessionType = getClientSessionType(client);
+                if (sessionType !== 'couple' && sessionType !== 'family') return '';
+                const members = getClientSessionMembers(client);
+                const heading = sessionType === 'family' ? 'Family Members' : 'Couple/Partnership Members';
+                if (members.length === 0) {
+                    return `\n- **${heading}:** Not assigned.`;
+                }
+                const memberLines = members.map((member, index) => {
+                    const name = (member?.name || '').trim() || `Member ${index + 1}`;
+                    const role = sessionType === 'family' ? `; role: ${(member?.role || '').trim() || 'not assigned'}` : '';
+                    return `\n- **Session Member ${index + 1}:** ${name}${role}; pronouns: ${getSessionMemberPronounsLabel(member)}`;
+                }).join('');
+                return `\n- **${heading}:**${memberLines}\n- **Session Member Pronoun Rule:** Use each member's name and assigned pronouns consistently when referring to them.`;
+            };
+
             const SOAP_CLIENT_REQUIREMENT_LABELS = {
                 soapPlatform: 'a SOAP platform',
                 preferredPronouns: 'preferred pronouns',
-                sessionType: 'a client session type'
+                sessionType: 'a client session type',
+                sessionMembers: 'all session members, their roles for family sessions, and their pronouns'
             };
 
             const getMissingSoapClientRequirements = (client) => {
                 const missing = [];
                 if (!getClientSoapPlatform(client)) missing.push('soapPlatform');
-                if (!hasAssignedClientPreferredPronouns(client)) missing.push('preferredPronouns');
-                if (!hasAssignedClientSessionType(client)) missing.push('sessionType');
+                if (!hasAssignedClientSessionType(client)) {
+                    missing.push('sessionType');
+                    return missing;
+                }
+                const sessionType = getClientSessionType(client);
+                if (sessionType === 'individual' && !hasAssignedClientPreferredPronouns(client)) {
+                    missing.push('preferredPronouns');
+                }
+                if ((sessionType === 'couple' || sessionType === 'family') && !hasAssignedSessionMembers(client)) {
+                    missing.push('sessionMembers');
+                }
                 return missing;
             };
 
@@ -6955,14 +7120,24 @@
             const getInstructionsContext = (client, appointment) => {
                 const persistent = (client?.persistentInstructions || '').trim();
                 const session = (appointment?.sessionInstructions || '').trim();
-                const pronounsContext = getPreferredPronounsContext(client);
                 const sessionType = getClientSessionType(client);
                 const sessionTypeAssigned = hasAssignedClientSessionType(client);
+                const pronounsContext = sessionType === 'individual' ? getPreferredPronounsContext(client) : '';
+                const sessionMembersContext = getSessionMembersContext(client);
                 const soapPlatform = getClientSoapPlatform(client);
 
-                let context = `\n- **Client Session Type:** ${sessionTypeAssigned ? (sessionType === 'couple' ? 'Couple' : 'Individual') : 'Not assigned'}`;
+                const sessionTypeLabel = sessionType === 'couple'
+                    ? 'Couple / Partnership'
+                    : sessionType === 'family'
+                        ? 'Family'
+                        : 'Individual';
+                let context = `\n- **Client Session Type:** ${sessionTypeAssigned ? sessionTypeLabel : 'Not assigned'}`;
                 context += sessionTypeAssigned
-                    ? '\n- **Couple-Only Intervention Rule:** Use interventions marked Couples only when the Client Session Type is Couple.'
+                    ? sessionType === 'couple'
+                        ? '\n- **Couple-Only Intervention Rule:** Use interventions marked Couples only when the Client Session Type is Couple.'
+                        : sessionType === 'family'
+                            ? '\n- **Family Session Member Rule:** Use each family member\'s name, role, and assigned pronouns consistently.'
+                            : ''
                     : '\n- **Client Session Type Rule:** Assign the client session type in Instructions before generating a SOAP note.';
                 if (soapPlatform) {
                     const enabledSectionKeys = getSoapPlatformSectionKeys(client, false);
@@ -6980,6 +7155,9 @@
                     context += '\n- **SOAP Platform Rule:** Generate content for enabled sections only, in the configured order. Do not add disabled sections or extra sections.';
                 } else {
                     context += '\n- **SOAP Platform:** Not assigned. SOAP generation is blocked until a platform is assigned in Instructions.';
+                }
+                if (sessionMembersContext) {
+                    context += sessionMembersContext;
                 }
                 if (pronounsContext) {
                     context += pronounsContext;
@@ -9565,6 +9743,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         object: '',
                         possessive: ''
                     },
+                    sessionMembers: [],
                     appointments: [],
                     intakeSessions: [],
                     notes: [],
@@ -14223,6 +14402,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounObject = clientPronouns.object;
                 customPronounPossessive = clientPronouns.possessive;
                 clientSessionTypeSelect.value = hasAssignedClientSessionType(client) ? getClientSessionType(client) : '';
+                sessionMembersDraft = normalizeSessionMembers(client?.sessionMembers);
                 renderClientSoapPlatformOptions(client?.soapPlatformId || '');
                 customInstructionsModal.classList.remove('hidden');
                 persistentInstructionsInput.value = persistentInstructions;
@@ -14232,6 +14412,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounObjectInput.value = customPronounObject;
                 customPronounPossessiveInput.value = customPronounPossessive;
                 updatePronounCustomInputsState();
+                renderSessionMembers();
                 sessionInstructionsInput.disabled = !appointment;
                 sessionInstructionsInput.placeholder = appointment
                     ? 'Applies only to the selected appointment/session.'
@@ -14252,10 +14433,116 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounObjectInput.disabled = !isCustom;
                 customPronounPossessiveInput.disabled = !isCustom;
             };
+            const updateSessionMemberCustomInputsState = (row) => {
+                if (!row) return;
+                const isCustom = row.querySelector('.session-member-pronouns')?.value === 'custom';
+                row.querySelector('.session-member-custom-pronouns')?.classList.toggle('hidden', !isCustom);
+                row.querySelectorAll('.session-member-pronoun-custom-input').forEach(input => {
+                    input.disabled = !isCustom;
+                });
+            };
+            const syncSessionMembersDraftFromDom = () => {
+                if (!sessionMembersListEl) return;
+                const rows = Array.from(sessionMembersListEl.querySelectorAll('.session-member-row'));
+                sessionMembersDraft = rows.map((row, index) => {
+                    const existing = sessionMembersDraft[index] || createEmptySessionMember();
+                    return {
+                        id: existing.id || crypto.randomUUID(),
+                        name: row.querySelector('.session-member-name')?.value.trim() || '',
+                        role: row.querySelector('.session-member-role')?.value.trim() || '',
+                        preferredPronouns: {
+                            value: row.querySelector('.session-member-pronouns')?.value || '',
+                            subject: row.querySelector('.session-member-pronoun-subject')?.value.trim() || '',
+                            object: row.querySelector('.session-member-pronoun-object')?.value.trim() || '',
+                            possessive: row.querySelector('.session-member-pronoun-possessive')?.value.trim() || ''
+                        }
+                    };
+                });
+            };
+            const ensureSessionMembersDraftMinimum = () => {
+                while (sessionMembersDraft.length < 2) {
+                    sessionMembersDraft.push(createEmptySessionMember());
+                }
+            };
+            const renderSessionMembers = () => {
+                if (!sessionMembersWrapEl || !sessionMembersListEl) return;
+                const groupSession = clientSessionTypeSelect.value === 'couple' || clientSessionTypeSelect.value === 'family';
+                clientPreferredPronounsWrapEl?.classList.toggle('hidden', groupSession);
+                sessionMembersWrapEl.classList.toggle('hidden', !groupSession);
+                if (!groupSession) {
+                    sessionMembersListEl.innerHTML = '';
+                    return;
+                }
+
+                ensureSessionMembersDraftMinimum();
+                const familySession = clientSessionTypeSelect.value === 'family';
+                sessionMembersListEl.innerHTML = sessionMembersDraft.map((member, index) => {
+                    const pronouns = normalizePreferredPronounRecord(member.preferredPronouns);
+                    const isCustom = pronouns.value === 'custom';
+                    return `
+                        <div class="session-member-row" data-session-member-index="${index}">
+                            <div class="session-member-heading">
+                                <span>Member ${index + 1}</span>
+                                <button type="button" class="session-member-remove-btn remove-session-member-btn" ${sessionMembersDraft.length <= 2 ? 'disabled' : ''}>Remove</button>
+                            </div>
+                            <div class="session-member-fields">
+                                <input class="setting-input session-member-name" type="text" required value="${escapeGoalDraftHtml(member.name)}" placeholder="Name (e.g., Ted)" aria-label="Session member ${index + 1} name">
+                                ${familySession ? `<input class="setting-input session-member-role" type="text" required value="${escapeGoalDraftHtml(member.role)}" placeholder="Role (e.g., parent, child)" aria-label="Session member ${index + 1} role">` : ''}
+                                <select class="setting-input session-member-pronouns" required aria-label="Session member ${index + 1} pronouns">
+                                    ${getPronounSelectOptionsMarkup(pronouns.value)}
+                                </select>
+                            </div>
+                            <div class="session-member-custom-pronouns ${isCustom ? '' : 'hidden'}">
+                                <div>
+                                    <label>Subject (e.g., ze)</label>
+                                    <input class="setting-input session-member-pronoun-custom-input session-member-pronoun-subject" type="text" value="${escapeGoalDraftHtml(pronouns.subject)}" placeholder="ze" ${isCustom ? '' : 'disabled'}>
+                                </div>
+                                <div>
+                                    <label>Object (e.g., hir)</label>
+                                    <input class="setting-input session-member-pronoun-custom-input session-member-pronoun-object" type="text" value="${escapeGoalDraftHtml(pronouns.object)}" placeholder="hir" ${isCustom ? '' : 'disabled'}>
+                                </div>
+                                <div>
+                                    <label>Possessive (e.g., hir)</label>
+                                    <input class="setting-input session-member-pronoun-custom-input session-member-pronoun-possessive" type="text" value="${escapeGoalDraftHtml(pronouns.possessive)}" placeholder="hir" ${isCustom ? '' : 'disabled'}>
+                                </div>
+                            </div>
+                        </div>`;
+                }).join('');
+            };
+            sessionMembersListEl?.addEventListener('input', event => {
+                if (event.target.closest('.session-member-row')) syncSessionMembersDraftFromDom();
+            });
+            sessionMembersListEl?.addEventListener('change', event => {
+                const row = event.target.closest('.session-member-row');
+                if (!row) return;
+                updateSessionMemberCustomInputsState(row);
+                syncSessionMembersDraftFromDom();
+            });
+            sessionMembersListEl?.addEventListener('click', event => {
+                const removeButton = event.target.closest('.remove-session-member-btn');
+                if (!removeButton || removeButton.disabled) return;
+                syncSessionMembersDraftFromDom();
+                const row = removeButton.closest('.session-member-row');
+                const index = row ? parseInt(row.dataset.sessionMemberIndex, 10) : -1;
+                if (index < 0 || sessionMembersDraft.length <= 2) return;
+                sessionMembersDraft.splice(index, 1);
+                renderSessionMembers();
+            });
+            addSessionMemberBtn?.addEventListener('click', () => {
+                syncSessionMembersDraftFromDom();
+                sessionMembersDraft.push(createEmptySessionMember());
+                renderSessionMembers();
+                sessionMembersListEl?.lastElementChild?.querySelector('.session-member-name')?.focus();
+            });
+            clientSessionTypeSelect.addEventListener('change', () => {
+                syncSessionMembersDraftFromDom();
+                renderSessionMembers();
+            });
             preferredPronounsSelect.addEventListener('change', () => {
                 updatePronounCustomInputsState();
             });
             saveCustomInstructionsBtn.addEventListener('click', () => {
+                syncSessionMembersDraftFromDom();
                 persistentInstructions = persistentInstructionsInput.value;
                 sessionInstructions = sessionInstructionsInput.value;
                 preferredPronouns = preferredPronounsSelect.value;
@@ -14263,7 +14550,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounObject = customPronounObjectInput.value.trim();
                 customPronounPossessive = customPronounPossessiveInput.value.trim();
 
-                if (preferredPronouns === 'custom') {
+                if (clientSessionTypeSelect.value === 'individual' && preferredPronouns === 'custom') {
                     const missing = [];
                     if (!customPronounSubject) missing.push('subject pronoun');
                     if (!customPronounObject) missing.push('object pronoun');
@@ -14286,14 +14573,19 @@ This error cannot be fixed within this application's code; it requires a configu
                 if (client) {
                     client.persistentInstructions = persistentInstructions;
                     client.sessionType = normalizeClientSessionType(clientSessionTypeSelect.value);
-                    client.sessionTypeAssigned = clientSessionTypeSelect.value === 'individual' || clientSessionTypeSelect.value === 'couple';
+                    client.sessionTypeAssigned = clientSessionTypeSelect.value === 'individual'
+                        || clientSessionTypeSelect.value === 'couple'
+                        || clientSessionTypeSelect.value === 'family';
+                    client.sessionMembers = normalizeSessionMembers(sessionMembersDraft);
                     client.soapPlatformId = getSoapPlatformById(clientSoapPlatformSelect.value)?.id || '';
-                    client.preferredPronouns = {
-                        value: preferredPronouns,
-                        subject: preferredPronouns === 'custom' ? customPronounSubject : '',
-                        object: preferredPronouns === 'custom' ? customPronounObject : '',
-                        possessive: preferredPronouns === 'custom' ? customPronounPossessive : ''
-                    };
+                    if (clientSessionTypeSelect.value === 'individual') {
+                        client.preferredPronouns = {
+                            value: preferredPronouns,
+                            subject: preferredPronouns === 'custom' ? customPronounSubject : '',
+                            object: preferredPronouns === 'custom' ? customPronounObject : '',
+                            possessive: preferredPronouns === 'custom' ? customPronounPossessive : ''
+                        };
+                    }
                 }
                 if (appointment) {
                     appointment.sessionInstructions = sessionInstructions;
@@ -14312,6 +14604,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounObjectInput.value = '';
                 customPronounPossessiveInput.value = '';
                 clientSessionTypeSelect.value = '';
+                sessionMembersDraft = [];
                 persistentInstructions = '';
                 sessionInstructions = '';
                 preferredPronouns = '';
@@ -14326,6 +14619,7 @@ This error cannot be fixed within this application's code; it requires a configu
                     client.persistentInstructions = '';
                     client.sessionType = 'individual';
                     client.sessionTypeAssigned = false;
+                    client.sessionMembers = [];
                     client.soapPlatformId = '';
                     client.preferredPronouns = {
                         value: '',
@@ -14338,6 +14632,7 @@ This error cannot be fixed within this application's code; it requires a configu
                     delete appointment.sessionInstructions;
                     if (appointment.customInstructions !== undefined) delete appointment.customInstructions;
                 }
+                renderSessionMembers();
                 markDirty();
                 renderInterventionPicker();
                 renderSoap();

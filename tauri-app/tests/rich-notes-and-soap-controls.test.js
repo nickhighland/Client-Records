@@ -34,6 +34,23 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.doesNotMatch(html, /const formatObjectiveCopyText = \(objective\) => \[/);
     });
 
+    test(`${path} edits goal timelines with the shared plan-item editor and uses one Treatment Goals scroll`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+
+        assert.match(html, /id="objectiveEditorTextLabel"/);
+        assert.match(html, /const showPlanItemEditorModal =/);
+        assert.match(html, /const showGoalEditorModal =/);
+        assert.match(html, /showGoalEditorModal\('Add Goal', '', DEFAULT_GOAL_TIMELINE_MONTHS\)/);
+        assert.match(html, /showGoalEditorModal\('Edit Goal', goal\.title, goal\.timelineMonths\)/);
+        assert.doesNotMatch(html, /timelineEditorModal/);
+        assert.doesNotMatch(html, /class="action-btn timeline-btn"/);
+
+        assert.match(html, /id="goalsTabContent" class="panel-content" style="display: none; flex-direction: column; min-height: 0;">/);
+        assert.match(html, /id="goalsListSectionContent" class="section-collapsible-content">/);
+        assert.match(html, /id="goalsListInTab">/);
+        assert.doesNotMatch(html, /id="goalsListInTab" style="[^"]*overflow-y:\s*auto/);
+    });
+
     test(`${path} explains the SOAP golden thread and evidence boundaries`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 

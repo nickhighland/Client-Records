@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.40</title>
+    <title>SmartEMR v3.0.41</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -872,7 +872,6 @@
         .archive-btn { background: #f39c12; }
         .delete-btn { background: #e74c3c; }
         .edit-btn { background: #3498db; }
-        .timeline-btn { background: #e67e22; }
 
         /* Appointments Panel */
         .appointment-item {
@@ -2899,7 +2898,7 @@
     <div id="objectiveEditorModal" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 520px;">
             <h3 id="objectiveEditorModalTitle" style="margin-bottom: 16px; color: var(--text-color-primary);">Objective</h3>
-            <label for="objectiveEditorTextInput" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Objective</label>
+            <label id="objectiveEditorTextLabel" for="objectiveEditorTextInput" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Objective</label>
             <textarea id="objectiveEditorTextInput" rows="4" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 14px;"></textarea>
             <label for="objectiveEditorTimelineSelect" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Timeline</label>
             <select id="objectiveEditorTimelineSelect" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; margin-bottom: 18px;">
@@ -2912,25 +2911,6 @@
             <div style="display: flex; gap: 8px; justify-content: flex-end;">
                 <button id="objectiveEditorModalCancel" class="btn" style="padding: 8px 16px; background: var(--panel-bg); color: var(--text-color-primary); border: 1px solid var(--input-border);">Cancel</button>
                 <button id="objectiveEditorModalConfirm" class="btn" style="padding: 8px 16px;">Save</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Treatment plan timeline editor -->
-    <div id="timelineEditorModal" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 400px;">
-            <h3 id="timelineEditorModalTitle" style="margin-bottom: 16px; color: var(--text-color-primary);">Timeline</h3>
-            <label for="timelineEditorSelect" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Timeline</label>
-            <select id="timelineEditorSelect" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; margin-bottom: 18px;">
-                <option value="1">1 month</option>
-                <option value="3">3 months</option>
-                <option value="6">6 months</option>
-                <option value="9">9 months</option>
-                <option value="12">12 months</option>
-            </select>
-            <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                <button id="timelineEditorModalCancel" class="btn" style="padding: 8px 16px; background: var(--panel-bg); color: var(--text-color-primary); border: 1px solid var(--input-border);">Cancel</button>
-                <button id="timelineEditorModalConfirm" class="btn" style="padding: 8px 16px;">Save</button>
             </div>
         </div>
     </div>
@@ -3477,7 +3457,7 @@
                 </div>
                 
                 <!-- Goals Tab Content -->
-                <div id="goalsTabContent" class="panel-content" style="display: none; flex-direction: column; overflow-y: auto;">
+                <div id="goalsTabContent" class="panel-content" style="display: none; flex-direction: column; min-height: 0;">
                     <div style="padding: 10px; border-bottom: 1px solid var(--panel-border); flex-shrink: 0;">
                         <div class="client-diagnoses-editor">
                             <div class="client-diagnoses-header">
@@ -3506,13 +3486,13 @@
                             <button id="addGoalBtnInTab" class="add-btn" disabled>+</button>
                         </div>
                     </div>
-                    <div id="goalsListSection" class="section-collapser" style="display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 10px;">
+                    <div id="goalsListSection" class="section-collapser" style="display: block; padding: 10px;">
                         <button id="goalsListToggleBtn" class="section-collapser-btn" type="button" data-section-key="goalsList" data-section-content="goalsListSectionContent" aria-expanded="true">
                             <span>Tx Plan</span>
                             <span class="section-collapser-icon">▼</span>
                         </button>
-                        <div id="goalsListSectionContent" class="section-collapsible-content" style="display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;">
-                            <div id="goalsListInTab" style="flex-grow: 1; overflow-y: auto;">
+                        <div id="goalsListSectionContent" class="section-collapsible-content">
+                            <div id="goalsListInTab">
                                 <div class="no-selection">Select a client to manage goals</div>
                             </div>
                         </div>
@@ -9353,8 +9333,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 <div class="goal-header-actions">
                                     ${getPlanCopyButtonMarkup('Goal', 'goal-copy-btn', 'data-copy-type="goal"')}
                                     <div class="goal-actions">
-                                        <button class="action-btn edit-btn" title="Edit Goal">✏️</button>
-                                        <button class="action-btn timeline-btn" title="Edit Goal Timeline">⏱</button>
+                                        <button class="action-btn edit-btn" title="Edit Goal and Timeline" aria-label="Edit Goal and Timeline">✏️</button>
                                         <button class="action-btn archive-btn" title="Change Status">⚡</button>
                                         <button class="action-btn delete-btn" title="Delete Goal">×</button>
                                     </div>
@@ -9700,13 +9679,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     return;
                 }
                 
-                showRenameModal('Enter goal title:', '').then(title => {
-                    if (!title || !title.trim()) return;
+                showGoalEditorModal('Add Goal', '', DEFAULT_GOAL_TIMELINE_MONTHS).then(result => {
+                    if (!result) return;
                     
                     const newGoal = {
                         id: crypto.randomUUID(),
-                        title: title.trim(),
-                        timelineMonths: DEFAULT_GOAL_TIMELINE_MONTHS,
+                        title: result.text,
+                        timelineMonths: result.timelineMonths,
                         startDate: treatmentPlanStartDate,
                         status: 'active',
                         objectives: [],
@@ -9858,24 +9837,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const goal = client.goals.find(g => g.id === goalId);
                 if (!goal) return;
                 
-                showRenameModal('Edit goal title:', goal.title).then(newTitle => {
-                    if (newTitle && newTitle.trim() && newTitle.trim() !== goal.title) {
-                        goal.title = newTitle.trim();
-                        markDirty();
-                        renderGoals();
-                    }
-                });
-            };
-
-            const editGoalTimeline = (goalId) => {
-                const client = findClient(selectedClientId);
-                if (!client) return;
-                const goal = client.goals.find(g => g.id === goalId);
-                if (!goal) return;
-
-                showTimelineEditorModal('Goal Timeline', goal.timelineMonths, DEFAULT_GOAL_TIMELINE_MONTHS).then(months => {
-                    if (months === null) return;
-                    goal.timelineMonths = months;
+                showGoalEditorModal('Edit Goal', goal.title, goal.timelineMonths).then(result => {
+                    if (!result) return;
+                    goal.title = result.text;
+                    goal.timelineMonths = result.timelineMonths;
                     markDirty();
                     renderGoals();
                 });
@@ -10153,21 +10118,29 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 });
             }
 
-            const showObjectiveEditorModal = (title, currentText = '', currentTimeline = DEFAULT_OBJECTIVE_TIMELINE_MONTHS) => new Promise((resolve) => {
+            const showPlanItemEditorModal = (
+                itemLabel,
+                title,
+                currentText = '',
+                currentTimeline = DEFAULT_OBJECTIVE_TIMELINE_MONTHS,
+                fallbackTimeline = DEFAULT_OBJECTIVE_TIMELINE_MONTHS
+            ) => new Promise((resolve) => {
                 const modal = document.getElementById('objectiveEditorModal');
                 const titleEl = document.getElementById('objectiveEditorModalTitle');
+                const textLabel = document.getElementById('objectiveEditorTextLabel');
                 const textInput = document.getElementById('objectiveEditorTextInput');
                 const timelineSelect = document.getElementById('objectiveEditorTimelineSelect');
                 const confirmBtn = document.getElementById('objectiveEditorModalConfirm');
                 const cancelBtn = document.getElementById('objectiveEditorModalCancel');
-                if (!modal || !titleEl || !textInput || !timelineSelect || !confirmBtn || !cancelBtn) {
+                if (!modal || !titleEl || !textLabel || !textInput || !timelineSelect || !confirmBtn || !cancelBtn) {
                     resolve(null);
                     return;
                 }
 
                 titleEl.textContent = title;
+                textLabel.textContent = itemLabel;
                 textInput.value = currentText || '';
-                timelineSelect.value = String(normalizeTreatmentPlanTimeline(currentTimeline, DEFAULT_OBJECTIVE_TIMELINE_MONTHS));
+                timelineSelect.value = String(normalizeTreatmentPlanTimeline(currentTimeline, fallbackTimeline));
                 modal.classList.remove('hidden');
 
                 const cleanup = () => {
@@ -10184,7 +10157,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     }
                     const result = {
                         text,
-                        timelineMonths: normalizeTreatmentPlanTimeline(timelineSelect.value, DEFAULT_OBJECTIVE_TIMELINE_MONTHS)
+                        timelineMonths: normalizeTreatmentPlanTimeline(timelineSelect.value, fallbackTimeline)
                     };
                     cleanup();
                     resolve(result);
@@ -10212,51 +10185,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }, 50);
             });
 
-            const showTimelineEditorModal = (title, currentTimeline, fallback = DEFAULT_GOAL_TIMELINE_MONTHS) => new Promise((resolve) => {
-                const modal = document.getElementById('timelineEditorModal');
-                const titleEl = document.getElementById('timelineEditorModalTitle');
-                const timelineSelect = document.getElementById('timelineEditorSelect');
-                const confirmBtn = document.getElementById('timelineEditorModalConfirm');
-                const cancelBtn = document.getElementById('timelineEditorModalCancel');
-                if (!modal || !titleEl || !timelineSelect || !confirmBtn || !cancelBtn) {
-                    resolve(null);
-                    return;
-                }
+            const showObjectiveEditorModal = (title, currentText = '', currentTimeline = DEFAULT_OBJECTIVE_TIMELINE_MONTHS) =>
+                showPlanItemEditorModal('Objective', title, currentText, currentTimeline, DEFAULT_OBJECTIVE_TIMELINE_MONTHS);
 
-                titleEl.textContent = title;
-                timelineSelect.value = String(normalizeTreatmentPlanTimeline(currentTimeline, fallback));
-                modal.classList.remove('hidden');
-
-                const cleanup = () => {
-                    modal.classList.add('hidden');
-                    confirmBtn.removeEventListener('click', onConfirm);
-                    cancelBtn.removeEventListener('click', onCancel);
-                    modal.removeEventListener('keydown', onKeydown);
-                };
-                const onConfirm = () => {
-                    const timelineMonths = normalizeTreatmentPlanTimeline(timelineSelect.value, fallback);
-                    cleanup();
-                    resolve(timelineMonths);
-                };
-                const onCancel = () => {
-                    cleanup();
-                    resolve(null);
-                };
-                const onKeydown = (event) => {
-                    if (event.key === 'Escape') {
-                        event.preventDefault();
-                        onCancel();
-                    } else if (event.key === 'Enter') {
-                        event.preventDefault();
-                        onConfirm();
-                    }
-                };
-
-                confirmBtn.addEventListener('click', onConfirm);
-                cancelBtn.addEventListener('click', onCancel);
-                modal.addEventListener('keydown', onKeydown);
-                setTimeout(() => timelineSelect.focus(), 50);
-            });
+            const showGoalEditorModal = (title, currentText = '', currentTimeline = DEFAULT_GOAL_TIMELINE_MONTHS) =>
+                showPlanItemEditorModal('Goal', title, currentText, currentTimeline, DEFAULT_GOAL_TIMELINE_MONTHS);
 
             // --- Drag and Drop Client Reordering (mouse events) ---
             let dragState = null; // { clientId, sourceListType, startY, element, ghost: null, threshold: false, dropListType, targetClientId, insertAfter }
@@ -13891,8 +13824,6 @@ This error cannot be fixed within this application's code; it requires a configu
                     deleteObjective(goalId, objectiveId);
                 } else if (clickedButton?.classList.contains('edit-btn')) {
                     editGoal(goalId);
-                } else if (clickedButton?.classList.contains('timeline-btn')) {
-                    editGoalTimeline(goalId);
                 } else if (clickedButton?.classList.contains('archive-btn')) {
                     changeGoalStatus(goalId);
                 } else if (clickedButton?.classList.contains('delete-btn')) {

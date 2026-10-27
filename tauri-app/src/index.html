@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.36</title>
+    <title>SmartEMR v3.0.37</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -3562,9 +3562,9 @@
             </div>
 
             <div style="margin-bottom: 1rem;">
-                <label for="preferredPronounsSelect" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Client Preferred Pronouns</label>
-                <select id="preferredPronounsSelect" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
-                    <option value="">Select pronouns (optional)</option>
+                <label for="preferredPronounsSelect" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Client Preferred Pronouns <span style="color: #b91c1c;">*</span></label>
+                <select id="preferredPronounsSelect" required style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                    <option value="">Select pronouns (required)</option>
                     <option value="he/him/his">he/him/his</option>
                     <option value="she/hers">she/hers</option>
                     <option value="they/them">they/them</option>
@@ -3587,13 +3587,14 @@
             </div>
 
             <div style="margin-bottom: 1rem;">
-                <label for="clientSessionTypeSelect" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Client Session Type</label>
-                <select id="clientSessionTypeSelect" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                <label for="clientSessionTypeSelect" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Client Session Type <span style="color: #b91c1c;">*</span></label>
+                <select id="clientSessionTypeSelect" required style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                    <option value="">Select session type (required)</option>
                     <option value="individual">Individual</option>
                     <option value="couple">Couple</option>
                 </select>
                 <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 4px;">
-                    Couple sessions include interventions marked Couples only. Those interventions are hidden from Individual sessions and excluded from their AI context.
+                    Assign the session type before generating a SOAP note. Couple sessions include interventions marked Couples only; those interventions are hidden from Individual sessions and excluded from their AI context.
                 </div>
             </div>
 
@@ -5399,6 +5400,7 @@
                 return normalized === 'couple' || normalized === 'couples' ? 'couple' : 'individual';
             };
             const getClientSessionType = (client) => normalizeClientSessionType(client?.sessionType ?? client?.clientType);
+            const hasAssignedClientSessionType = (client) => client?.sessionTypeAssigned === true;
             const isCoupleClient = (client) => getClientSessionType(client) === 'couple';
             const getSelectedAppointmentContext = () => {
                 const client = findClient(selectedClientId);
@@ -5445,8 +5447,15 @@
                     ensureClientContactInfo(client);
                     if (contactInfoBeforeNormalization !== JSON.stringify(client.contactInfo)) dataMigrated = true;
                     const previousSessionType = client.sessionType;
-                    client.sessionType = normalizeClientSessionType(client.sessionType ?? client.clientType);
+                    const normalizedSessionType = normalizeClientSessionType(client.sessionType ?? client.clientType);
+                    client.sessionType = normalizedSessionType;
                     if (previousSessionType !== client.sessionType) dataMigrated = true;
+                    if (typeof client.sessionTypeAssigned !== 'boolean') {
+                        // Existing couple assignments are unambiguous. Existing individual values
+                        // may be the historical default, so require confirmation in Instructions.
+                        client.sessionTypeAssigned = normalizedSessionType === 'couple';
+                        dataMigrated = true;
+                    }
                     if (typeof client.diagnosis !== 'string') client.diagnosis = '';
                     if (normalizeClientDiagnoses(client)) dataMigrated = true;
                     if (typeof client.presentingProblem !== 'string') client.presentingProblem = '';
@@ -6870,6 +6879,41 @@
                 return `\n- **Client Preferred Pronouns:** ${pronouns.value} (subject: ${preset.subject}, object: ${preset.object}, possessive: ${preset.possessive})\n- **Pronoun Usage Rule:** Use these pronouns consistently when referring to Ct.`;
             };
 
+            const hasAssignedClientPreferredPronouns = (client) => {
+                const pronouns = getClientPreferredPronouns(client);
+                if (!pronouns.value) return false;
+                if (pronouns.value === 'custom') {
+                    return Boolean(pronouns.subject && pronouns.object && pronouns.possessive);
+                }
+                return Boolean(PRONOUN_PRESETS[pronouns.value]);
+            };
+
+            const SOAP_CLIENT_REQUIREMENT_LABELS = {
+                soapPlatform: 'a SOAP platform',
+                preferredPronouns: 'preferred pronouns',
+                sessionType: 'a client session type'
+            };
+
+            const getMissingSoapClientRequirements = (client) => {
+                const missing = [];
+                if (!getClientSoapPlatform(client)) missing.push('soapPlatform');
+                if (!hasAssignedClientPreferredPronouns(client)) missing.push('preferredPronouns');
+                if (!hasAssignedClientSessionType(client)) missing.push('sessionType');
+                return missing;
+            };
+
+            const getSoapGenerationRequirementMessage = (missingRequirements = []) => {
+                const labels = missingRequirements
+                    .map(requirement => SOAP_CLIENT_REQUIREMENT_LABELS[requirement])
+                    .filter(Boolean);
+                const list = labels.length <= 1
+                    ? labels[0] || 'the required client information'
+                    : labels.length === 2
+                        ? `${labels[0]} and ${labels[1]}`
+                        : `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+                return `Before generating a SOAP note, assign this client ${list} in Instructions.`;
+            };
+
             const appendAuditFieldToSection = (currentSectionText, label, value) => {
                 const trimmedValue = (value || '').trim();
                 if (!trimmedValue) return currentSectionText || '';
@@ -6913,10 +6957,13 @@
                 const session = (appointment?.sessionInstructions || '').trim();
                 const pronounsContext = getPreferredPronounsContext(client);
                 const sessionType = getClientSessionType(client);
+                const sessionTypeAssigned = hasAssignedClientSessionType(client);
                 const soapPlatform = getClientSoapPlatform(client);
 
-                let context = `\n- **Client Session Type:** ${sessionType === 'couple' ? 'Couple' : 'Individual'}`;
-                context += '\n- **Couple-Only Intervention Rule:** Use interventions marked Couples only when the Client Session Type is Couple.';
+                let context = `\n- **Client Session Type:** ${sessionTypeAssigned ? (sessionType === 'couple' ? 'Couple' : 'Individual') : 'Not assigned'}`;
+                context += sessionTypeAssigned
+                    ? '\n- **Couple-Only Intervention Rule:** Use interventions marked Couples only when the Client Session Type is Couple.'
+                    : '\n- **Client Session Type Rule:** Assign the client session type in Instructions before generating a SOAP note.';
                 if (soapPlatform) {
                     const enabledSectionKeys = getSoapPlatformSectionKeys(client, false);
                     const enabledSections = enabledSectionKeys
@@ -9036,7 +9083,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                 const soapData = appointment.soap || { s: '', o: '', a: '', p: '' };
                 if (!Array.isArray(appointment.selectedInterventions)) appointment.selectedInterventions = [];
-                const soapPlatform = getClientSoapPlatform(client);
+                const missingSoapRequirements = getMissingSoapClientRequirements(client);
                 const objectiveOrganized = isObjectiveOrganizeCompleted(appointment);
                 const objectiveDerivedInterventions = objectiveOrganized
                     ? getObjectiveDerivedInterventions(appointment, client)
@@ -9129,10 +9176,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 soapContentEl.replaceChildren(
                     ...configuredSoapSections.map(sectionKey => soapSectionsByKey.get(sectionKey)).filter(Boolean)
                 );
-                if (!soapPlatform) {
+                if (missingSoapRequirements.length > 0) {
                     const platformWarning = document.createElement('div');
                     platformWarning.className = 'no-selection';
-                    platformWarning.textContent = 'Assign this client to a SOAP platform in Instructions before generating a SOAP note.';
+                    platformWarning.textContent = getSoapGenerationRequirementMessage(missingSoapRequirements);
                     soapContentEl.prepend(platformWarning);
                 }
                 
@@ -9511,6 +9558,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     persistentInstructions: '',
                     soapPlatformId: '',
                     sessionType: 'individual',
+                    sessionTypeAssigned: false,
+                    preferredPronouns: {
+                        value: '',
+                        subject: '',
+                        object: '',
+                        possessive: ''
+                    },
                     appointments: [],
                     intakeSessions: [],
                     notes: [],
@@ -11333,11 +11387,12 @@ Requirements:
                 }
                 const client = findClient(selectedClientId);
                 if (!client) {
-                    alert('Select a client and assign a SOAP platform in Instructions before generating a SOAP note.');
+                    alert('Select a client and complete the required SOAP assignments in Instructions before generating a SOAP note.');
                     return;
                 }
-                if (!getClientSoapPlatform(client)) {
-                    alert('Assign this client to a SOAP platform in Instructions before generating a SOAP note.');
+                const missingSoapRequirements = getMissingSoapClientRequirements(client);
+                if (missingSoapRequirements.length > 0) {
+                    alert(getSoapGenerationRequirementMessage(missingSoapRequirements));
                     return;
                 }
                 if (!selectedModel) {
@@ -14167,7 +14222,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounSubject = clientPronouns.subject;
                 customPronounObject = clientPronouns.object;
                 customPronounPossessive = clientPronouns.possessive;
-                clientSessionTypeSelect.value = getClientSessionType(client);
+                clientSessionTypeSelect.value = hasAssignedClientSessionType(client) ? getClientSessionType(client) : '';
                 renderClientSoapPlatformOptions(client?.soapPlatformId || '');
                 customInstructionsModal.classList.remove('hidden');
                 persistentInstructionsInput.value = persistentInstructions;
@@ -14231,6 +14286,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 if (client) {
                     client.persistentInstructions = persistentInstructions;
                     client.sessionType = normalizeClientSessionType(clientSessionTypeSelect.value);
+                    client.sessionTypeAssigned = clientSessionTypeSelect.value === 'individual' || clientSessionTypeSelect.value === 'couple';
                     client.soapPlatformId = getSoapPlatformById(clientSoapPlatformSelect.value)?.id || '';
                     client.preferredPronouns = {
                         value: preferredPronouns,
@@ -14255,7 +14311,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 customPronounSubjectInput.value = '';
                 customPronounObjectInput.value = '';
                 customPronounPossessiveInput.value = '';
-                clientSessionTypeSelect.value = 'individual';
+                clientSessionTypeSelect.value = '';
                 persistentInstructions = '';
                 sessionInstructions = '';
                 preferredPronouns = '';
@@ -14269,6 +14325,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 if (client) {
                     client.persistentInstructions = '';
                     client.sessionType = 'individual';
+                    client.sessionTypeAssigned = false;
                     client.soapPlatformId = '';
                     client.preferredPronouns = {
                         value: '',

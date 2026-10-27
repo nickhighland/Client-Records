@@ -10,10 +10,16 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /id="soapConfigurationModal"/);
         assert.match(html, /id="soapPlatformSectionsList"/);
         assert.match(html, /id="clientSoapPlatformSelect"/);
+        assert.match(html, /id="preferredPronounsSelect"/);
+        assert.match(html, /id="clientSessionTypeSelect"/);
         assert.match(html, /const SOAP_PLATFORM_SECTION_DEFS =/);
         assert.match(html, /const getDefaultSoapPlatforms =/);
         assert.match(html, /const normalizeSoapPlatforms =/);
         assert.match(html, /const getClientSoapPlatform =/);
+        assert.match(html, /const hasAssignedClientPreferredPronouns =/);
+        assert.match(html, /const hasAssignedClientSessionType =/);
+        assert.match(html, /const getMissingSoapClientRequirements =/);
+        assert.match(html, /client\.sessionTypeAssigned = normalizedSessionType === 'couple'/);
         assert.match(html, /row\.draggable = true/);
         assert.match(html, /row\.addEventListener\('dragstart'/);
         assert.match(html, /row\.addEventListener\('drop'/);
@@ -34,10 +40,13 @@ for (const path of ['index.html', 'src/index.html']) {
 
         assert.match(html, /const generateSoapNote = async \(\) =>/);
         assert.match(html, /const client = findClient\(selectedClientId\);/);
-        assert.match(html, /if \(!getClientSoapPlatform\(client\)\)/);
-        assert.match(html, /Assign this client to a SOAP platform in Instructions before generating a SOAP note\./);
+        assert.match(html, /const missingSoapRequirements = getMissingSoapClientRequirements\(client\);/);
+        assert.match(html, /getSoapGenerationRequirementMessage\(missingSoapRequirements\)/);
+        assert.match(html, /Before generating a SOAP note, assign this client/);
         assert.match(html, /renderClientSoapPlatformOptions\(client\?\.soapPlatformId \|\| ''\)/);
         assert.match(html, /client\.soapPlatformId = getSoapPlatformById\(clientSoapPlatformSelect\.value\)\?\.id \|\| ''/);
+        assert.match(html, /client\.sessionTypeAssigned = clientSessionTypeSelect\.value === 'individual' \|\| clientSessionTypeSelect\.value === 'couple'/);
+        assert.match(html, /clientSessionTypeSelect\.value = hasAssignedClientSessionType\(client\) \? getClientSessionType\(client\) : ''/);
     });
 
     test(`${path} generates only configured post-Objective fields`, async () => {

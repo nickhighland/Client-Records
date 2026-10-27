@@ -50,7 +50,7 @@ test('keeps reusable instructions separate from client-specific SOAP input', () 
     assert.match(JSON.stringify(directPayload), /CLIENT PHI/);
 });
 
-test('counts eligible context and creates a workday cache on the global endpoint', async () => {
+test('counts eligible context and creates a 15-hour Gemini 2.x cache on the global endpoint', async () => {
     const requests = [];
     const storage = createStorage();
     const cacheMaterial = buildVertexSoapCacheMaterial({
@@ -73,7 +73,7 @@ test('counts eligible context and creates a workday cache on the global endpoint
         cacheMaterial,
         fetchImpl,
         location: 'global',
-        modelId: 'gemini-3.5-flash',
+        modelId: 'gemini-2.5-flash',
         now: Date.parse('2030-01-01T00:00:00Z'),
         projectId: 'p',
         storage
@@ -84,7 +84,7 @@ test('counts eligible context and creates a workday cache on the global endpoint
     assert.match(requests[0].url, /^https:\/\/aiplatform\.googleapis\.com\//);
     assert.match(requests[1].url, /\/cachedContents$/);
     assert.equal(requests[1].body.ttl, '54000s');
-    assert.equal(requests[1].body.model, 'projects/p/locations/global/publishers/google/models/gemini-3.5-flash');
+    assert.equal(requests[1].body.model, 'projects/p/locations/global/publishers/google/models/gemini-2.5-flash');
     assert.doesNotMatch(JSON.stringify(requests[1].body), /CLIENT PHI/);
 
     const reused = await getOrCreateVertexSoapContextCache({
@@ -92,7 +92,7 @@ test('counts eligible context and creates a workday cache on the global endpoint
         cacheMaterial,
         fetchImpl,
         location: 'global',
-        modelId: 'gemini-3.5-flash',
+        modelId: 'gemini-2.5-flash',
         now: Date.parse('2030-01-01T00:10:00Z'),
         projectId: 'p',
         storage
@@ -144,6 +144,23 @@ test('uses implicit caching when explicit caching is unavailable or below the mi
     assert.equal(calls, 1);
     assert.equal(getVertexContextCacheMinimumTokens('gemini-2.5-flash'), 2048);
     assert.equal(getVertexContextCacheMinimumTokens('gemini-3.5-flash'), 4096);
+
+    for (const modelId of ['gemini-3.8-flash', 'gemini-4.0-pro']) {
+        const implicitResult = await getOrCreateVertexSoapContextCache({
+            accessToken: 'token',
+            cacheMaterial,
+            fetchImpl: async () => {
+                calls += 1;
+                return makeJsonResponse({ totalTokens: 5000 });
+            },
+            location: 'us-central1',
+            modelId,
+            projectId: 'p',
+            storage: createStorage()
+        });
+        assert.equal(implicitResult.reason, 'implicit-only');
+    }
+    assert.equal(calls, 1);
 });
 
 test('falls back to the global endpoint when a regional publisher model is not found', async () => {
@@ -173,7 +190,7 @@ test('falls back to the global endpoint when a regional publisher model is not f
         cacheMaterial,
         fetchImpl,
         location: 'us-central1',
-        modelId: 'gemini-3.8-flash',
+        modelId: 'gemini-2.5-flash',
         now: Date.parse('2030-01-01T00:00:00Z'),
         projectId: 'p',
         storage: createStorage()
@@ -185,5 +202,5 @@ test('falls back to the global endpoint when a regional publisher model is not f
     assert.match(requests[0].url, /^https:\/\/us-central1-aiplatform\.googleapis\.com\//);
     assert.match(requests[1].url, /^https:\/\/aiplatform\.googleapis\.com\//);
     assert.match(requests[2].url, /^https:\/\/aiplatform\.googleapis\.com\//);
-    assert.equal(requests[2].body.model, 'projects/p/locations/global/publishers/google/models/gemini-3.8-flash');
+    assert.equal(requests[2].body.model, 'projects/p/locations/global/publishers/google/models/gemini-2.5-flash');
 });

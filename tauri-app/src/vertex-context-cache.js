@@ -14,9 +14,12 @@ const normalizeModelId = (modelId) => String(modelId || '').trim().toLowerCase()
 
 const isImplicitOnlyModel = (modelId) => {
     const normalized = normalizeModelId(modelId);
-    return normalized.includes('gemini-3.1-pro')
-        || normalized.includes('gemini-3-pro-preview')
-        || normalized.includes('gemini-3.0-flash-preview');
+    const majorVersion = normalized.match(/^gemini-(\d+)(?:[.-]|$)/)?.[1];
+
+    // Gemini 3.x and newer models use Google's implicit cache path so they
+    // can benefit from Durable Caching without creating billable explicit
+    // cachedContents objects. Gemini 2.x keeps the existing explicit cache.
+    return Number.isFinite(Number(majorVersion)) && Number(majorVersion) >= 3;
 };
 
 export const getVertexContextCacheMinimumTokens = (modelId) => {

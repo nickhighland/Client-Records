@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.38</title>
+    <title>SmartEMR v3.0.39</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -1330,6 +1330,20 @@
             color: var(--text-color-secondary);
             font-size: 0.75rem;
             font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .goal-date-range {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px 8px;
+            color: var(--text-color-secondary);
+            font-size: 0.72rem;
+            line-height: 1.3;
+        }
+
+        .goal-date-range span {
             white-space: nowrap;
         }
 
@@ -2881,6 +2895,46 @@
         </div>
     </div>
 
+    <!-- Treatment plan objective editor -->
+    <div id="objectiveEditorModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 520px;">
+            <h3 id="objectiveEditorModalTitle" style="margin-bottom: 16px; color: var(--text-color-primary);">Objective</h3>
+            <label for="objectiveEditorTextInput" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Objective</label>
+            <textarea id="objectiveEditorTextInput" rows="4" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 14px;"></textarea>
+            <label for="objectiveEditorTimelineSelect" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Timeline</label>
+            <select id="objectiveEditorTimelineSelect" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; margin-bottom: 18px;">
+                <option value="1">1 month</option>
+                <option value="3">3 months</option>
+                <option value="6">6 months</option>
+                <option value="9">9 months</option>
+                <option value="12">12 months</option>
+            </select>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button id="objectiveEditorModalCancel" class="btn" style="padding: 8px 16px; background: var(--panel-bg); color: var(--text-color-primary); border: 1px solid var(--input-border);">Cancel</button>
+                <button id="objectiveEditorModalConfirm" class="btn" style="padding: 8px 16px;">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Treatment plan timeline editor -->
+    <div id="timelineEditorModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 id="timelineEditorModalTitle" style="margin-bottom: 16px; color: var(--text-color-primary);">Timeline</h3>
+            <label for="timelineEditorSelect" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Timeline</label>
+            <select id="timelineEditorSelect" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; margin-bottom: 18px;">
+                <option value="1">1 month</option>
+                <option value="3">3 months</option>
+                <option value="6">6 months</option>
+                <option value="9">9 months</option>
+                <option value="12">12 months</option>
+            </select>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button id="timelineEditorModalCancel" class="btn" style="padding: 8px 16px; background: var(--panel-bg); color: var(--text-color-primary); border: 1px solid var(--input-border);">Cancel</button>
+                <button id="timelineEditorModalConfirm" class="btn" style="padding: 8px 16px;">Save</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Login Overlay -->
     <div id="loginOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-main); z-index: 9999; overflow-y: auto; display: flex; text-align: center; justify-content: center; align-items: flex-start; padding: 20px;">
         <div style="background: var(--panel-bg); padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; width: 400px; margin: auto;">
@@ -3438,8 +3492,15 @@
                         <label for="clientPresentingProblem" style="font-weight: 600; color: var(--text-color-primary); display: block; margin: 12px 0 8px;">Presenting Problem</label>
                         <textarea id="clientPresentingProblem" placeholder="Enter or generate the client's presenting problem..." style="width: 100%; min-height: 100px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text); resize: vertical;" disabled></textarea>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--panel-border); flex-shrink: 0;">
-                        <span style="font-weight: 600; color: var(--text-color-primary);">Tx Plan</span>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; flex-wrap: wrap; padding: 10px; border-bottom: 1px solid var(--panel-border); flex-shrink: 0;">
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <span style="font-weight: 600; color: var(--text-color-primary);">Tx Plan</span>
+                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <label for="treatmentPlanStartDateInput" style="font-size: 0.78rem; font-weight: 600; color: var(--text-color-secondary);">Start date</label>
+                                <input id="treatmentPlanStartDateInput" type="date" aria-label="Treatment plan start date" style="padding: 4px 6px; border: 1px solid var(--input-border); border-radius: 5px; background: var(--input-bg); color: var(--input-text); font-size: 0.78rem;" disabled>
+                                <button id="applyTreatmentPlanStartDateBtn" type="button" class="btn" style="padding: 4px 7px; font-size: 0.72rem;" title="Apply this start date to goals and objectives without a start date" disabled>Apply to undated</button>
+                            </div>
+                        </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <button id="generateGoalsBtn" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background: linear-gradient(135deg, #16a085 0%, #138d75 100%);" disabled>Build</button>
                             <button id="addGoalBtnInTab" class="add-btn" disabled>+</button>
@@ -4740,6 +4801,8 @@
             // Goals Elements
             const goalsListInTabEl = document.getElementById('goalsListInTab');
             const addGoalBtnInTab = document.getElementById('addGoalBtnInTab');
+            const treatmentPlanStartDateInput = document.getElementById('treatmentPlanStartDateInput');
+            const applyTreatmentPlanStartDateBtn = document.getElementById('applyTreatmentPlanStartDateBtn');
             const appointmentsTabBtn = document.getElementById('appointmentsTabBtn');
             const goalsTabBtn = document.getElementById('goalsTabBtn');
             const appointmentsTabContent = document.getElementById('appointmentsTabContent');
@@ -5313,6 +5376,65 @@
                 return date.getFullYear() + '-' +
                     String(date.getMonth() + 1).padStart(2, '0') + '-' +
                     String(date.getDate()).padStart(2, '0');
+            };
+            const TREATMENT_PLAN_TIMELINE_OPTIONS = Object.freeze([1, 3, 6, 9, 12]);
+            const DEFAULT_GOAL_TIMELINE_MONTHS = 12;
+            const DEFAULT_OBJECTIVE_TIMELINE_MONTHS = 3;
+            const normalizeTreatmentPlanTimeline = (value, fallback = DEFAULT_OBJECTIVE_TIMELINE_MONTHS) => {
+                const parsed = Number.parseInt(value, 10);
+                return TREATMENT_PLAN_TIMELINE_OPTIONS.includes(parsed) ? parsed : fallback;
+            };
+            const getTreatmentPlanTimelineOptionsMarkup = (selectedValue, fallback = DEFAULT_OBJECTIVE_TIMELINE_MONTHS) => {
+                const selected = normalizeTreatmentPlanTimeline(selectedValue, fallback);
+                return TREATMENT_PLAN_TIMELINE_OPTIONS
+                    .map(months => `<option value="${months}" ${months === selected ? 'selected' : ''}>${months} ${months === 1 ? 'month' : 'months'}</option>`)
+                    .join('');
+            };
+            const parseLocalDateInput = (value) => {
+                const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (!match) return null;
+                const year = Number.parseInt(match[1], 10);
+                const month = Number.parseInt(match[2], 10);
+                const day = Number.parseInt(match[3], 10);
+                const date = new Date(year, month - 1, day);
+                if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+                return { year, month, day };
+            };
+            const isValidDateInputValue = (value) => Boolean(parseLocalDateInput(value));
+            const formatPlanDate = (value) => {
+                const parts = parseLocalDateInput(value);
+                return parts ? `${parts.month}/${parts.day}/${parts.year}` : '';
+            };
+            const addMonthsToDateInput = (value, months) => {
+                const parts = parseLocalDateInput(value);
+                if (!parts) return '';
+                const monthOffset = Math.max(0, Number.parseInt(months, 10) || 0);
+                const absoluteMonth = (parts.year * 12) + (parts.month - 1) + monthOffset;
+                const targetYear = Math.floor(absoluteMonth / 12);
+                const targetMonthIndex = absoluteMonth % 12;
+                const lastDayOfTargetMonth = new Date(targetYear, targetMonthIndex + 1, 0).getDate();
+                const targetDay = Math.min(parts.day, lastDayOfTargetMonth);
+                return `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+            };
+            const getClientTreatmentPlanStartDate = (client) => {
+                const startDate = client?.treatmentPlanStartDate;
+                return isValidDateInputValue(startDate) ? startDate : '';
+            };
+            const getGoalTreatmentPlanStartDate = (client, goal) => {
+                if (isValidDateInputValue(goal?.startDate)) return goal.startDate;
+                return getClientTreatmentPlanStartDate(client);
+            };
+            const getObjectiveTreatmentPlanStartDate = (client, goal, objective) => {
+                if (isValidDateInputValue(objective?.startDate)) return objective.startDate;
+                return getGoalTreatmentPlanStartDate(client, goal);
+            };
+            const renderTreatmentPlanDateRange = (startDate, timelineMonths) => {
+                if (!isValidDateInputValue(startDate)) return '';
+                const normalizedTimeline = Number.parseInt(timelineMonths, 10);
+                if (!Number.isFinite(normalizedTimeline) || normalizedTimeline < 1) return '';
+                const endDate = addMonthsToDateInput(startDate, normalizedTimeline);
+                if (!endDate) return '';
+                return `<div class="goal-date-range" title="Calculated as the start date plus the selected timeline"><span>Start ${formatPlanDate(startDate)}</span><span>End ${formatPlanDate(endDate)}</span></div>`;
             };
             const getAppointmentDateInputValue = (dateValue) => {
                 if (!dateValue) return '';
@@ -7580,7 +7702,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         id: crypto.randomUUID(),
                         approved: true,
                         title: sanitizeGoalTextByModalities(goalTitle, modalities),
-                        timelineMonths: parseInt(aiGoal.timelineMonths, 10) || 12,
+                        timelineMonths: normalizeTreatmentPlanTimeline(aiGoal.timelineMonths, DEFAULT_GOAL_TIMELINE_MONTHS),
                         objectives: []
                     });
                 }
@@ -7620,7 +7742,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             id: crypto.randomUUID(),
                             approved: true,
                             text: sanitizeGoalTextByModalities(objectiveText, modalities),
-                            timelineMonths: parseInt(aiObjective.timelineMonths, 10) || fallbackTimeline,
+                            timelineMonths: normalizeTreatmentPlanTimeline(aiObjective.timelineMonths, fallbackTimeline),
                             format: aiObjective.format === 'smart' ? 'smart' : format,
                             completed: false,
                             dateCreated: new Date().toISOString()
@@ -8416,7 +8538,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             </div>
                             <div>
                                 <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">Timeline (mo)</label>
-                                <input type="number" class="mini-input draft-goal-timeline" min="1" max="24" value="${goal.timelineMonths || 12}">
+                                <select class="mini-input draft-goal-timeline">${getTreatmentPlanTimelineOptionsMarkup(goal.timelineMonths, DEFAULT_GOAL_TIMELINE_MONTHS)}</select>
                             </div>
                             <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                                 <input type="checkbox" class="draft-goal-approved" ${goal.approved ? 'checked' : ''}> Approve Goal
@@ -8430,7 +8552,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 </div>
                                 <div>
                                     <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:4px;">Timeline (mo)</label>
-                                    <input type="number" class="mini-input draft-obj-timeline" min="1" max="24" value="${obj.timelineMonths || 3}">
+                                    <select class="mini-input draft-obj-timeline">${getTreatmentPlanTimelineOptionsMarkup(obj.timelineMonths, DEFAULT_OBJECTIVE_TIMELINE_MONTHS)}</select>
                                 </div>
                                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                                     <select class="mini-input draft-obj-format" style="max-width:120px;">
@@ -8461,7 +8583,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     if (!draftGoal) return;
 
                     draftGoal.title = (card.querySelector('.draft-goal-text')?.value || '').trim();
-                    draftGoal.timelineMonths = parseInt(card.querySelector('.draft-goal-timeline')?.value || '12', 10) || 12;
+                    draftGoal.timelineMonths = normalizeTreatmentPlanTimeline(card.querySelector('.draft-goal-timeline')?.value, DEFAULT_GOAL_TIMELINE_MONTHS);
                     draftGoal.approved = !!card.querySelector('.draft-goal-approved')?.checked;
 
                     const objectiveRows = Array.from(card.querySelectorAll('[data-draft-objective-index]'));
@@ -8470,7 +8592,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         const draftObj = draftGoal.objectives?.[objIndex];
                         if (!draftObj) return;
                         draftObj.text = (row.querySelector('.draft-obj-text')?.value || '').trim();
-                        draftObj.timelineMonths = parseInt(row.querySelector('.draft-obj-timeline')?.value || '3', 10) || 3;
+                        draftObj.timelineMonths = normalizeTreatmentPlanTimeline(row.querySelector('.draft-obj-timeline')?.value, DEFAULT_OBJECTIVE_TIMELINE_MONTHS);
                         draftObj.format = row.querySelector('.draft-obj-format')?.value === 'smart' ? 'smart' : 'action';
                         draftObj.approved = !!row.querySelector('.draft-obj-approved')?.checked;
                     });
@@ -8482,6 +8604,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             const applyGeneratedGoals = () => {
                 const client = findClient(activeGoalGeneratorClientId);
                 if (!client) return;
+                const treatmentPlanStartDate = getClientTreatmentPlanStartDate(client);
+                if (!treatmentPlanStartDate) {
+                    alert('Set a treatment plan start date before saving a new treatment plan.');
+                    goalGeneratorModal.classList.add('hidden');
+                    treatmentPlanStartDateInput?.focus();
+                    return;
+                }
                 syncGeneratedGoalsFromReview();
 
                 const approvedGoals = generatedGoalsDraft
@@ -8507,12 +8636,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     client.goals.push({
                         id: crypto.randomUUID(),
                         title: draftGoal.title,
-                        timelineMonths: draftGoal.timelineMonths,
+                        timelineMonths: normalizeTreatmentPlanTimeline(draftGoal.timelineMonths, DEFAULT_GOAL_TIMELINE_MONTHS),
+                        startDate: treatmentPlanStartDate,
                         status: 'active',
                         objectives: (draftGoal.objectives || []).map(obj => ({
                             id: crypto.randomUUID(),
                             text: obj.text,
-                            timelineMonths: obj.timelineMonths,
+                            timelineMonths: normalizeTreatmentPlanTimeline(obj.timelineMonths, DEFAULT_OBJECTIVE_TIMELINE_MONTHS),
+                            startDate: treatmentPlanStartDate,
                             format: obj.format,
                             completed: false,
                             dateCreated: new Date().toISOString()
@@ -9053,6 +9184,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 clientPresentingProblemEl.placeholder = client
                     ? "Enter or generate the client's presenting problem..."
                     : "Select a client to enter a presenting problem...";
+                treatmentPlanStartDateInput.disabled = !client;
+                treatmentPlanStartDateInput.value = client ? getClientTreatmentPlanStartDate(client) : '';
+                applyTreatmentPlanStartDateBtn.disabled = !client || !getClientTreatmentPlanStartDate(client);
 
                 sessionInfoEl.disabled = !appointment && !note;
                 sessionInfoEl.value = appointment
@@ -9192,9 +9326,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             </div>
                             <div class="goal-header-right">
                                 <div class="goal-meta">
-                                    <div class="goal-status">${goal.timelineMonths || 12} mo</div>
+                                    <div class="goal-status">${goal.timelineMonths || DEFAULT_GOAL_TIMELINE_MONTHS} mo</div>
                                     <div class="goal-status ${goal.status || 'active'}">${getGoalStatusLabel(goal.status)}</div>
                                 </div>
+                                ${renderTreatmentPlanDateRange(getGoalTreatmentPlanStartDate(client, goal), goal.timelineMonths || DEFAULT_GOAL_TIMELINE_MONTHS)}
                                 <div class="goal-header-actions">
                                     ${getPlanCopyButtonMarkup('Goal', 'goal-copy-btn', 'data-copy-type="goal"')}
                                     <div class="goal-actions">
@@ -9219,11 +9354,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                         <span class="objective-text ${obj.completed ? 'completed' : ''}">${escapeGoalDraftHtml(obj.text)}</span>
                                     </div>
                                     <div class="objective-controls">
-                                        <span class="goal-status">${obj.timelineMonths || 3} mo</span>
+                                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+                                            <span class="goal-status">${obj.timelineMonths || DEFAULT_OBJECTIVE_TIMELINE_MONTHS} mo</span>
+                                            ${renderTreatmentPlanDateRange(getObjectiveTreatmentPlanStartDate(client, goal, obj), obj.timelineMonths || DEFAULT_OBJECTIVE_TIMELINE_MONTHS)}
+                                        </div>
                                         ${getPlanCopyButtonMarkup('Objective', 'objective-copy-btn', 'data-copy-type="objective"')}
                                         <div class="objective-actions">
-                                            <button class="action-btn edit-objective-btn" title="Edit Objective" style="width: 16px; height: 16px; font-size: 10px; background:#3498db;">✏️</button>
-                                            <button class="action-btn timeline-objective-btn" title="Edit Objective Timeline" style="width: 16px; height: 16px; font-size: 10px; background:#e67e22;">⏱</button>
+                                            <button class="action-btn edit-objective-btn" title="Edit Objective and Timeline" aria-label="Edit Objective and Timeline" style="width: 16px; height: 16px; font-size: 10px; background:#3498db;">✏️</button>
                                             <button class="action-btn delete-btn" title="Delete Objective" style="width: 16px; height: 16px; font-size: 10px;">×</button>
                                         </div>
                                     </div>
@@ -9536,6 +9673,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             const addGoal = () => {
                 const client = findClient(selectedClientId);
                 if (!client) return;
+                const treatmentPlanStartDate = getClientTreatmentPlanStartDate(client);
+                if (!treatmentPlanStartDate) {
+                    alert('Set a treatment plan start date before adding a new goal.');
+                    treatmentPlanStartDateInput?.focus();
+                    return;
+                }
                 
                 showRenameModal('Enter goal title:', '').then(title => {
                     if (!title || !title.trim()) return;
@@ -9543,7 +9686,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     const newGoal = {
                         id: crypto.randomUUID(),
                         title: title.trim(),
-                        timelineMonths: 12,
+                        timelineMonths: DEFAULT_GOAL_TIMELINE_MONTHS,
+                        startDate: treatmentPlanStartDate,
                         status: 'active',
                         objectives: [],
                         dateCreated: new Date().toISOString()
@@ -9562,14 +9706,22 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 
                 const goal = client.goals.find(g => g.id === goalId);
                 if (!goal) return;
-                
-                showRenameModal('Enter objective:', '').then(text => {
-                    if (!text || !text.trim()) return;
+
+                const treatmentPlanStartDate = getGoalTreatmentPlanStartDate(client, goal);
+                if (!treatmentPlanStartDate) {
+                    alert('Set a treatment plan start date before adding a new objective.');
+                    treatmentPlanStartDateInput?.focus();
+                    return;
+                }
+
+                showObjectiveEditorModal('Add Objective', '', DEFAULT_OBJECTIVE_TIMELINE_MONTHS).then(result => {
+                    if (!result) return;
                     
                     const newObjective = {
                         id: crypto.randomUUID(),
-                        text: text.trim(),
-                        timelineMonths: 3,
+                        text: result.text,
+                        timelineMonths: result.timelineMonths,
+                        startDate: treatmentPlanStartDate,
                         format: 'action',
                         completed: false,
                         dateCreated: new Date().toISOString()
@@ -9580,6 +9732,30 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     markDirty();
                     renderGoals();
                 });
+            };
+
+            const applyTreatmentPlanStartDate = () => {
+                const client = findClient(selectedClientId);
+                const treatmentPlanStartDate = getClientTreatmentPlanStartDate(client);
+                if (!client || !treatmentPlanStartDate) return;
+
+                let updatedCount = 0;
+                (client.goals || []).forEach(goal => {
+                    if (!isValidDateInputValue(goal.startDate)) {
+                        goal.startDate = treatmentPlanStartDate;
+                        updatedCount += 1;
+                    }
+                    const goalStartDate = getGoalTreatmentPlanStartDate(client, goal);
+                    (goal.objectives || []).forEach(objective => {
+                        if (!isValidDateInputValue(objective.startDate) && goalStartDate) {
+                            objective.startDate = goalStartDate;
+                            updatedCount += 1;
+                        }
+                    });
+                });
+
+                if (updatedCount > 0) markDirty();
+                renderGoals();
             };
 
             const toggleObjective = (goalId, objectiveId) => {
@@ -9677,9 +9853,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const goal = client.goals.find(g => g.id === goalId);
                 if (!goal) return;
 
-                showRenameModal('Goal timeline (months):', String(goal.timelineMonths || 12)).then(response => {
-                    if (response === null) return;
-                    const months = Math.max(1, Math.min(36, parseInt(response, 10) || 12));
+                showTimelineEditorModal('Goal Timeline', goal.timelineMonths, DEFAULT_GOAL_TIMELINE_MONTHS).then(months => {
+                    if (months === null) return;
                     goal.timelineMonths = months;
                     markDirty();
                     renderGoals();
@@ -9694,26 +9869,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const objective = goal.objectives.find(o => o.id === objectiveId);
                 if (!objective) return;
 
-                showRenameModal('Edit objective:', objective.text).then(response => {
-                    if (response && response.trim()) {
-                        objective.text = response.trim();
-                        markDirty();
-                        renderGoals();
-                    }
-                });
-            };
-
-            const editObjectiveTimeline = (goalId, objectiveId) => {
-                const client = findClient(selectedClientId);
-                if (!client) return;
-                const goal = client.goals.find(g => g.id === goalId);
-                if (!goal) return;
-                const objective = goal.objectives.find(o => o.id === objectiveId);
-                if (!objective) return;
-
-                showRenameModal('Objective timeline (months):', String(objective.timelineMonths || 3)).then(response => {
-                    if (response === null) return;
-                    objective.timelineMonths = Math.max(1, Math.min(36, parseInt(response, 10) || 3));
+                showObjectiveEditorModal('Edit Objective', objective.text, objective.timelineMonths).then(result => {
+                    if (!result) return;
+                    objective.text = result.text;
+                    objective.timelineMonths = result.timelineMonths;
                     markDirty();
                     renderGoals();
                 });
@@ -9735,6 +9894,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     presentingProblem: '',
                     persistentInstructions: '',
                     soapPlatformId: '',
+                    treatmentPlanStartDate: '',
                     sessionType: 'individual',
                     sessionTypeAssigned: false,
                     preferredPronouns: {
@@ -9972,6 +10132,111 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     input.addEventListener('keydown', onKeydown);
                 });
             }
+
+            const showObjectiveEditorModal = (title, currentText = '', currentTimeline = DEFAULT_OBJECTIVE_TIMELINE_MONTHS) => new Promise((resolve) => {
+                const modal = document.getElementById('objectiveEditorModal');
+                const titleEl = document.getElementById('objectiveEditorModalTitle');
+                const textInput = document.getElementById('objectiveEditorTextInput');
+                const timelineSelect = document.getElementById('objectiveEditorTimelineSelect');
+                const confirmBtn = document.getElementById('objectiveEditorModalConfirm');
+                const cancelBtn = document.getElementById('objectiveEditorModalCancel');
+                if (!modal || !titleEl || !textInput || !timelineSelect || !confirmBtn || !cancelBtn) {
+                    resolve(null);
+                    return;
+                }
+
+                titleEl.textContent = title;
+                textInput.value = currentText || '';
+                timelineSelect.value = String(normalizeTreatmentPlanTimeline(currentTimeline, DEFAULT_OBJECTIVE_TIMELINE_MONTHS));
+                modal.classList.remove('hidden');
+
+                const cleanup = () => {
+                    modal.classList.add('hidden');
+                    confirmBtn.removeEventListener('click', onConfirm);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    modal.removeEventListener('keydown', onKeydown);
+                };
+                const onConfirm = () => {
+                    const text = textInput.value.trim();
+                    if (!text) {
+                        textInput.focus();
+                        return;
+                    }
+                    const result = {
+                        text,
+                        timelineMonths: normalizeTreatmentPlanTimeline(timelineSelect.value, DEFAULT_OBJECTIVE_TIMELINE_MONTHS)
+                    };
+                    cleanup();
+                    resolve(result);
+                };
+                const onCancel = () => {
+                    cleanup();
+                    resolve(null);
+                };
+                const onKeydown = (event) => {
+                    if (event.key === 'Escape') {
+                        event.preventDefault();
+                        onCancel();
+                    } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                        event.preventDefault();
+                        onConfirm();
+                    }
+                };
+
+                confirmBtn.addEventListener('click', onConfirm);
+                cancelBtn.addEventListener('click', onCancel);
+                modal.addEventListener('keydown', onKeydown);
+                setTimeout(() => {
+                    textInput.focus();
+                    textInput.setSelectionRange(textInput.value.length, textInput.value.length);
+                }, 50);
+            });
+
+            const showTimelineEditorModal = (title, currentTimeline, fallback = DEFAULT_GOAL_TIMELINE_MONTHS) => new Promise((resolve) => {
+                const modal = document.getElementById('timelineEditorModal');
+                const titleEl = document.getElementById('timelineEditorModalTitle');
+                const timelineSelect = document.getElementById('timelineEditorSelect');
+                const confirmBtn = document.getElementById('timelineEditorModalConfirm');
+                const cancelBtn = document.getElementById('timelineEditorModalCancel');
+                if (!modal || !titleEl || !timelineSelect || !confirmBtn || !cancelBtn) {
+                    resolve(null);
+                    return;
+                }
+
+                titleEl.textContent = title;
+                timelineSelect.value = String(normalizeTreatmentPlanTimeline(currentTimeline, fallback));
+                modal.classList.remove('hidden');
+
+                const cleanup = () => {
+                    modal.classList.add('hidden');
+                    confirmBtn.removeEventListener('click', onConfirm);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    modal.removeEventListener('keydown', onKeydown);
+                };
+                const onConfirm = () => {
+                    const timelineMonths = normalizeTreatmentPlanTimeline(timelineSelect.value, fallback);
+                    cleanup();
+                    resolve(timelineMonths);
+                };
+                const onCancel = () => {
+                    cleanup();
+                    resolve(null);
+                };
+                const onKeydown = (event) => {
+                    if (event.key === 'Escape') {
+                        event.preventDefault();
+                        onCancel();
+                    } else if (event.key === 'Enter') {
+                        event.preventDefault();
+                        onConfirm();
+                    }
+                };
+
+                confirmBtn.addEventListener('click', onConfirm);
+                cancelBtn.addEventListener('click', onCancel);
+                modal.addEventListener('keydown', onKeydown);
+                setTimeout(() => timelineSelect.focus(), 50);
+            });
 
             // --- Drag and Drop Client Reordering (mouse events) ---
             let dragState = null; // { clientId, sourceListType, startY, element, ghost: null, threshold: false, dropListType, targetClientId, insertAfter }
@@ -11545,7 +11810,7 @@ Requirements:
 - Follow the requested objective-count mode exactly. When a total objective count is requested, distribute that total across the goals and write each objective to advance the complete goal set. When objectives per goal are requested, generate that count under every goal.
 - Goal language: concise and outcome-focused, written as "Client will ... resulting in ...".
 - Goals use 12-month timeline unless explicitly requested otherwise.
-- Objectives use staggered timeline anchors across 3, 6, 9, 12 months.
+- Goals and objectives use only 1, 3, 6, 9, or 12 month timeline anchors.
 - Objective text must be client-action focused.
 - If objective format is "action", use action-oriented statements (for example: "Client will identify...").
 - If objective format is "smart", produce SMART-style objective language.
@@ -13538,6 +13803,20 @@ This error cannot be fixed within this application's code; it requires a configu
                 }
             });
             addGoalBtnInTab.addEventListener('click', addGoal);
+            treatmentPlanStartDateInput.addEventListener('change', () => {
+                const client = findClient(selectedClientId);
+                if (!client) return;
+                const value = treatmentPlanStartDateInput.value;
+                if (value && !isValidDateInputValue(value)) return;
+                if (value) {
+                    client.treatmentPlanStartDate = value;
+                } else {
+                    delete client.treatmentPlanStartDate;
+                }
+                markDirty();
+                renderDetails();
+            });
+            applyTreatmentPlanStartDateBtn.addEventListener('click', applyTreatmentPlanStartDate);
 
             // Tab switching functionality
             appointmentsTabBtn.addEventListener('click', () => {
@@ -13584,10 +13863,6 @@ This error cannot be fixed within this application's code; it requires a configu
                     const objectiveId = objectiveItem?.dataset.objectiveId;
                     if (!objectiveId) return;
                     editObjective(goalId, objectiveId);
-                } else if (clickedButton?.classList.contains('timeline-objective-btn')) {
-                    const objectiveId = objectiveItem?.dataset.objectiveId;
-                    if (!objectiveId) return;
-                    editObjectiveTimeline(goalId, objectiveId);
                 } else if (clickedButton?.classList.contains('delete-btn') && objectiveItem) {
                     const objectiveId = objectiveItem.dataset.objectiveId;
                     if (!objectiveId) return;
@@ -13606,6 +13881,11 @@ This error cannot be fixed within this application's code; it requires a configu
             generateGoalsBtn.addEventListener('click', () => {
                 const client = findClient(selectedClientId);
                 if (!client) return;
+                if (!getClientTreatmentPlanStartDate(client)) {
+                    alert('Set a treatment plan start date before building a new treatment plan.');
+                    treatmentPlanStartDateInput?.focus();
+                    return;
+                }
                 goalGenerationRequestId += 1;
                 activeGoalGeneratorClientId = client.id;
                 generatedGoalsDraft = [];

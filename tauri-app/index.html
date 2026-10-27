@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.35</title>
+    <title>SmartEMR v3.0.36</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2436,6 +2436,13 @@
             font-size: 1.1rem;
             letter-spacing: -2px;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            cursor: grab;
+        }
+
+        .soap-config-drag-handle:active {
+            cursor: grabbing;
         }
 
         .soap-config-section-row.is-disabled {
@@ -4691,6 +4698,7 @@
             let activeNotesTab = 'clientDetails';
             let activeSoapPlatformId = null;
             let draggedSoapPlatformSectionKey = null;
+            let soapPlatformPointerDragState = null;
 
             const updateNotesTabUI = () => {
                 const activeTabMap = {
@@ -10905,6 +10913,19 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             const getActiveSoapPlatform = () => getSoapPlatformById(activeSoapPlatformId);
 
+            const reorderSoapPlatformSections = (platform, draggedKey, targetKey) => {
+                if (!platform || !draggedKey || !targetKey || draggedKey === targetKey) return false;
+                const fromIndex = platform.sections.findIndex(item => item.key === draggedKey);
+                const toIndex = platform.sections.findIndex(item => item.key === targetKey);
+                if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return false;
+                const [movedSection] = platform.sections.splice(fromIndex, 1);
+                platform.sections.splice(platform.sections.findIndex(item => item.key === targetKey), 0, movedSection);
+                markDirty();
+                renderSoapPlatformConfiguration();
+                renderSoap();
+                return true;
+            };
+
             const renderClientSoapPlatformOptions = (selectedId = null) => {
                 if (!clientSoapPlatformSelect) return;
                 const requestedId = selectedId === null ? clientSoapPlatformSelect.value || '' : selectedId;
@@ -11009,15 +11030,52 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         event.preventDefault();
                         const draggedKey = draggedSoapPlatformSectionKey || event.dataTransfer?.getData('text/plain');
                         if (!draggedKey || draggedKey === section.key) return;
-                        const fromIndex = activePlatform.sections.findIndex(item => item.key === draggedKey);
-                        const toIndex = activePlatform.sections.findIndex(item => item.key === section.key);
-                        if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
-                        const [movedSection] = activePlatform.sections.splice(fromIndex, 1);
-                        activePlatform.sections.splice(activePlatform.sections.findIndex(item => item.key === section.key), 0, movedSection);
-                        markDirty();
-                        renderSoapPlatformConfiguration();
-                        renderSoap();
+                        reorderSoapPlatformSections(activePlatform, draggedKey, section.key);
                     });
+                    row.addEventListener('pointerdown', event => {
+                        if (!event.isPrimary || event.button !== 0 || event.target.closest?.('input, button')) return;
+                        event.preventDefault();
+                        soapPlatformPointerDragState = {
+                            platformId: activePlatform.id,
+                            draggedKey: section.key,
+                            pointerId: event.pointerId,
+                            row,
+                            startX: event.clientX,
+                            startY: event.clientY,
+                            active: false,
+                            targetKey: null
+                        };
+                        row.setPointerCapture?.(event.pointerId);
+                    });
+                    row.addEventListener('pointermove', event => {
+                        const dragState = soapPlatformPointerDragState;
+                        if (!dragState || dragState.pointerId !== event.pointerId || dragState.row !== row) return;
+                        const distance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY);
+                        if (!dragState.active && distance < 4) return;
+                        dragState.active = true;
+                        row.classList.add('dragging');
+                        soapPlatformSectionsList.querySelectorAll('.drop-target').forEach(target => target.classList.remove('drop-target'));
+                        const targetRow = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.soap-config-section-row');
+                        if (targetRow && soapPlatformSectionsList.contains(targetRow) && targetRow.dataset.sectionKey !== dragState.draggedKey) {
+                            dragState.targetKey = targetRow.dataset.sectionKey;
+                            targetRow.classList.add('drop-target');
+                        } else {
+                            dragState.targetKey = null;
+                        }
+                    });
+                    const finishPointerDrag = event => {
+                        const dragState = soapPlatformPointerDragState;
+                        if (!dragState || dragState.pointerId !== event.pointerId || dragState.row !== row) return;
+                        row.releasePointerCapture?.(event.pointerId);
+                        soapPlatformPointerDragState = null;
+                        row.classList.remove('dragging');
+                        soapPlatformSectionsList.querySelectorAll('.drop-target').forEach(target => target.classList.remove('drop-target'));
+                        if (!dragState.active || !dragState.targetKey) return;
+                        const platform = getSoapPlatformById(dragState.platformId);
+                        reorderSoapPlatformSections(platform, dragState.draggedKey, dragState.targetKey);
+                    };
+                    row.addEventListener('pointerup', finishPointerDrag);
+                    row.addEventListener('pointercancel', finishPointerDrag);
                     soapPlatformSectionsList.appendChild(row);
                 });
             };

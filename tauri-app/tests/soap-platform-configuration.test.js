@@ -21,6 +21,10 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const getSoapPlatformSectionKeysForAppointment =/);
         assert.match(html, /appointment\.soapPlatformSnapshot/);
         assert.match(html, /captureSoapPlatformSnapshot\(appointment, client\)/);
+        assert.match(html, /const reorderSoapPlatformSections =/);
+        assert.match(html, /row\.addEventListener\('pointerdown'/);
+        assert.match(html, /row\.addEventListener\('pointermove'/);
+        assert.match(html, /row\.addEventListener\('pointerup'/);
         assert.match(html, /soapContentEl\.replaceChildren\(/);
         assert.match(html, /configuredSoapSections\.map\(sectionKey => soapSectionsByKey\.get\(sectionKey\)/);
     });

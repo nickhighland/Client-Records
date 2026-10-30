@@ -9,6 +9,12 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const fetchPresentingProblemFromAI =/);
         assert.match(html, /const fetchDiagnosticSupportFromAI =/);
         assert.match(html, /const fetchMedicalNecessityFromAI =/);
+        assert.match(html, /const normalizeDiagnosticSupportFromAi = \(aiPayload\) => \{/);
+        assert.match(html, /const rawSentences = Array\.isArray\(item\.sentences\)/);
+        assert.match(html, /Each entry must contain a sentences array with 3-4 concise, complete sentences/);
+        assert.match(html, /If no specific evidence appeared in the session, omit the evidence sentence/);
+        assert.match(html, /separate 3-4 sentence section for each diagnosis/);
+        assert.doesNotMatch(html, /no diagnosis-specific support was documented for that diagnosis/);
         assert.match(html, /const normalizeSoapPresentingProblemFromAi =/);
         assert.match(html, /const normalizeCoupleCollectiveReferences =/);
         assert.match(html, /Couple Collective Grammar/);

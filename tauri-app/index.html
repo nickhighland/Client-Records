@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.41</title>
+    <title>SmartEMR v3.0.42</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -8233,14 +8233,32 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }).filter(Boolean).join('\n\n').trim();
             };
 
-            const normalizeDiagnosticSupportFromAi = (aiPayload) => normalizeSupportValue(
-                aiPayload?.diagnostic_support
+            const normalizeDiagnosticSupportFromAi = (aiPayload) => {
+                const rawSupport = aiPayload?.diagnostic_support
                     ?? aiPayload?.diagnosticSupport
                     ?? aiPayload?.statements
                     ?? aiPayload?.statement
                     ?? aiPayload?.support
-                    ?? ''
-            );
+                    ?? '';
+                const entries = Array.isArray(rawSupport) ? rawSupport : [rawSupport];
+
+                return entries.map(item => {
+                    if (item && typeof item === 'object') {
+                        const diagnosis = String(item.diagnosis ?? item.name ?? '').trim();
+                        const rawSentences = Array.isArray(item.sentences)
+                            ? item.sentences
+                            : (item.statement ?? item.support ?? item.text ?? '');
+                        const sentences = (Array.isArray(rawSentences) ? rawSentences : [rawSentences])
+                            .map(sentence => String(sentence ?? '').trim())
+                            .filter(Boolean)
+                            .slice(0, 4);
+                        const statement = sentences.join(' ');
+                        if (diagnosis && statement) return `${diagnosis}: ${statement}`;
+                        return statement || diagnosis;
+                    }
+                    return String(item ?? '').trim();
+                }).filter(Boolean).join('\n\n').trim();
+            };
 
             const normalizeSoapPresentingProblemFromAi = (aiPayload) => normalizeSupportValue(
                 aiPayload?.presenting_problem
@@ -8266,8 +8284,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
 
                 const diagnosisContext = diagnoses.map((diagnosis, index) => `${index + 1}. ${diagnosis}`).join('\n');
-                const systemPrompt = 'You are a behavioral-health documentation assistant writing chart-ready Diagnostic Support. Use only facts explicitly documented in the supplied current-session record. For every listed clinician-entered diagnosis, write a concise statement describing how the session content is clinically related to, addresses, or is consistent with that diagnosis. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis. Do not evaluate whether criteria are met. Do not mention missing duration, pervasiveness, somatic symptoms, bereavement, diagnostic sufficiency, or any other criteria gap. Never say the record is insufficient to substantiate a diagnosis. Do not invent symptoms, duration, severity, impairment, risk, treatment response, or progress. If a diagnosis-specific connection was not documented today, say only that no diagnosis-specific support was documented for that diagnosis in this session. Return one statement for each diagnosis, with the diagnosis name included for clarity, in JSON exactly as {"diagnostic_support":[{"diagnosis":"...","statement":"..."}]}.';
-                const userPrompt = `Documented diagnoses (treatment anchors):\n${diagnosisContext}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nWrite one 1-2 sentence Diagnostic Support statement for each diagnosis. Describe how this session supports the documented diagnosis; do not discuss whether the diagnosis is properly substantiated or whether diagnostic criteria are met. Return only JSON in the required form.`;
+                const systemPrompt = 'You are a behavioral-health documentation assistant writing chart-ready Diagnostic Support. Use only facts explicitly documented in the supplied current-session record. Create one separate entry for every listed clinician-entered diagnosis and preserve each diagnosis label exactly as provided. Each entry must contain a sentences array with 3-4 concise, complete sentences in total when that much diagnosis-specific material is documented: include session-specific evidence only when explicitly documented, then describe the documented interventions, support, or treatment focus that addressed the diagnosis. If no specific evidence appeared in the session, omit the evidence sentence rather than inventing it or writing a filler statement about missing evidence. Do not pad with generic diagnostic descriptions. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis. Do not evaluate whether criteria are met. Do not mention missing duration, pervasiveness, somatic symptoms, bereavement, diagnostic sufficiency, or any other criteria gap. Never say the record is insufficient to substantiate a diagnosis. Do not invent symptoms, duration, severity, impairment, risk, treatment response, progress, intervention delivery, or client participation. If no diagnosis-specific intervention or support was documented, include only the shortest truthful diagnosis-specific content available instead of padding. Return only JSON exactly as {"diagnostic_support":[{"diagnosis":"F01.01 Example Diagnosis","sentences":["...","...","..."]}]}.';
+                const userPrompt = `Documented diagnoses (treatment anchors):\n${diagnosisContext}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nFor each diagnosis, write one separate Diagnostic Support entry with the diagnosis label and a sentences array. Aim for 3-4 total sentences per diagnosis using only documented session evidence and interventions/support; omit the evidence sentence when no specific evidence is documented, and do not add filler. Return only JSON in the required form.`;
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
                 const diagnosticSupport = normalizeDiagnosticSupportFromAi(aiPayload);
                 if (!diagnosticSupport) {
@@ -8317,12 +8335,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     fieldInstructions.push('For Presenting Problem, combine the documented presenting problem with the clinical problem evidenced in today\'s session; describe how that problem appeared in the session without inventing symptoms, severity, duration, impairment, risk, interventions, response, progress, or history. Keep it to 1-2 sentences, ideally 25-45 words and never more than 55 words.');
                 }
                 if (requested.has('diagnosticSupport')) {
-                    fieldInstructions.push('For Diagnostic Support, write one concise statement for every listed clinician-entered diagnosis describing how this session is clinically related to, addresses, or is consistent with that diagnosis. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis, and do not discuss whether criteria are met.');
+                    fieldInstructions.push('For Diagnostic Support, return one separate entry for every listed clinician-entered diagnosis, preserving each diagnosis label exactly as provided. Each entry must have a sentences array with 3-4 concise, complete sentences in total when supported by the record: include session-specific evidence only when explicitly documented, then describe the documented interventions, support, or treatment focus that addressed the diagnosis. If no specific evidence appeared in the session, omit that evidence sentence rather than inventing it or adding filler. Do not use generic diagnostic descriptions or pad the entry. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis, and do not discuss whether criteria are met.');
                 }
                 if (requested.has('medicalNecessity')) {
                     fieldInstructions.push('For Medical Necessity, use the clinician-entered diagnosis or diagnoses as treatment anchors and balance them with the current session. Name or clearly reference the relevant diagnosis, connect it to the session-documented clinical need, and state the focused treatment need that supports continued care. Use this style: "Ongoing skilled treatment remains medically necessary to address [session-documented clinical need] in the context of [documented diagnosis], focusing on [documented treatment targets] to mitigate [documented functional impact or risk]." Keep it to one sentence, ideally 25-45 words and never more than 55 words.');
                 }
-                const systemPrompt = `You are a behavioral-health documentation assistant writing only the requested chart-ready support fields. Use only facts explicitly documented in the supplied current-session record and treatment context. ${fieldInstructions.join(' ')} Diagnosis alone is not evidence; do not invent a symptom-diagnosis relationship. Do not list interventions, techniques, progress, response, or collateral events unless one is essential to explain the current need. Do not evaluate diagnostic criteria or explain why the diagnosis is valid. If no diagnosis is listed, return an empty diagnostic_support array and an empty medical_necessity string. Do not write or return fields that were not requested. Return only JSON with the requested keys using these names: presenting_problem, diagnostic_support, medical_necessity.`;
+                const systemPrompt = `You are a behavioral-health documentation assistant writing only the requested chart-ready support fields. Use only facts explicitly documented in the supplied current-session record and treatment context. ${fieldInstructions.join(' ')} Diagnosis alone is not evidence; do not invent a symptom-diagnosis relationship. Do not list interventions, techniques, progress, response, or collateral events unless one is essential to explain the current need. Do not evaluate diagnostic criteria or explain why the diagnosis is valid. If no diagnosis is listed, return an empty diagnostic_support array and an empty medical_necessity string. Do not write or return fields that were not requested. For Diagnostic Support, use the exact JSON shape [{"diagnosis":"...","sentences":["...","..."]}]. Return only JSON with the requested keys using these names: presenting_problem, diagnostic_support, medical_necessity.`;
                 const userPrompt = 'Documented diagnoses (treatment anchors):\n'
                     + diagnosisContext
                     + '\n\nComplete documented session record:\n'
@@ -9464,7 +9482,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 ${renderSoapCopyButton('diagnosticSupport', 'Diagnostic Support')}
                             </div>
                         </div>
-                        <textarea id="diagnosticSupport" class="soap-textarea soap-support-textarea" placeholder="Press Organize in Objective to generate diagnosis-specific session support." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.diagnosticSupport || '')}</textarea>
+                        <textarea id="diagnosticSupport" class="soap-textarea soap-support-textarea" placeholder="Press Organize in Objective to generate a separate 3-4 sentence section for each diagnosis." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.diagnosticSupport || '')}</textarea>
                     </div>
                     <div class="soap-support-block">
                         <div class="soap-support-header">

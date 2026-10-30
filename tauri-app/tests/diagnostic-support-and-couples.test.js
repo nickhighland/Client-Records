@@ -10,6 +10,10 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const fetchDiagnosticSupportFromAI =/);
         assert.match(html, /const fetchMedicalNecessityFromAI =/);
         assert.match(html, /const normalizeDiagnosticSupportFromAi = \(aiPayload\) => \{/);
+        assert.match(html, /const normalizeDiagnosticSupportReferences = \(value, client\) =>/);
+        assert.match(html, /refer to the client as "Ct" and the clinician as "Writer"/);
+        assert.match(html, /Never write "the client," "client," "the clinician," or "clinician"/);
+        assert.match(html, /normalizeDiagnosticSupportReferences\(supportFields\.diagnosticSupport, client\)/);
         assert.match(html, /const rawSentences = Array\.isArray\(item\.sentences\)/);
         assert.match(html, /Each entry must contain a sentences array with 3-4 concise, complete sentences/);
         assert.match(html, /If no specific evidence appeared in the session, omit the evidence sentence/);

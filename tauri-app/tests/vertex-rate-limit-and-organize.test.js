@@ -16,6 +16,16 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /supportFields = await fetchSupportFieldsFromAI\(client, appointment\)/);
         assert.match(html, /appointment\.soap\.presentingProblem = normalizeCoupleCollectiveReferences\(supportFields\.presentingProblem, client\)/);
         assert.match(html, /let objectiveOrganizationInFlight = false/);
+        assert.match(html, /const normalizeObjectiveRedundancyGroupsFromAi =/);
+        assert.match(html, /const fetchObjectiveRedundancyReviewFromAI =/);
+        assert.match(html, /Groups must be disjoint/);
+        assert.match(html, /const prepareObjectiveRedundancyReview = async/);
+        assert.match(html, /const completeGeneratedSoapNote = async/);
+        assert.match(html, /await prepareObjectiveRedundancyReview\(appointment, client\)/);
+        assert.match(html, /id="objectiveRedundancyReview"/);
+        assert.match(html, /class="objective-redundancy-checkbox"/);
+        assert.match(html, /Nothing changes until you press Organize/);
+        assert.match(html, /const pendingRedundancyReview = getObjectiveRedundancyReview\(appointment\)/);
         assert.doesNotMatch(html, /const \[diagnosticResult, medicalNecessityResult\] = await Promise\.allSettled/);
     });
 }

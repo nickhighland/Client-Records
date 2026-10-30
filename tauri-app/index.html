@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.42</title>
+    <title>SmartEMR v3.0.43</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -712,6 +712,83 @@
             font-family: inherit;
             background-color: var(--input-bg);
             color: var(--input-text);
+        }
+
+        .segmented-date-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            min-height: 34px;
+        }
+        .segmented-date-control .date-segment {
+            box-sizing: border-box;
+            height: 34px;
+            padding: 6px 4px;
+            border: 1px solid var(--input-border);
+            border-radius: 4px;
+            background: var(--input-bg);
+            color: var(--input-text);
+            font: inherit;
+            text-align: center;
+        }
+        .segmented-date-control .date-segment-month,
+        .segmented-date-control .date-segment-day {
+            width: 3.1em;
+        }
+        .segmented-date-control .date-segment-year {
+            width: 4.6em;
+        }
+        .segmented-date-control.compact .date-segment {
+            height: 27px;
+            padding: 3px 2px;
+            font-size: 0.78rem;
+        }
+        .segmented-date-control.compact .date-segment-month,
+        .segmented-date-control.compact .date-segment-day {
+            width: 2.7em;
+        }
+        .segmented-date-control.compact .date-segment-year {
+            width: 4.1em;
+        }
+        .segmented-date-control .date-segment:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.18);
+        }
+        .date-segment-separator {
+            color: var(--text-color-secondary);
+            font-weight: 600;
+        }
+        .date-picker-button {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid var(--input-border);
+            border-radius: 4px;
+            background: var(--input-bg);
+            color: var(--input-text);
+            cursor: pointer;
+            line-height: 1;
+        }
+        .date-picker-button:hover {
+            background: var(--item-active-bg);
+        }
+        .date-picker-button:disabled,
+        .segmented-date-control .date-segment:disabled {
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+        .date-input-value {
+            position: absolute;
+            width: 1px !important;
+            height: 1px;
+            margin: -1px;
+            padding: 0 !important;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0 !important;
+            opacity: 0;
         }
 
         /* Client Panel */
@@ -2113,6 +2190,112 @@
         .suggestion-accept-replace { color: #27ae60; border-color: #27ae60; }
         .suggestion-decline { color: #e74c3c; border-color: #e74c3c; }
 
+        .objective-redundancy-review {
+            margin-top: 8px;
+            border: 1px solid #b7791f;
+            border-radius: 6px;
+            background: color-mix(in srgb, var(--panel-bg) 92%, #f6ad55 8%);
+            overflow: hidden;
+        }
+        .objective-redundancy-header {
+            padding: 8px 10px;
+            color: var(--text-color-primary);
+            background: color-mix(in srgb, var(--panel-bg) 78%, #f6ad55 22%);
+            border-bottom: 1px solid #b7791f;
+        }
+        .objective-redundancy-header strong {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 0.86rem;
+        }
+        .objective-redundancy-help,
+        .objective-redundancy-reason,
+        .objective-redundancy-undo {
+            color: var(--text-color-secondary);
+            font-size: 0.78rem;
+            line-height: 1.4;
+        }
+        .objective-redundancy-group {
+            padding: 9px 10px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+        .objective-redundancy-group:last-of-type {
+            border-bottom: none;
+        }
+        .objective-redundancy-group-title {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            color: var(--text-color-primary);
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+        .objective-redundancy-reason {
+            margin: 3px 0 7px;
+        }
+        .objective-redundancy-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 7px;
+            padding: 5px 0;
+            color: var(--text-color-primary);
+            font-size: 0.82rem;
+            line-height: 1.35;
+            cursor: pointer;
+        }
+        .objective-redundancy-option input {
+            flex: 0 0 auto;
+            margin-top: 2px;
+        }
+        .objective-redundancy-recommended {
+            display: inline-block;
+            margin-left: 5px;
+            padding: 1px 5px;
+            border-radius: 999px;
+            color: #744210;
+            background: #fbd38d;
+            font-size: 0.68rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .objective-redundancy-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 9px 10px;
+        }
+        .objective-redundancy-actions button,
+        .objective-redundancy-undo button {
+            border: 1px solid var(--input-border);
+            border-radius: 4px;
+            padding: 4px 8px;
+            background: var(--input-bg);
+            color: var(--text-color-primary);
+            cursor: pointer;
+            font-size: 0.76rem;
+        }
+        .objective-redundancy-actions button:hover,
+        .objective-redundancy-undo button:hover {
+            background: var(--item-active-bg);
+        }
+        .objective-redundancy-actions .objective-redundancy-apply {
+            border-color: #b7791f;
+            background: #b7791f;
+            color: #ffffff;
+        }
+        .objective-redundancy-undo {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 8px 10px;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            background: var(--panel-bg);
+        }
+
         .audit-box {
             border: 1px solid var(--panel-border);
             border-radius: 8px;
@@ -3428,8 +3611,16 @@
                         <div class="no-selection">Select a client first</div>
                     </div>
                     <div class="panel-footer">
-                         <label for="appointmentDateInput" style="font-weight: 600; color: var(--text-color-secondary); font-size: 0.875rem; margin-bottom: 4px; display: block;">Appointment Date</label>
-                         <input type="date" id="appointmentDateInput" style="width: 100%; margin-bottom: 8px;">
+                         <label for="appointmentDateInputMonth" style="font-weight: 600; color: var(--text-color-secondary); font-size: 0.875rem; margin-bottom: 4px; display: block;">Appointment Date</label>
+                         <div class="segmented-date-control" data-segmented-date-input="appointmentDateInput" style="width: 100%; margin-bottom: 8px;">
+                             <input id="appointmentDateInputMonth" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="Appointment month" autocomplete="off">
+                             <span class="date-segment-separator" aria-hidden="true">/</span>
+                             <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="Appointment day" autocomplete="off">
+                             <span class="date-segment-separator" aria-hidden="true">/</span>
+                             <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" aria-label="Appointment year" autocomplete="off">
+                             <button type="button" class="date-picker-button" data-date-picker-for="appointmentDateInput" title="Choose appointment date" aria-label="Choose appointment date">📅</button>
+                             <input type="date" id="appointmentDateInput" class="date-input-value" tabindex="-1" aria-hidden="true">
+                         </div>
                          <div style="display: flex; align-items: center; gap: 8px;">
                              <button id="addAppointmentBtn" class="btn save-btn" style="flex: 1; padding: 8px;">+ Add</button>
                              <button id="updateAppointmentDateBtn" class="btn" style="flex: 1; padding: 8px;">Update Date</button>
@@ -3476,8 +3667,16 @@
                         <div style="display: flex; flex-direction: column; gap: 5px;">
                             <span style="font-weight: 600; color: var(--text-color-primary);">Tx Plan</span>
                             <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                <label for="treatmentPlanStartDateInput" style="font-size: 0.78rem; font-weight: 600; color: var(--text-color-secondary);">Start date</label>
-                                <input id="treatmentPlanStartDateInput" type="date" aria-label="Treatment plan start date" style="padding: 4px 6px; border: 1px solid var(--input-border); border-radius: 5px; background: var(--input-bg); color: var(--input-text); font-size: 0.78rem;" disabled>
+                                <label for="treatmentPlanStartDateInputMonth" style="font-size: 0.78rem; font-weight: 600; color: var(--text-color-secondary);">Start date</label>
+                                <div class="segmented-date-control compact" data-segmented-date-input="treatmentPlanStartDateInput">
+                                    <input id="treatmentPlanStartDateInputMonth" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="Treatment plan start month" autocomplete="off">
+                                    <span class="date-segment-separator" aria-hidden="true">/</span>
+                                    <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="Treatment plan start day" autocomplete="off">
+                                    <span class="date-segment-separator" aria-hidden="true">/</span>
+                                    <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" aria-label="Treatment plan start year" autocomplete="off">
+                                    <button type="button" class="date-picker-button" data-date-picker-for="treatmentPlanStartDateInput" title="Choose treatment plan start date" aria-label="Choose treatment plan start date">📅</button>
+                                    <input id="treatmentPlanStartDateInput" type="date" class="date-input-value" tabindex="-1" aria-hidden="true" disabled>
+                                </div>
                                 <button id="applyTreatmentPlanStartDateBtn" type="button" class="btn" style="padding: 4px 7px; font-size: 0.72rem;" title="Apply this start date to goals and objectives without a start date" disabled>Apply to undated</button>
                             </div>
                         </div>
@@ -5381,6 +5580,151 @@
                 return { year, month, day };
             };
             const isValidDateInputValue = (value) => Boolean(parseLocalDateInput(value));
+            const getSegmentedDateControl = (valueInputId) => Array.from(document.querySelectorAll('.segmented-date-control'))
+                .find(control => control.dataset.segmentedDateInput === valueInputId) || null;
+            const getSegmentedDateParts = (control) => ({
+                month: control?.querySelector('[data-date-segment="month"]') || null,
+                day: control?.querySelector('[data-date-segment="day"]') || null,
+                year: control?.querySelector('[data-date-segment="year"]') || null
+            });
+            const syncSegmentedDateInput = (valueInputId, value = null) => {
+                const control = getSegmentedDateControl(valueInputId);
+                const valueInput = document.getElementById(valueInputId);
+                if (!control || !valueInput) return;
+
+                const parts = parseLocalDateInput(value ?? valueInput.value);
+                const segments = getSegmentedDateParts(control);
+                if (parts) {
+                    segments.month.value = String(parts.month).padStart(2, '0');
+                    segments.day.value = String(parts.day).padStart(2, '0');
+                    segments.year.value = String(parts.year);
+                } else {
+                    segments.month.value = '';
+                    segments.day.value = '';
+                    segments.year.value = '';
+                }
+
+                const disabled = Boolean(valueInput.disabled);
+                Object.values(segments).forEach(segment => {
+                    if (segment) segment.disabled = disabled;
+                });
+                const pickerButton = control.querySelector('.date-picker-button');
+                if (pickerButton) pickerButton.disabled = disabled;
+            };
+            const focusSegmentedDatePart = (control, partName) => {
+                const segment = control?.querySelector(`[data-date-segment="${partName}"]`);
+                if (!segment || segment.disabled) return;
+                segment.focus();
+                segment.select();
+            };
+            const getSegmentedDateCandidate = (control) => {
+                const segments = getSegmentedDateParts(control);
+                const month = String(segments.month?.value || '').replace(/\D/g, '');
+                const day = String(segments.day?.value || '').replace(/\D/g, '');
+                const year = String(segments.year?.value || '').replace(/\D/g, '');
+                if (month.length !== 2 || day.length !== 2 || year.length !== 4) return '';
+                return `${year}-${month}-${day}`;
+            };
+            const updateSegmentedDateInputValue = (control, shouldCommit = false) => {
+                const valueInputId = control?.dataset.segmentedDateInput;
+                const valueInput = valueInputId ? document.getElementById(valueInputId) : null;
+                if (!control || !valueInput || valueInput.disabled) return;
+
+                const candidate = getSegmentedDateCandidate(control);
+                if (!shouldCommit || !isValidDateInputValue(candidate)) {
+                    valueInput.value = '';
+                    return;
+                }
+
+                const previousValue = valueInput.value;
+                valueInput.value = candidate;
+                syncSegmentedDateInput(valueInputId, candidate);
+                if (previousValue !== candidate) {
+                    valueInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            };
+            const handleSegmentedDateInput = (event) => {
+                const segment = event.target;
+                const control = segment.closest('.segmented-date-control');
+                if (!control) return;
+
+                const maxLength = segment.dataset.dateSegment === 'year' ? 4 : 2;
+                const digits = String(segment.value || '').replace(/\D/g, '').slice(0, maxLength);
+                if (segment.value !== digits) segment.value = digits;
+                updateSegmentedDateInputValue(control, segment.dataset.dateSegment !== 'month');
+
+                if (segment.dataset.dateSegment !== 'year' && digits.length === maxLength) {
+                    const nextPart = segment.dataset.dateSegment === 'month' ? 'day' : 'year';
+                    focusSegmentedDatePart(control, nextPart);
+                }
+            };
+            const handleSegmentedDateKeydown = (event) => {
+                const segment = event.target;
+                const control = segment.closest('.segmented-date-control');
+                if (!control) return;
+
+                const parts = ['month', 'day', 'year'];
+                const currentIndex = parts.indexOf(segment.dataset.dateSegment);
+                if (currentIndex < 0) return;
+
+                if ((event.key === '/' || event.key === '-') && segment.value) {
+                    event.preventDefault();
+                    if (currentIndex < parts.length - 1) focusSegmentedDatePart(control, parts[currentIndex + 1]);
+                } else if (event.key === 'ArrowRight' && currentIndex < parts.length - 1) {
+                    event.preventDefault();
+                    focusSegmentedDatePart(control, parts[currentIndex + 1]);
+                } else if (event.key === 'ArrowLeft' && currentIndex > 0) {
+                    event.preventDefault();
+                    focusSegmentedDatePart(control, parts[currentIndex - 1]);
+                } else if (event.key === 'Backspace' && !segment.value && currentIndex > 0) {
+                    event.preventDefault();
+                    focusSegmentedDatePart(control, parts[currentIndex - 1]);
+                }
+            };
+            const initializeSegmentedDateInputs = () => {
+                document.querySelectorAll('.segmented-date-control').forEach(control => {
+                    if (control.dataset.dateNavigationInitialized === 'true') return;
+                    control.dataset.dateNavigationInitialized = 'true';
+                    const valueInputId = control.dataset.segmentedDateInput;
+                    const valueInput = document.getElementById(valueInputId);
+                    const segments = getSegmentedDateParts(control);
+
+                    Object.values(segments).forEach(segment => {
+                        if (!segment) return;
+                        segment.addEventListener('focus', () => segment.select());
+                        segment.addEventListener('keydown', handleSegmentedDateKeydown);
+                        segment.addEventListener('input', handleSegmentedDateInput);
+                        segment.addEventListener('blur', event => {
+                            if (event.relatedTarget && control.contains(event.relatedTarget)) return;
+                            updateSegmentedDateInputValue(control, true);
+                        });
+                    });
+
+                    if (valueInput) {
+                        valueInput.addEventListener('input', () => syncSegmentedDateInput(valueInputId));
+                        valueInput.addEventListener('change', () => syncSegmentedDateInput(valueInputId));
+                    }
+
+                    const pickerButton = control.querySelector('.date-picker-button');
+                    if (pickerButton && valueInput) {
+                        pickerButton.addEventListener('click', () => {
+                            if (valueInput.disabled) return;
+                            updateSegmentedDateInputValue(control, true);
+                            try {
+                                if (typeof valueInput.showPicker === 'function') {
+                                    valueInput.showPicker();
+                                } else {
+                                    valueInput.click();
+                                }
+                            } catch (error) {
+                                valueInput.click();
+                            }
+                        });
+                    }
+
+                    syncSegmentedDateInput(valueInputId);
+                });
+            };
             const formatPlanDate = (value) => {
                 const parts = parseLocalDateInput(value);
                 return parts ? `${parts.month}/${parts.day}/${parts.year}` : '';
@@ -5431,9 +5775,11 @@
 
                 const client = findClient(selectedClientId);
                 const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
-                appointmentDateInput.value = appointment
+                const nextValue = appointment
                     ? getAppointmentDateInputValue(appointment.date)
                     : (appointmentDateManualOverride || getLocalDateInputValue());
+                appointmentDateInput.value = nextValue;
+                syncSegmentedDateInput('appointmentDateInput', nextValue);
             };
             const scheduleAppointmentDateRefresh = () => {
                 if (appointmentDateRefreshTimer) {
@@ -6945,6 +7291,7 @@
                 if (fieldKey === 'o') {
                     const actionState = ensureSoapObjectiveActionState(appointment);
                     actionState.objectiveRevision += 1;
+                    delete appointment.soap.objectiveRedundancyReview;
                     delete appointment.soap.diagnosticSupport;
                     delete appointment.soap.medicalNecessity;
                     delete appointment.soap.presentingProblem;
@@ -8183,6 +8530,117 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return joinSoapBulletItems(orderedItems);
             };
 
+            const normalizeObjectiveRedundancyGroupsFromAi = (objectiveItems, aiPayload) => {
+                const rawGroups = Array.isArray(aiPayload?.redundancy_groups)
+                    ? aiPayload.redundancy_groups
+                    : Array.isArray(aiPayload?.redundancyGroups)
+                        ? aiPayload.redundancyGroups
+                        : [];
+                const claimedIndexes = new Set();
+                const parseItemId = (value) => {
+                    const match = String(value ?? '').trim().match(/^O(\d+)$/i);
+                    if (!match) return -1;
+                    const index = Number.parseInt(match[1], 10) - 1;
+                    return Number.isInteger(index) && index >= 0 && index < objectiveItems.length ? index : -1;
+                };
+
+                return rawGroups.map((group, groupIndex) => {
+                    if (!group || typeof group !== 'object') return null;
+                    const rawItemIds = Array.isArray(group.item_ids)
+                        ? group.item_ids
+                        : Array.isArray(group.itemIds)
+                            ? group.itemIds
+                            : [];
+                    const indexes = [...new Set(rawItemIds.map(parseItemId).filter(index => index >= 0))]
+                        .filter(index => !claimedIndexes.has(index));
+                    if (indexes.length < 2) return null;
+
+                    indexes.forEach(index => claimedIndexes.add(index));
+                    const rawRecommendedIds = Array.isArray(group.recommended_keep_ids)
+                        ? group.recommended_keep_ids
+                        : Array.isArray(group.recommendedKeepIds)
+                            ? group.recommendedKeepIds
+                            : [];
+                    const recommendedKeepIndexes = [...new Set(rawRecommendedIds.map(parseItemId))]
+                        .filter(index => indexes.includes(index));
+                    const selectedItemIndexes = recommendedKeepIndexes.length > 0
+                        ? recommendedKeepIndexes
+                        : [indexes[0]];
+
+                    return {
+                        id: String(group.group_id ?? group.groupId ?? `redundancy-${groupIndex + 1}`).trim() || `redundancy-${groupIndex + 1}`,
+                        label: String(group.label ?? group.title ?? 'Related Objective statements').trim() || 'Related Objective statements',
+                        reason: String(group.reason ?? group.explanation ?? 'These statements appear to repeat or substantially overlap the same clinical thread.').trim()
+                            || 'These statements appear to repeat or substantially overlap the same clinical thread.',
+                        itemIndexes: indexes,
+                        recommendedKeepIndexes,
+                        selectedItemIndexes
+                    };
+                }).filter(Boolean);
+            };
+
+            const buildLocalObjectiveRedundancyGroups = (objectiveItems) => {
+                const buckets = new Map();
+                objectiveItems.forEach((item, index) => {
+                    const key = normalizeObjectiveOrderingItem(item);
+                    if (!key) return;
+                    if (!buckets.has(key)) buckets.set(key, []);
+                    buckets.get(key).push(index);
+                });
+
+                return [...buckets.values()]
+                    .filter(indexes => indexes.length > 1)
+                    .map((indexes, index) => ({
+                        id: `redundancy-${index + 1}`,
+                        label: 'Repeated Objective statements',
+                        reason: 'These statements are exact or near duplicates after normalization.',
+                        itemIndexes: indexes,
+                        recommendedKeepIndexes: [indexes[0]],
+                        selectedItemIndexes: [indexes[0]]
+                    }));
+            };
+
+            const fetchObjectiveRedundancyReviewFromAI = async (objectiveText) => {
+                const objectiveItems = splitSoapBulletItems(objectiveText);
+                if (objectiveItems.length < 2) return [];
+
+                const objectiveContext = objectiveItems
+                    .map((item, index) => `O${index + 1}: ${item}`)
+                    .join('\n');
+                const systemPrompt = 'You are reviewing a behavioral-health SOAP Objective section for redundancy before it is organized. Identify only true semantic duplicates or substantially overlapping statements that repeat the same clinical fact or intervention. Shared vocabulary alone is not enough. Do not group statements that contain distinct clinically meaningful details, and do not group contradictions. Do not rewrite, merge, reorder, or delete any statement. Groups must be disjoint, contain at least two item IDs, and use the original item IDs exactly. Recommend one or more items to keep in each group, preferring the most complete or specific statement. Return only JSON exactly as {"redundancy_groups":[{"group_id":"R1","label":"...","reason":"...","item_ids":["O2","O7"],"recommended_keep_ids":["O2"]}]}.';
+                const userPrompt = `Objective statements to review (the O-number is the only item identifier):\n${objectiveContext}\n\nReturn only redundancy groups. If no true redundancy exists, return {"redundancy_groups":[]}. Do not include any statement text outside the required JSON.`;
+                const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
+                return normalizeObjectiveRedundancyGroupsFromAi(objectiveItems, aiPayload);
+            };
+
+            const prepareObjectiveRedundancyReview = async (appointment, client) => {
+                if (!appointment?.soap) return [];
+                const objectiveText = String(appointment.soap.o || '').trim();
+                const objectiveItems = splitSoapBulletItems(objectiveText);
+                if (objectiveItems.length < 2) {
+                    delete appointment.soap.objectiveRedundancyReview;
+                    return [];
+                }
+
+                let groups = [];
+                try {
+                    groups = await fetchObjectiveRedundancyReviewFromAI(objectiveText);
+                } catch (error) {
+                    console.warn('Objective redundancy review AI failed; checking for exact duplicates locally.', error);
+                    groups = buildLocalObjectiveRedundancyGroups(objectiveItems);
+                }
+
+                if (groups.length > 0) {
+                    appointment.soap.objectiveRedundancyReview = {
+                        objectiveText,
+                        groups
+                    };
+                } else {
+                    delete appointment.soap.objectiveRedundancyReview;
+                }
+                return groups;
+            };
+
             const getClientDiagnosisNames = (client) => {
                 const names = getClientDiagnoses(client)
                     .map(entry => String(entry?.name || '').trim())
@@ -8260,6 +8718,37 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }).filter(Boolean).join('\n\n').trim();
             };
 
+            const normalizeDiagnosticSupportReferences = (value, client) => {
+                const normalizeText = (text) => String(text ?? '')
+                    .replace(/\bthe\s+clients?\b/gi, match => match.toLowerCase().includes('clients') ? 'Cts' : 'Ct')
+                    .replace(/\bclients\b/gi, 'Cts')
+                    .replace(/\bclient\b/gi, 'Ct')
+                    .replace(/\bthe\s+clinicians?\b/gi, match => match.toLowerCase().includes('clinicians') ? 'Writers' : 'Writer')
+                    .replace(/\bclinicians\b/gi, 'Writers')
+                    .replace(/\bclinician\b/gi, 'Writer');
+
+                if (typeof value === 'string') {
+                    const normalizedSections = value.split(/\n\s*\n/).map(section => {
+                        const separatorIndex = section.indexOf(':');
+                        if (separatorIndex <= 0) return normalizeText(section);
+                        const diagnosisLabel = section.slice(0, separatorIndex).trim();
+                        const statement = normalizeText(section.slice(separatorIndex + 1).trim());
+                        return statement ? `${diagnosisLabel}: ${statement}` : diagnosisLabel;
+                    }).join('\n\n');
+                    return normalizeCoupleCollectiveReferences(normalizedSections, client);
+                }
+                if (Array.isArray(value)) {
+                    return value.map(item => normalizeDiagnosticSupportReferences(item, client));
+                }
+                if (value && typeof value === 'object') {
+                    return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+                        key,
+                        normalizeDiagnosticSupportReferences(item, client)
+                    ]));
+                }
+                return value;
+            };
+
             const normalizeSoapPresentingProblemFromAi = (aiPayload) => normalizeSupportValue(
                 aiPayload?.presenting_problem
                     ?? aiPayload?.presentingProblem
@@ -8284,7 +8773,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
 
                 const diagnosisContext = diagnoses.map((diagnosis, index) => `${index + 1}. ${diagnosis}`).join('\n');
-                const systemPrompt = 'You are a behavioral-health documentation assistant writing chart-ready Diagnostic Support. Use only facts explicitly documented in the supplied current-session record. Create one separate entry for every listed clinician-entered diagnosis and preserve each diagnosis label exactly as provided. Each entry must contain a sentences array with 3-4 concise, complete sentences in total when that much diagnosis-specific material is documented: include session-specific evidence only when explicitly documented, then describe the documented interventions, support, or treatment focus that addressed the diagnosis. If no specific evidence appeared in the session, omit the evidence sentence rather than inventing it or writing a filler statement about missing evidence. Do not pad with generic diagnostic descriptions. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis. Do not evaluate whether criteria are met. Do not mention missing duration, pervasiveness, somatic symptoms, bereavement, diagnostic sufficiency, or any other criteria gap. Never say the record is insufficient to substantiate a diagnosis. Do not invent symptoms, duration, severity, impairment, risk, treatment response, progress, intervention delivery, or client participation. If no diagnosis-specific intervention or support was documented, include only the shortest truthful diagnosis-specific content available instead of padding. Return only JSON exactly as {"diagnostic_support":[{"diagnosis":"F01.01 Example Diagnosis","sentences":["...","...","..."]}]}.';
+                const systemPrompt = 'You are a behavioral-health documentation assistant writing chart-ready Diagnostic Support. Use only facts explicitly documented in the supplied current-session record. Create one separate entry for every listed clinician-entered diagnosis and preserve each diagnosis label exactly as provided. Each entry must contain a sentences array with 3-4 concise, complete sentences in total when that much diagnosis-specific material is documented: include session-specific evidence only when explicitly documented, then describe the documented interventions, support, or treatment focus that addressed the diagnosis. If no specific evidence appeared in the session, omit the evidence sentence rather than inventing it or writing a filler statement about missing evidence. Do not pad with generic diagnostic descriptions. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis. Do not evaluate whether criteria are met. Do not mention missing duration, pervasiveness, somatic symptoms, bereavement, diagnostic sufficiency, or any other criteria gap. Never say the record is insufficient to substantiate a diagnosis. Do not invent symptoms, duration, severity, impairment, risk, treatment response, progress, intervention delivery, or client participation. If no diagnosis-specific intervention or support was documented, include only the shortest truthful diagnosis-specific content available instead of padding. Use the locked chart terms: refer to the client as "Ct" and the clinician as "Writer"; for couple sessions use assigned member names/pronouns and the collective grammar rule. Never write "the client," "client," "the clinician," or "clinician" in the generated support text. Return only JSON exactly as {"diagnostic_support":[{"diagnosis":"F01.01 Example Diagnosis","sentences":["...","...","..."]}]}.';
                 const userPrompt = `Documented diagnoses (treatment anchors):\n${diagnosisContext}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nFor each diagnosis, write one separate Diagnostic Support entry with the diagnosis label and a sentences array. Aim for 3-4 total sentences per diagnosis using only documented session evidence and interventions/support; omit the evidence sentence when no specific evidence is documented, and do not add filler. Return only JSON in the required form.`;
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
                 const diagnosticSupport = normalizeDiagnosticSupportFromAi(aiPayload);
@@ -8335,12 +8824,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     fieldInstructions.push('For Presenting Problem, combine the documented presenting problem with the clinical problem evidenced in today\'s session; describe how that problem appeared in the session without inventing symptoms, severity, duration, impairment, risk, interventions, response, progress, or history. Keep it to 1-2 sentences, ideally 25-45 words and never more than 55 words.');
                 }
                 if (requested.has('diagnosticSupport')) {
-                    fieldInstructions.push('For Diagnostic Support, return one separate entry for every listed clinician-entered diagnosis, preserving each diagnosis label exactly as provided. Each entry must have a sentences array with 3-4 concise, complete sentences in total when supported by the record: include session-specific evidence only when explicitly documented, then describe the documented interventions, support, or treatment focus that addressed the diagnosis. If no specific evidence appeared in the session, omit that evidence sentence rather than inventing it or adding filler. Do not use generic diagnostic descriptions or pad the entry. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis, and do not discuss whether criteria are met.');
+                    fieldInstructions.push('For Diagnostic Support, return one separate entry for every listed clinician-entered diagnosis, preserving each diagnosis label exactly as provided. Each entry must have a sentences array with 3-4 concise, complete sentences in total when supported by the record: include session-specific evidence only when explicitly documented, then describe the documented interventions, support, or treatment focus that addressed the diagnosis. If no specific evidence appeared in the session, omit that evidence sentence rather than inventing it or adding filler. Do not use generic diagnostic descriptions or pad the entry. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis, and do not discuss whether criteria are met. Use the locked chart terms: refer to the client as "Ct" and the clinician as "Writer"; for couple sessions use assigned member names/pronouns and the collective grammar rule. Never write "the client," "client," "the clinician," or "clinician" in Diagnostic Support.');
                 }
                 if (requested.has('medicalNecessity')) {
                     fieldInstructions.push('For Medical Necessity, use the clinician-entered diagnosis or diagnoses as treatment anchors and balance them with the current session. Name or clearly reference the relevant diagnosis, connect it to the session-documented clinical need, and state the focused treatment need that supports continued care. Use this style: "Ongoing skilled treatment remains medically necessary to address [session-documented clinical need] in the context of [documented diagnosis], focusing on [documented treatment targets] to mitigate [documented functional impact or risk]." Keep it to one sentence, ideally 25-45 words and never more than 55 words.');
                 }
-                const systemPrompt = `You are a behavioral-health documentation assistant writing only the requested chart-ready support fields. Use only facts explicitly documented in the supplied current-session record and treatment context. ${fieldInstructions.join(' ')} Diagnosis alone is not evidence; do not invent a symptom-diagnosis relationship. Do not list interventions, techniques, progress, response, or collateral events unless one is essential to explain the current need. Do not evaluate diagnostic criteria or explain why the diagnosis is valid. If no diagnosis is listed, return an empty diagnostic_support array and an empty medical_necessity string. Do not write or return fields that were not requested. For Diagnostic Support, use the exact JSON shape [{"diagnosis":"...","sentences":["...","..."]}]. Return only JSON with the requested keys using these names: presenting_problem, diagnostic_support, medical_necessity.`;
+                const systemPrompt = `You are a behavioral-health documentation assistant writing only the requested chart-ready support fields. Use only facts explicitly documented in the supplied current-session record and treatment context. ${fieldInstructions.join(' ')} Diagnosis alone is not evidence; do not invent a symptom-diagnosis relationship. Do not list interventions, techniques, progress, response, or collateral events unless one is essential to explain the current need. Do not evaluate diagnostic criteria or explain why the diagnosis is valid. If no diagnosis is listed, return an empty diagnostic_support array and an empty medical_necessity string. Do not write or return fields that were not requested. For Diagnostic Support, use the exact JSON shape [{"diagnosis":"...","sentences":["...","..."]}] and use the locked chart terms Ct and Writer. Return only JSON with the requested keys using these names: presenting_problem, diagnostic_support, medical_necessity.`;
                 const userPrompt = 'Documented diagnoses (treatment anchors):\n'
                     + diagnosisContext
                     + '\n\nComplete documented session record:\n'
@@ -8382,7 +8871,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 try {
                     const diagnosticSupport = await fetchDiagnosticSupportFromAI(client, appointment);
                     if (!appointment.soap) appointment.soap = { s: '', o: '', a: '', p: '' };
-                    appointment.soap.diagnosticSupport = normalizeCoupleCollectiveReferences(diagnosticSupport, client);
+                    appointment.soap.diagnosticSupport = normalizeDiagnosticSupportReferences(diagnosticSupport, client);
                     delete appointment.auditCheck;
                     markDirty();
                     if (isCurrentAppointmentContext(appointmentContext)) renderSoap();
@@ -9203,8 +9692,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     ? "Enter or generate the client's presenting problem..."
                     : "Select a client to enter a presenting problem...";
                 treatmentPlanStartDateInput.disabled = !client;
-                treatmentPlanStartDateInput.value = client ? getClientTreatmentPlanStartDate(client) : '';
-                applyTreatmentPlanStartDateBtn.disabled = !client || !getClientTreatmentPlanStartDate(client);
+                const treatmentPlanStartDate = client ? getClientTreatmentPlanStartDate(client) : '';
+                treatmentPlanStartDateInput.value = treatmentPlanStartDate;
+                syncSegmentedDateInput('treatmentPlanStartDateInput', treatmentPlanStartDate);
+                applyTreatmentPlanStartDateBtn.disabled = !client || !treatmentPlanStartDate;
 
                 sessionInfoEl.disabled = !appointment && !note;
                 sessionInfoEl.value = appointment
@@ -9440,6 +9931,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         </div>
                         <textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.o || ''}</textarea>
                         ${(soapData.o_suggestion || []).map((s, i) => renderSuggestionBox('o', s, i)).join('')}
+                        ${renderObjectiveRedundancyReview(appointment)}
                     </div>
                     <div class="soap-section">
                         <div class="soap-header">
@@ -9579,6 +10071,67 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="suggestion-text">${suggestionContent}</div>
                         <div class="suggestion-actions">
                             ${actionsHtml}
+                        </div>
+                    </div>
+                `;
+            };
+
+            const getObjectiveRedundancyReview = (appointment) => {
+                const review = appointment?.soap?.objectiveRedundancyReview;
+                if (!review || !Array.isArray(review.groups) || review.groups.length === 0) return null;
+                if (String(review.objectiveText || '').trim() !== String(appointment.soap.o || '').trim()) return null;
+                return review;
+            };
+
+            const getSelectedObjectiveRedundancyIndexes = (group) => {
+                const itemIndexes = Array.isArray(group?.itemIndexes) ? group.itemIndexes : [];
+                const selected = Array.isArray(group?.selectedItemIndexes)
+                    ? group.selectedItemIndexes.filter(index => itemIndexes.includes(index))
+                    : [];
+                if (selected.length > 0) return [...new Set(selected)];
+                return itemIndexes.length > 0 ? [itemIndexes[0]] : [];
+            };
+
+            const renderObjectiveRedundancyReview = (appointment) => {
+                const review = getObjectiveRedundancyReview(appointment);
+                if (!review) return '';
+                const objectiveItems = splitSoapBulletItems(review.objectiveText);
+                const groups = review.groups.filter(group => (
+                    Array.isArray(group?.itemIndexes)
+                    && group.itemIndexes.filter(index => objectiveItems[index]).length > 1
+                ));
+                if (groups.length === 0) return '';
+
+                return `
+                    <div id="objectiveRedundancyReview" class="objective-redundancy-review">
+                        <div class="objective-redundancy-header">
+                            <strong>Redundancy Review</strong>
+                            <div class="objective-redundancy-help">Select the Objective statement(s) to keep in each group. Nothing changes until you press Organize.</div>
+                        </div>
+                        ${groups.map((group, groupIndex) => {
+                            const groupId = String(group.id || `redundancy-${groupIndex + 1}`);
+                            const selectedIndexes = new Set(getSelectedObjectiveRedundancyIndexes(group));
+                            const recommendedIndexes = new Set(Array.isArray(group.recommendedKeepIndexes) ? group.recommendedKeepIndexes : []);
+                            const groupIndexes = group.itemIndexes.filter(index => objectiveItems[index]);
+                            return `
+                                <div class="objective-redundancy-group" data-redundancy-group-id="${escapeGoalDraftHtml(groupId)}">
+                                    <div class="objective-redundancy-group-title">
+                                        <span>${escapeGoalDraftHtml(group.label || 'Related Objective statements')}</span>
+                                        <span>${groupIndexes.length} statements</span>
+                                    </div>
+                                    <div class="objective-redundancy-reason">${escapeGoalDraftHtml(group.reason || 'These statements appear to repeat or substantially overlap.')}</div>
+                                    ${groupIndexes.map(itemIndex => `
+                                        <label class="objective-redundancy-option">
+                                            <input type="checkbox" class="objective-redundancy-checkbox" data-group-id="${escapeGoalDraftHtml(groupId)}" data-item-index="${itemIndex}" ${selectedIndexes.has(itemIndex) ? 'checked' : ''}>
+                                            <span>${escapeGoalDraftHtml(`• ${objectiveItems[itemIndex]}`)}${recommendedIndexes.has(itemIndex) ? '<span class="objective-redundancy-recommended">Recommended</span>' : ''}</span>
+                                        </label>
+                                    `).join('')}
+                                    <button type="button" class="objective-redundancy-keep-group" data-group-id="${escapeGoalDraftHtml(groupId)}">Keep all in this group</button>
+                                </div>
+                            `;
+                        }).join('')}
+                        <div class="objective-redundancy-actions">
+                            <button type="button" id="dismissObjectiveRedundancyBtn">Dismiss Review</button>
                         </div>
                     </div>
                 `;
@@ -11047,6 +11600,50 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             });
             soapContentEl.addEventListener('click', (e) => {
                  const clickedButton = e.target.closest?.('button');
+                 const redundancyCheckbox = e.target.closest?.('.objective-redundancy-checkbox');
+                 if (redundancyCheckbox) {
+                     const client = findClient(selectedClientId);
+                     const appointment = findAppointment(client, selectedAppointmentId);
+                     const review = getObjectiveRedundancyReview(appointment);
+                     const groupId = redundancyCheckbox.dataset.groupId;
+                     const itemIndex = Number.parseInt(redundancyCheckbox.dataset.itemIndex, 10);
+                     const group = review?.groups.find(candidate => String(candidate?.id) === String(groupId));
+                     if (!group || !Number.isInteger(itemIndex)) return;
+
+                     const selectedIndexes = new Set(getSelectedObjectiveRedundancyIndexes(group));
+                     if (redundancyCheckbox.checked) {
+                         selectedIndexes.add(itemIndex);
+                     } else if (selectedIndexes.size <= 1) {
+                         redundancyCheckbox.checked = true;
+                         return;
+                     } else {
+                         selectedIndexes.delete(itemIndex);
+                     }
+                     group.selectedItemIndexes = [...selectedIndexes].sort((left, right) => left - right);
+                     markDirty();
+                     return;
+                 }
+                 if (clickedButton?.classList.contains('objective-redundancy-keep-group')) {
+                     const client = findClient(selectedClientId);
+                     const appointment = findAppointment(client, selectedAppointmentId);
+                     const review = getObjectiveRedundancyReview(appointment);
+                     const groupId = clickedButton.dataset.groupId;
+                     const group = review?.groups.find(candidate => String(candidate?.id) === String(groupId));
+                     if (!group) return;
+                     group.selectedItemIndexes = [...(Array.isArray(group.itemIndexes) ? group.itemIndexes : [])];
+                     markDirty();
+                     renderSoap();
+                     return;
+                 }
+                 if (clickedButton?.id === 'dismissObjectiveRedundancyBtn') {
+                     const client = findClient(selectedClientId);
+                     const appointment = findAppointment(client, selectedAppointmentId);
+                     if (!appointment?.soap) return;
+                     delete appointment.soap.objectiveRedundancyReview;
+                     markDirty();
+                     renderSoap();
+                     return;
+                 }
                  if (clickedButton?.id === 'runSoapAuditBtn') {
                      const client = findClient(selectedClientId);
                      const appointment = findAppointment(client, selectedAppointmentId);
@@ -11842,6 +12439,7 @@ Requirements:
                 delete appointment.soap.diagnosticSupport;
                 delete appointment.soap.medicalNecessity;
                 delete appointment.soap.presentingProblem;
+                delete appointment.soap.objectiveRedundancyReview;
                 appointment.soap.objectiveInterventionMatches = [];
                 const objectiveActionState = ensureSoapObjectiveActionState(appointment);
                 objectiveActionState.organizedRevision = null;
@@ -11910,6 +12508,13 @@ Requirements:
                 }
              };
 
+            const completeGeneratedSoapNote = async (soapData, appointment, client) => {
+                processAndStoreSoapData(soapData, appointment, client);
+                await prepareObjectiveRedundancyReview(appointment, client);
+                markDirty();
+                renderSoap();
+            };
+
             let objectiveOrganizationInFlight = false;
 
             const organizeObjectiveContent = async () => {
@@ -11918,8 +12523,26 @@ Requirements:
                 if (!appointment) return;
                 const client = findClient(appointmentContext.clientId);
 
-                const objectiveText = (appointment.soap?.o || '').trim();
-                const objectiveItems = splitSoapBulletItems(objectiveText);
+                let objectiveText = (appointment.soap?.o || '').trim();
+                let objectiveItems = splitSoapBulletItems(objectiveText);
+                const pendingRedundancyReview = getObjectiveRedundancyReview(appointment);
+                if (pendingRedundancyReview) {
+                    const reviewedItems = splitSoapBulletItems(pendingRedundancyReview.objectiveText);
+                    const retainedIndexes = new Set(reviewedItems.map((_, index) => index));
+                    pendingRedundancyReview.groups.forEach(group => {
+                        const selectedIndexes = new Set(getSelectedObjectiveRedundancyIndexes(group));
+                        (Array.isArray(group?.itemIndexes) ? group.itemIndexes : []).forEach(index => {
+                            if (!selectedIndexes.has(index)) retainedIndexes.delete(index);
+                        });
+                    });
+                    const retainedItems = reviewedItems.filter((_, index) => retainedIndexes.has(index));
+                    if (retainedItems.length < 2) {
+                        alert('Keep at least two Objective statements before organizing.');
+                        return;
+                    }
+                    objectiveItems = retainedItems;
+                    objectiveText = joinSoapBulletItems(retainedItems);
+                }
                 if (objectiveItems.length < 2) {
                     alert('Please enter at least two Objective bullet points before organizing.');
                     return;
@@ -11944,6 +12567,9 @@ Requirements:
                     }
 
                     updateSoapFieldValue(appointment, 'o', organizedObjective || objectiveText);
+                    if (pendingRedundancyReview) {
+                        delete appointment.soap.objectiveRedundancyReview;
+                    }
                     setSoapSectionOrderOverride(appointment.soap, 'o', true);
                     markObjectiveOrganizeCompleted(appointment);
                     delete appointment.auditCheck;
@@ -11981,7 +12607,7 @@ Requirements:
                             }
                             if (requestedSupportFields.includes('diagnosticSupport')) {
                                 if (supportFields.diagnosticSupport) {
-                                    appointment.soap.diagnosticSupport = normalizeCoupleCollectiveReferences(supportFields.diagnosticSupport, client);
+                                    appointment.soap.diagnosticSupport = normalizeDiagnosticSupportReferences(supportFields.diagnosticSupport, client);
                                 } else {
                                     supportErrors.push('Diagnostic Support was not returned.');
                                 }
@@ -12148,10 +12774,7 @@ Requirements:
                     let content = result.choices[0].message.content;
                     let soapData = JSON.parse(content);
 
-                    processAndStoreSoapData(soapData, appointment, client);
-
-                    markDirty();
-                    renderSoap();
+                    await completeGeneratedSoapNote(soapData, appointment, client);
 
                 } catch (error) {
                     console.error('OpenAI SOAP Note Generation Error:', error);
@@ -12267,10 +12890,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     const content = result.candidates[0].content.parts[0].text;
                     const soapData = JSON.parse(content);
 
-                    processAndStoreSoapData(soapData, appointment, client);
-
-                    markDirty();
-                    renderSoap();
+                    await completeGeneratedSoapNote(soapData, appointment, client);
 
                 } catch (error) {
                     console.error('Vertex SOAP Note Generation Error:', error);
@@ -12385,10 +13005,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                         throw new Error(`The AI model returned malformed JSON that could not be automatically fixed. Check the browser console for the raw output. Details: ${parseError.message}`);
                     }
                     
-                    processAndStoreSoapData(soapData, appointment, client);
-                    
-                    markDirty();
-                    renderSoap();
+                    await completeGeneratedSoapNote(soapData, appointment, client);
 
                 } catch (error) {
                     console.error('SOAP Note Generation Error:', error);
@@ -12501,9 +13118,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                         throw new Error(`The AI model returned malformed JSON that could not be automatically fixed. Check the console for the raw output. Details: ${parseError.message}`);
                     }
 
-                    processAndStoreSoapData(soapData, appointment, client);
-                    markDirty();
-                    renderSoap();
+                    await completeGeneratedSoapNote(soapData, appointment, client);
 
                 } catch (error) {
                     console.error('SOAP Note Generation Error (Ollama):', error);
@@ -13790,6 +14405,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 renderDetails();
             });
             applyTreatmentPlanStartDateBtn.addEventListener('click', applyTreatmentPlanStartDate);
+            initializeSegmentedDateInputs();
 
             // Tab switching functionality
             appointmentsTabBtn.addEventListener('click', () => {

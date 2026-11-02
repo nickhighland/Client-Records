@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.44</title>
+    <title>SmartEMR v3.0.45</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2114,6 +2114,29 @@
         .soap-icon-btn.is-loading svg {
             animation: soap-icon-spin 0.8s linear infinite;
         }
+        .soap-action-spinner {
+            display: inline-block;
+            width: 11px;
+            height: 11px;
+            margin-right: 5px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            vertical-align: -1px;
+            animation: soap-icon-spin 0.8s linear infinite;
+        }
+        .soap-processing-status {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+            color: var(--text-color-secondary);
+            font-size: 0.72rem;
+            font-weight: 400;
+            white-space: nowrap;
+        }
+        .soap-field-processing {
+            opacity: 0.72;
+        }
         @keyframes soap-icon-spin {
             to { transform: rotate(360deg); }
         }
@@ -2216,17 +2239,21 @@
             line-height: 1.4;
         }
         .objective-redundancy-group {
-            padding: 9px 10px;
-            border-bottom: 1px solid var(--panel-border);
+            margin: 8px 0;
+            border: 1px solid #b7791f;
+            border-radius: 6px;
+            background: var(--panel-bg);
+            overflow: hidden;
         }
-        .objective-redundancy-group:last-of-type {
-            border-bottom: none;
+        .objective-redundancy-group-container {
+            display: block;
         }
         .objective-redundancy-group-title {
             display: flex;
             align-items: baseline;
             justify-content: space-between;
             gap: 8px;
+            padding: 9px 10px 5px;
             color: var(--text-color-primary);
             font-size: 0.82rem;
             font-weight: 700;
@@ -2275,20 +2302,6 @@
             font-weight: 700;
             letter-spacing: 0.02em;
             text-transform: uppercase;
-        }
-        .objective-redundancy-decline {
-            flex: 0 0 auto;
-            align-self: center;
-            border: 1px solid #e74c3c;
-            border-radius: 4px;
-            padding: 3px 7px;
-            background: transparent;
-            color: #c0392b;
-            cursor: pointer;
-            font-size: 0.72rem;
-        }
-        .objective-redundancy-decline:hover {
-            background: rgba(231, 76, 60, 0.1);
         }
         .objective-redundancy-recommended {
             display: inline-block;
@@ -7401,15 +7414,52 @@
             const setSoapActionButtonContent = (button, label, isComplete, isLoading = false) => {
                 if (!button) return;
                 const isRefreshButton = label === 'Refresh';
+                const loadingContent = isLoading && !isRefreshButton
+                    ? `<span class="soap-action-spinner" aria-hidden="true"></span>${label}...`
+                    : `${label}${isComplete ? SOAP_ICON_SVGS.check : ''}`;
                 button.innerHTML = isRefreshButton
                     ? `${SOAP_ICON_SVGS.refresh}${isComplete ? SOAP_ICON_SVGS.check : ''}`
-                    : `${label}${isComplete ? SOAP_ICON_SVGS.check : ''}`;
+                    : loadingContent;
                 button.classList.toggle('is-loading', isLoading);
-                button.title = isRefreshButton
-                    ? (isLoading ? 'Refreshing interventions...' : 'Refresh interventions')
-                    : label;
+                button.title = isLoading
+                    ? (isRefreshButton ? 'Refreshing interventions...' : `${label}...`)
+                    : (isRefreshButton ? 'Refresh interventions' : label);
                 button.setAttribute('aria-label', button.title);
                 button.setAttribute('aria-busy', String(isLoading));
+            };
+
+            const SOAP_POST_OBJECTIVE_FIELD_IDS = [
+                'interventions',
+                'presentingProblem',
+                'diagnosticSupport',
+                'medicalNecessity'
+            ];
+
+            const setSoapPostObjectiveProcessingState = (isLoading) => {
+                SOAP_POST_OBJECTIVE_FIELD_IDS.forEach(fieldId => {
+                    const textarea = document.getElementById(fieldId);
+                    const container = textarea?.closest('.soap-section, .soap-support-block');
+                    const header = container?.querySelector('.soap-header, .soap-support-header');
+                    const label = header?.querySelector('span');
+                    if (!textarea || !header || !label) return;
+
+                    let status = label.querySelector('.soap-processing-status');
+                    if (isLoading) {
+                        if (!status) {
+                            status = document.createElement('span');
+                            status.className = 'soap-processing-status';
+                            status.setAttribute('aria-live', 'polite');
+                            status.innerHTML = '<span class="soap-action-spinner" aria-hidden="true"></span>Generating...';
+                            label.appendChild(status);
+                        }
+                        textarea.classList.add('soap-field-processing');
+                        textarea.setAttribute('aria-busy', 'true');
+                    } else {
+                        status?.remove();
+                        textarea.classList.remove('soap-field-processing');
+                        textarea.removeAttribute('aria-busy');
+                    }
+                });
             };
 
             const refreshObjectiveActionButtons = (appointment) => {
@@ -7417,7 +7467,7 @@
                 const objectiveOrganized = isObjectiveOrganizeCompleted(appointment);
                 const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
                 if (organizeObjectiveBtn) {
-                    organizeObjectiveBtn.disabled = splitSoapBulletItems(objectiveText).length < 2;
+                    organizeObjectiveBtn.disabled = false;
                     setSoapActionButtonContent(organizeObjectiveBtn, 'Organize', objectiveOrganized);
                 }
 
@@ -8700,7 +8750,15 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const objectiveContext = reviewItems
                     .map(item => `${item.id} [${item.kind === 'suggestion' ? 'Suggested Objective' : 'Generated Objective'}]: ${item.text}`)
                     .join('\n');
-                const systemPrompt = 'You are reviewing a behavioral-health SOAP Objective section for redundancy before it is organized. Review both Generated Objective statements and Suggested Objective statements. Identify only true semantic duplicates or substantially overlapping statements that repeat the same clinical fact or intervention. Shared vocabulary alone is not enough. Do not group statements that contain distinct clinically meaningful details, and do not group contradictions. Do not rewrite, merge, reorder, or delete any statement. Groups must be disjoint, contain at least two item IDs, and use the original item IDs exactly, including S-numbers for Suggested Objective statements. Recommend one or more items to keep in each group, preferring the most complete or specific statement. Return only JSON exactly as {"redundancy_groups":[{"group_id":"R1","label":"...","reason":"...","item_ids":["O2","S1"],"recommended_keep_ids":["O2"]}]}.';
+                const systemPrompt = [
+                    'You are reviewing a behavioral-health SOAP Objective section for redundancy before it is organized. Review both Generated Objective statements and Suggested Objective statements.',
+                    'Strict redundancy definition: group statements only when they are interchangeable paraphrases or near-duplicates that communicate the same clinical event, client report, Writer intervention, or treatment action, so removing one would lose no distinct clinical information.',
+                    'Shared topic or category is not redundancy. Do not group statements merely because they mention the same diagnosis, goal, value, person, setting, symptom area, treatment theme, modality, or broad intervention.',
+                    'Keep statements separate when they add a different trigger, mechanism, causal explanation, relationship dynamic, emotional function, response, or clinically meaningful intervention—even when they support the same overall theme. If uncertain, do not group; prefer a false negative over a false positive.',
+                    'Example: a statement about reframing demanding professional tasks around Ct values may be redundant with a statement about aligning those same tasks with personal values to restore agency. Do not group that pair with separate statements about impostor syndrome and organizational pressure or about senior leadership guidance triggering self-doubt; those add distinct mechanisms and relational details.',
+                    'Do not rewrite, merge, reorder, or delete any statement. Groups must be disjoint, contain at least two item IDs, and use the original item IDs exactly, including S-numbers for Suggested Objective statements. Recommend one or more items to keep in each group, preferring the most complete or specific statement.',
+                    'Return only JSON exactly as {"redundancy_groups":[{"group_id":"R1","label":"...","reason":"...","item_ids":["O2","S1"],"recommended_keep_ids":["O2"]}]}. '
+                ].join(' ');
                 const userPrompt = `Objective statements to review (the supplied item ID is the only identifier):\n${objectiveContext}\n\nReturn only redundancy groups. If no true redundancy exists, return {"redundancy_groups":[]}. Do not include any statement text outside the required JSON.`;
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
                 return normalizeObjectiveRedundancyGroupsFromAi(reviewItems, aiPayload);
@@ -10031,7 +10089,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             ${renderSoapCopyButton('soapO', 'Objective')}
                         </div>
                         <textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.o || ''}</textarea>
-                        ${getObjectiveRedundancyReview(appointment) ? '' : (soapData.o_suggestion || []).map((s, i) => renderSuggestionBox('o', s, i)).join('')}
+                        ${getObjectiveRedundancyReview(appointment) || isObjectiveOrganizeCompleted(appointment) ? '' : (soapData.o_suggestion || []).map((s, i) => renderSuggestionBox('o', s, i)).join('')}
                         ${renderObjectiveRedundancyReview(appointment)}
                     </div>
                     <div class="soap-section">
@@ -10225,15 +10283,36 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return selected;
             };
 
+            const setObjectiveRedundancyItemSelected = (review, itemIndex, isSelected) => {
+                if (!review || !Number.isInteger(itemIndex)) return false;
+                const reviewItems = getObjectiveRedundancyItemsForReview(review);
+                if (itemIndex < 0 || itemIndex >= reviewItems.length) return false;
+                const group = (Array.isArray(review.groups) ? review.groups : []).find(candidate => (
+                    Array.isArray(candidate?.itemIndexes) && candidate.itemIndexes.includes(itemIndex)
+                ));
+                if (group) {
+                    const selectedIndexes = new Set(getSelectedObjectiveRedundancyIndexes(group));
+                    if (isSelected) selectedIndexes.add(itemIndex);
+                    else selectedIndexes.delete(itemIndex);
+                    group.selectedItemIndexes = [...selectedIndexes].sort((left, right) => left - right);
+                } else {
+                    const selectedIndexes = getSelectedObjectiveRedundancyItemIndexes(review);
+                    if (isSelected) selectedIndexes.add(itemIndex);
+                    else selectedIndexes.delete(itemIndex);
+                    review.selectedItemIndexes = [...selectedIndexes].sort((left, right) => left - right);
+                }
+                review.selectedItemIndexes = [...getSelectedObjectiveRedundancyItemIndexes(review)].sort((left, right) => left - right);
+                return true;
+            };
+
             const renderObjectiveRedundancyItem = (item, itemIndex, selectedIndexes, groupId = '') => {
                 const sourceLabel = item.kind === 'suggestion' ? 'Suggestion' : 'Objective';
                 return `
                     <div class="objective-redundancy-item ${item.kind === 'suggestion' ? 'objective-redundancy-suggestion-item' : ''}">
                         <label class="objective-redundancy-option">
-                            <input type="checkbox" class="objective-redundancy-checkbox" data-group-id="${escapeGoalDraftHtml(groupId)}" data-item-index="${itemIndex}" aria-label="Approve ${sourceLabel} statement" ${selectedIndexes.has(itemIndex) ? 'checked' : ''}>
+                            <input type="checkbox" class="objective-redundancy-checkbox" data-group-id="${escapeGoalDraftHtml(groupId)}" data-item-index="${itemIndex}" aria-label="Include ${sourceLabel} statement" ${selectedIndexes.has(itemIndex) ? 'checked' : ''}>
                             <span class="objective-redundancy-item-text"><span class="objective-redundancy-source">${sourceLabel}</span>${escapeGoalDraftHtml(`• ${item.text}`)}</span>
                         </label>
-                        <button type="button" class="objective-redundancy-decline" data-group-id="${escapeGoalDraftHtml(groupId)}" data-item-index="${itemIndex}" aria-label="Decline ${sourceLabel} statement">Decline</button>
                     </div>
                 `;
             };
@@ -10263,7 +10342,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     anchoredGroups.forEach(entry => {
                         const groupId = String(entry.group.id || `redundancy-${entry.groupIndex + 1}`);
                         sequence.push(`
-                            <div class="objective-redundancy-group" data-redundancy-group-id="${escapeGoalDraftHtml(groupId)}">
+                            <div class="objective-redundancy-group objective-redundancy-group-container" data-redundancy-group-id="${escapeGoalDraftHtml(groupId)}">
                                 <div class="objective-redundancy-group-title">
                                     <span>Objective Grouping ${entry.groupIndex + 1}: ${escapeGoalDraftHtml(entry.group.label || 'Related statements')}</span>
                                     <span>${entry.itemIndexes.length} statements</span>
@@ -10281,11 +10360,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     <div id="objectiveRedundancyReview" class="objective-redundancy-review">
                         <div class="objective-redundancy-header">
                             <strong>Redundancy Review</strong>
-                            <div class="objective-redundancy-help">Approve each Objective statement or suggestion to keep it. Use Decline to reject it. Decisions are applied when you press Organize.</div>
+                            <div class="objective-redundancy-help">Check the Objective statements or suggestions to keep. Approve applies the checked items to Objective. Dismiss removes all review options.</div>
                         </div>
                         <div class="objective-redundancy-sequence">${sequence.join('')}</div>
                         <div class="objective-redundancy-actions">
-                            <button type="button" id="dismissObjectiveRedundancyBtn">Dismiss Review</button>
+                            <button type="button" id="approveObjectiveRedundancyBtn" class="objective-redundancy-apply">Approve</button>
+                            <button type="button" id="dismissObjectiveRedundancyBtn">Dismiss</button>
                         </div>
                     </div>
                 `;
@@ -11729,7 +11809,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         }
                         const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
                         if (organizeObjectiveBtn) {
-                            organizeObjectiveBtn.disabled = splitSoapBulletItems(e.target.value).length < 2;
+                            organizeObjectiveBtn.disabled = false;
                         }
                         refreshObjectiveActionButtons(appointment);
                     }
@@ -11752,52 +11832,22 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     }
                 }
             });
+            soapContentEl.addEventListener('change', (e) => {
+                if (!e.target.matches('.objective-redundancy-checkbox')) return;
+                const client = findClient(selectedClientId);
+                const appointment = findAppointment(client, selectedAppointmentId);
+                const review = getObjectiveRedundancyReview(appointment);
+                const itemIndex = Number.parseInt(e.target.dataset.itemIndex, 10);
+                if (!review || !setObjectiveRedundancyItemSelected(review, itemIndex, e.target.checked)) return;
+                markDirty();
+            });
             soapContentEl.addEventListener('click', (e) => {
                  const clickedButton = e.target.closest?.('button');
-                 const redundancyCheckbox = e.target.closest?.('.objective-redundancy-checkbox');
-                 if (redundancyCheckbox) {
+                 if (clickedButton?.id === 'approveObjectiveRedundancyBtn') {
                      const client = findClient(selectedClientId);
                      const appointment = findAppointment(client, selectedAppointmentId);
                      const review = getObjectiveRedundancyReview(appointment);
-                     const itemIndex = Number.parseInt(redundancyCheckbox.dataset.itemIndex, 10);
-                     if (!review || !Number.isInteger(itemIndex)) return;
-                     const group = review.groups.find(candidate => (
-                         Array.isArray(candidate?.itemIndexes) && candidate.itemIndexes.includes(itemIndex)
-                     ));
-                     if (group) {
-                         const selectedIndexes = new Set(getSelectedObjectiveRedundancyIndexes(group));
-                         if (redundancyCheckbox.checked) selectedIndexes.add(itemIndex);
-                         else selectedIndexes.delete(itemIndex);
-                         group.selectedItemIndexes = [...selectedIndexes].sort((left, right) => left - right);
-                     } else {
-                         const selectedIndexes = getSelectedObjectiveRedundancyItemIndexes(review);
-                         if (redundancyCheckbox.checked) selectedIndexes.add(itemIndex);
-                         else selectedIndexes.delete(itemIndex);
-                         review.selectedItemIndexes = [...selectedIndexes].sort((left, right) => left - right);
-                     }
-                     review.selectedItemIndexes = [...getSelectedObjectiveRedundancyItemIndexes(review)].sort((left, right) => left - right);
-                     markDirty();
-                     return;
-                 }
-                 if (clickedButton?.classList.contains('objective-redundancy-decline')) {
-                     const client = findClient(selectedClientId);
-                     const appointment = findAppointment(client, selectedAppointmentId);
-                     const review = getObjectiveRedundancyReview(appointment);
-                     const itemIndex = Number.parseInt(clickedButton.dataset.itemIndex, 10);
-                     if (!review || !Number.isInteger(itemIndex)) return;
-                     const group = review.groups.find(candidate => (
-                         Array.isArray(candidate?.itemIndexes) && candidate.itemIndexes.includes(itemIndex)
-                     ));
-                     if (group) {
-                         group.selectedItemIndexes = getSelectedObjectiveRedundancyIndexes(group)
-                             .filter(index => index !== itemIndex);
-                     } else {
-                         review.selectedItemIndexes = [...getSelectedObjectiveRedundancyItemIndexes(review)]
-                             .filter(index => index !== itemIndex);
-                     }
-                     review.selectedItemIndexes = [...getSelectedObjectiveRedundancyItemIndexes(review)]
-                         .filter(index => index !== itemIndex)
-                         .sort((left, right) => left - right);
+                     if (!review || !applyObjectiveRedundancyDecision(appointment, review, client)) return;
                      markDirty();
                      renderSoap();
                      return;
@@ -11805,8 +11855,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                  if (clickedButton?.id === 'dismissObjectiveRedundancyBtn') {
                      const client = findClient(selectedClientId);
                      const appointment = findAppointment(client, selectedAppointmentId);
-                     if (!appointment?.soap) return;
+                     if (!appointment?.soap || !getObjectiveRedundancyReview(appointment)) return;
+                     if (!confirm('Dismiss all Objective redundancy review options? The current Objective text will remain unchanged.')) return;
                      delete appointment.soap.objectiveRedundancyReview;
+                     appointment.soap.o_suggestion = [];
+                     delete appointment.soap.o_suggestion_intervention_matches;
                      markDirty();
                      renderSoap();
                      return;
@@ -12711,6 +12764,26 @@ Requirements:
                 };
             };
 
+            const applyObjectiveRedundancyDecision = (appointment, review, client = null) => {
+                if (!appointment?.soap || !review) return false;
+                const decision = getObjectiveRedundancyDecision(review);
+                if (decision.objectiveItems.length === 0) {
+                    alert('Check at least one Objective statement or suggestion before approving.');
+                    return false;
+                }
+
+                updateSoapFieldValue(appointment, 'o', joinSoapBulletItems(decision.objectiveItems));
+                const currentSuggestions = Array.isArray(appointment.soap.o_suggestion)
+                    ? appointment.soap.o_suggestion
+                    : [];
+                appointment.soap.o_suggestion = currentSuggestions.filter((_, index) => (
+                    !decision.reviewedSuggestionSourceIndexes.has(index)
+                ));
+                delete appointment.soap.objectiveRedundancyReview;
+                refreshObjectiveSuggestionInterventionMatches(appointment, client);
+                return true;
+            };
+
             let objectiveOrganizationInFlight = false;
 
             const organizeObjectiveContent = async () => {
@@ -12742,8 +12815,9 @@ Requirements:
                 const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
                 if (organizeObjectiveBtn) {
                     organizeObjectiveBtn.disabled = true;
-                    organizeObjectiveBtn.textContent = 'Organizing...';
+                    setSoapActionButtonContent(organizeObjectiveBtn, 'Organizing', false, true);
                 }
+                setSoapPostObjectiveProcessingState(true);
 
                 const supportErrors = [];
                 try {
@@ -12756,15 +12830,16 @@ Requirements:
                     }
 
                     updateSoapFieldValue(appointment, 'o', organizedObjective || objectiveText);
-                    if (pendingRedundancyDecision) {
-                        const currentSuggestions = Array.isArray(appointment.soap.o_suggestion)
-                            ? appointment.soap.o_suggestion
-                            : [];
-                        appointment.soap.o_suggestion = currentSuggestions.filter((_, index) => (
+                    const currentSuggestions = Array.isArray(appointment.soap.o_suggestion)
+                        ? appointment.soap.o_suggestion
+                        : [];
+                    appointment.soap.o_suggestion = pendingRedundancyDecision
+                        ? currentSuggestions.filter((_, index) => (
                             !pendingRedundancyDecision.reviewedSuggestionSourceIndexes.has(index)
-                        ));
-                        delete appointment.soap.objectiveRedundancyReview;
-                    }
+                        ))
+                        : [];
+                    delete appointment.soap.objectiveRedundancyReview;
+                    delete appointment.soap.o_suggestion_intervention_matches;
                     setSoapSectionOrderOverride(appointment.soap, 'o', true);
                     markObjectiveOrganizeCompleted(appointment);
                     delete appointment.auditCheck;
@@ -12842,6 +12917,7 @@ Requirements:
                         setSoapActionButtonContent(organizeObjectiveBtn, 'Organize', isObjectiveOrganizeCompleted(appointment));
                     }
                     if (isCurrentAppointmentContext(appointmentContext)) {
+                        setSoapPostObjectiveProcessingState(false);
                         renderSoap();
                     }
                 }

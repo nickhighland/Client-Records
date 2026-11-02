@@ -17,6 +17,9 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /appointment\.soap\.presentingProblem = normalizeCoupleCollectiveReferences\(supportFields\.presentingProblem, client\)/);
         assert.match(html, /let objectiveOrganizationInFlight = false/);
         assert.match(html, /const normalizeObjectiveRedundancyGroupsFromAi =/);
+        assert.match(html, /Strict redundancy definition/);
+        assert.match(html, /Shared topic or category is not redundancy/);
+        assert.match(html, /prefer a false negative over a false positive/);
         assert.match(html, /const getObjectiveRedundancySuggestionItems =/);
         assert.match(html, /const buildObjectiveRedundancyReviewData =/);
         assert.match(html, /const fetchObjectiveRedundancyReviewFromAI =/);
@@ -28,11 +31,24 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /await prepareObjectiveRedundancyReview\(appointment, client\)/);
         assert.match(html, /id="objectiveRedundancyReview"/);
         assert.match(html, /class="objective-redundancy-checkbox"/);
-        assert.match(html, /class="objective-redundancy-decline"/);
+        assert.match(html, /id="approveObjectiveRedundancyBtn"/);
+        assert.match(html, /id="dismissObjectiveRedundancyBtn"/);
+        assert.match(html, /const setObjectiveRedundancyItemSelected =/);
+        assert.match(html, /const applyObjectiveRedundancyDecision =/);
+        assert.match(html, /Dismiss all Objective redundancy review options/);
+        assert.match(html, /addEventListener\('change', \(e\) =>/);
+        assert.match(html, /organizeObjectiveBtn\.disabled = false/);
+        assert.match(html, /class="soap-action-spinner"/);
+        assert.match(html, /const setSoapPostObjectiveProcessingState =/);
+        assert.match(html, /className = 'soap-processing-status'/);
+        assert.match(html, /setSoapPostObjectiveProcessingState\(true\)/);
         assert.match(html, /Objective Grouping/);
-        assert.match(html, /Approve each Objective statement or suggestion/);
+        assert.match(html, /objective-redundancy-group-container/);
         assert.match(html, /const getObjectiveRedundancyDecision =/);
         assert.match(html, /const pendingRedundancyReview = getObjectiveRedundancyReview\(appointment\)/);
+        assert.match(html, /appointment\.soap\.o_suggestion = pendingRedundancyDecision/);
+        assert.match(html, /isObjectiveOrganizeCompleted\(appointment\) \? '' : \(soapData\.o_suggestion/);
+        assert.doesNotMatch(html, /objective-redundancy-decline/);
         assert.doesNotMatch(html, /const \[diagnosticResult, medicalNecessityResult\] = await Promise\.allSettled/);
     });
 }

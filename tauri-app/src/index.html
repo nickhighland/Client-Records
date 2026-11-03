@@ -10555,6 +10555,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         ? group.itemIndexes.filter(index => index >= 0 && index < reviewItems.length)
                         : [];
                     groupIndexes.forEach(index => selected.delete(index));
+                });
+                // A later overlapping group must not erase an earlier checked item.
+                (Array.isArray(review?.groups) ? review.groups : []).forEach(group => {
                     getSelectedObjectiveRedundancyIndexes(group).forEach(index => selected.add(index));
                 });
                 return selected;
@@ -10585,14 +10588,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (!review || !Number.isInteger(itemIndex)) return false;
                 const reviewItems = getObjectiveRedundancyItemsForReview(review);
                 if (itemIndex < 0 || itemIndex >= reviewItems.length) return false;
-                const group = (Array.isArray(review.groups) ? review.groups : []).find(candidate => (
+                const groups = (Array.isArray(review.groups) ? review.groups : []).filter(candidate => (
                     Array.isArray(candidate?.itemIndexes) && candidate.itemIndexes.includes(itemIndex)
                 ));
-                if (group) {
-                    const selectedIndexes = new Set(getSelectedObjectiveRedundancyIndexes(group));
-                    if (isSelected) selectedIndexes.add(itemIndex);
-                    else selectedIndexes.delete(itemIndex);
-                    group.selectedItemIndexes = [...selectedIndexes].sort((left, right) => left - right);
+                if (groups.length > 0) {
+                    groups.forEach(group => {
+                        const selectedIndexes = new Set(getSelectedObjectiveRedundancyIndexes(group));
+                        if (isSelected) selectedIndexes.add(itemIndex);
+                        else selectedIndexes.delete(itemIndex);
+                        group.selectedItemIndexes = [...selectedIndexes].sort((left, right) => left - right);
+                    });
                 } else {
                     const selectedIndexes = getSelectedObjectiveRedundancyItemIndexes(review);
                     if (isSelected) selectedIndexes.add(itemIndex);
@@ -10601,6 +10606,18 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
                 review.selectedItemIndexes = [...getSelectedObjectiveRedundancyItemIndexes(review)].sort((left, right) => left - right);
                 return true;
+            };
+
+            const syncObjectiveRedundancySelectionsFromDom = (review) => {
+                const container = document.getElementById('objectiveRedundancyReview');
+                if (!review || !container) return;
+                const selections = new Map();
+                container.querySelectorAll('.objective-redundancy-checkbox').forEach(checkbox => {
+                    const index = Number.parseInt(checkbox.dataset.itemIndex, 10);
+                    if (!Number.isInteger(index)) return;
+                    selections.set(index, Boolean(selections.get(index) || checkbox.checked));
+                });
+                selections.forEach((checked, index) => setObjectiveRedundancyItemSelected(review, index, checked));
             };
 
             const renderObjectiveRedundancyItem = (item, itemIndex, selectedIndexes, groupId = '') => {
@@ -12152,6 +12169,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const review = getObjectiveRedundancyReview(appointment);
                 const itemIndex = Number.parseInt(e.target.dataset.itemIndex, 10);
                 if (!review || !setObjectiveRedundancyItemSelected(review, itemIndex, e.target.checked)) return;
+                // Older saved reviews can display the same item in multiple groups.
+                soapContentEl.querySelectorAll('.objective-redundancy-checkbox').forEach(checkbox => {
+                    if (Number.parseInt(checkbox.dataset.itemIndex, 10) === itemIndex) checkbox.checked = e.target.checked;
+                });
                 markDirty();
             });
             soapContentEl.addEventListener('click', (e) => {
@@ -13101,7 +13122,7 @@ Requirements:
                     .map(item => item.text)
                     .filter(Boolean);
                 const acceptedSuggestionItems = reviewItems
-                    .filter((item, index) => item.kind === 'suggestion' && groupedItemIndexes.has(index) && selectedIndexes.has(index))
+                    .filter((item, index) => item.kind === 'suggestion' && selectedIndexes.has(index))
                     .map(item => item.text)
                     .filter(Boolean);
                 const declinedReplacementItems = reviewItems
@@ -13110,7 +13131,7 @@ Requirements:
                     .filter(Boolean);
                 const reviewedSuggestionSourceIndexes = new Set(
                     reviewItems
-                        .filter((item, index) => item.kind === 'suggestion' && groupedItemIndexes.has(index) && Number.isInteger(item.sourceIndex))
+                        .filter((item, index) => item.kind === 'suggestion' && (groupedItemIndexes.has(index) || selectedIndexes.has(index)) && Number.isInteger(item.sourceIndex))
                         .map(item => item.sourceIndex)
                 );
                 return {
@@ -13121,6 +13142,7 @@ Requirements:
 
             const applyObjectiveRedundancyDecision = (appointment, review, client = null) => {
                 if (!appointment?.soap || !review) return false;
+                syncObjectiveRedundancySelectionsFromDom(review);
                 const decision = getObjectiveRedundancyDecision(review);
                 if (decision.objectiveItems.length === 0) {
                     alert('Check at least one Objective statement or suggestion before approving.');
@@ -13152,6 +13174,7 @@ Requirements:
                 const pendingRedundancyReview = getObjectiveRedundancyReview(appointment);
                 let pendingRedundancyDecision = null;
                 if (pendingRedundancyReview) {
+                    syncObjectiveRedundancySelectionsFromDom(pendingRedundancyReview);
                     pendingRedundancyDecision = getObjectiveRedundancyDecision(pendingRedundancyReview);
                     if (pendingRedundancyDecision.objectiveItems.length < 2) {
                         alert('Keep at least two Objective statements before organizing.');

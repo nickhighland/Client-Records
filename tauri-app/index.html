@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.50</title>
+    <title>SmartEMR v3.0.51</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2294,23 +2294,14 @@
         .objective-redundancy-group-container {
             display: block;
         }
+        .objective-redundancy-groups {
+            padding: 4px 10px 0;
+        }
         .objective-redundancy-group-title {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 8px;
             padding: 9px 10px 5px;
             color: var(--text-color-primary);
             font-size: 0.82rem;
             font-weight: 700;
-        }
-        .objective-redundancy-group-count {
-            flex: 0 0 auto;
-            margin-left: auto;
-            color: var(--text-color-secondary);
-            font-size: 0.72rem;
-            font-weight: 400;
-            white-space: nowrap;
         }
         .objective-redundancy-reason {
             margin: 3px 0 7px;
@@ -2335,38 +2326,31 @@
         .objective-redundancy-item {
             display: flex;
             align-items: flex-start;
-            gap: 8px;
+            gap: 10px;
             border-bottom: 1px solid var(--panel-border);
+            padding: 7px 10px;
         }
         .objective-redundancy-item:last-child {
             border-bottom: none;
         }
-        .objective-redundancy-item .objective-redundancy-option {
+        .objective-redundancy-item > .objective-redundancy-checkbox {
+            flex: 0 0 auto;
+            margin: 9px 0 0;
+        }
+        .objective-review-editor {
+            box-sizing: border-box;
             flex: 1 1 auto;
-            margin: 0;
-        }
-        .objective-redundancy-item-text {
-            display: block;
-        }
-        .objective-redundancy-source {
-            display: inline-block;
-            margin-right: 6px;
-            color: var(--text-color-secondary);
-            font-size: 0.68rem;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            text-transform: uppercase;
-        }
-        .objective-redundancy-recommended {
-            display: inline-block;
-            margin-left: 5px;
-            padding: 1px 5px;
-            border-radius: 999px;
-            color: #744210;
-            background: #fbd38d;
-            font-size: 0.68rem;
-            font-weight: 700;
-            white-space: nowrap;
+            min-width: 0;
+            min-height: 64px;
+            resize: vertical;
+            border: 1px solid var(--input-border);
+            border-radius: 5px;
+            padding: 7px 8px;
+            background: var(--input-bg);
+            color: var(--text-color-primary);
+            font: inherit;
+            font-size: 0.82rem;
+            line-height: 1.4;
         }
         .objective-redundancy-actions {
             display: flex;
@@ -5107,6 +5091,26 @@
             let selectedAppointmentId = null;
             let selectedNoteId = null;
             let selectedIntakeId = null;
+            const soapNoteGenerationInFlight = new Set();
+            const objectiveOrganizationInFlight = new Set();
+            const objectiveReviewPreparationInFlight = new Set();
+            const getAppointmentTaskKey = (clientId, appointmentId) => JSON.stringify([String(clientId || ''), String(appointmentId || '')]);
+            const isSoapNoteGenerationInFlight = (clientId, appointmentId) => soapNoteGenerationInFlight.has(getAppointmentTaskKey(clientId, appointmentId));
+            const isObjectiveOrganizationInFlight = (appointmentContext) => Boolean(appointmentContext
+                && objectiveOrganizationInFlight.has(getAppointmentTaskKey(appointmentContext.clientId, appointmentContext.appointmentId)));
+            const isObjectiveReviewPreparationInFlight = (appointmentContext) => Boolean(appointmentContext
+                && objectiveReviewPreparationInFlight.has(getAppointmentTaskKey(appointmentContext.clientId, appointmentContext.appointmentId)));
+            const updateGenerateNoteButtonState = () => {
+                if (!generateNoteBtn) return;
+                const client = findClient(selectedClientId);
+                const appointment = findAppointment(client, selectedAppointmentId);
+                const isGenerating = Boolean(appointment && isSoapNoteGenerationInFlight(client.id, appointment.id));
+                const isBusy = Boolean(appointment && (isGenerating
+                    || isObjectiveOrganizationInFlight({ clientId: client.id, appointmentId: appointment.id })
+                    || isObjectiveReviewPreparationInFlight({ clientId: client.id, appointmentId: appointment.id })));
+                generateNoteBtn.disabled = !appointment || !hasAppointmentGenerationInput(appointment) || isBusy;
+                generateNoteBtn.textContent = isGenerating ? 'Generating...' : isBusy ? 'Processing...' : 'Generate Note';
+            };
             let recordViewClearedForSelectedClient = false;
             let appointmentDateManualOverride = null;
             let appointmentDateRefreshTimer = null;
@@ -6388,7 +6392,7 @@
                 appointment.auditProofing = current;
                 delete appointment.auditCheck;
                 markDirty();
-                generateNoteBtn.disabled = !hasAppointmentGenerationInput(appointment);
+                updateGenerateNoteButtonState();
             };
 
             const renderIntakeFields = (intakeSession) => {
@@ -7519,15 +7523,18 @@
             const refreshObjectiveActionButtons = (appointment) => {
                 const objectiveText = (appointment?.soap?.o || '').trim();
                 const objectiveOrganized = isObjectiveOrganizeCompleted(appointment);
-                const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
-                if (organizeObjectiveBtn) {
-                    organizeObjectiveBtn.disabled = false;
-                    setSoapActionButtonContent(organizeObjectiveBtn, 'Organize', objectiveOrganized);
-                }
-
                 const selectedAppointmentContext = getSelectedAppointmentContext();
                 const selectedAppointment = getAppointmentFromContext(selectedAppointmentContext);
-                const generateInterventionsBtn = selectedAppointment && appointment && selectedAppointment.id === appointment.id
+                const isDisplayedAppointment = Boolean(appointment && selectedAppointment === appointment);
+                const isOrganizing = isDisplayedAppointment && isObjectiveOrganizationInFlight(selectedAppointmentContext);
+                const isReviewPreparing = isDisplayedAppointment && isObjectiveReviewPreparationInFlight(selectedAppointmentContext);
+                const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
+                if (organizeObjectiveBtn) {
+                    organizeObjectiveBtn.disabled = isOrganizing || isReviewPreparing;
+                    setSoapActionButtonContent(organizeObjectiveBtn, isReviewPreparing ? 'Reviewing options' : 'Organize', objectiveOrganized, isOrganizing || isReviewPreparing);
+                }
+
+                const generateInterventionsBtn = isDisplayedAppointment
                     ? document.getElementById('generateInterventionsBtn')
                     : null;
                 if (generateInterventionsBtn) {
@@ -8676,21 +8683,29 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return joinSoapBulletItems(orderedItems);
             };
 
-            const normalizeObjectiveRedundancyLabel = (value) => String(value || '')
-                .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
-                .trim()
-                .split(/\s+/)
-                .filter(Boolean)
-                .slice(0, 2)
-                .filter((word, index, words) => !(index === words.length - 1 && /^(to|and|or|of|for|with|in|on)$/i.test(word)))
-                .join(' ') || 'Related';
+            const normalizeObjectiveRedundancyLabel = (value) => {
+                const words = String(value || '')
+                    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean);
+                while (words.length > 1 && /^(to|and|or|of|for|with|in|on)$/i.test(words[words.length - 1])) words.pop();
+                if (words.length === 1) words.push('Context');
+                return words.slice(0, 3).join(' ') || 'Related Topics';
+            };
 
             const normalizeObjectiveRedundancyGroupsFromAi = (reviewItems, aiPayload) => {
-                const rawGroups = Array.isArray(aiPayload?.redundancy_groups)
-                    ? aiPayload.redundancy_groups
-                    : Array.isArray(aiPayload?.redundancyGroups)
-                        ? aiPayload.redundancyGroups
-                        : [];
+                const rawGroups = Array.isArray(aiPayload?.objective_groups)
+                    ? aiPayload.objective_groups
+                    : Array.isArray(aiPayload?.objectiveGroups)
+                        ? aiPayload.objectiveGroups
+                        : Array.isArray(aiPayload?.groups)
+                            ? aiPayload.groups
+                            : Array.isArray(aiPayload?.redundancy_groups)
+                                ? aiPayload.redundancy_groups
+                                : Array.isArray(aiPayload?.redundancyGroups)
+                                    ? aiPayload.redundancyGroups
+                                    : [];
                 const claimedIndexes = new Set();
                 const itemIdIndexes = new Map(
                     reviewItems.map((item, index) => [String(item?.id || '').trim().toUpperCase(), index])
@@ -8710,7 +8725,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             : [];
                     const indexes = [...new Set(rawItemIds.map(parseItemId).filter(index => index >= 0))]
                         .filter(index => !claimedIndexes.has(index));
-                    if (indexes.length < 2) return null;
+                    if (indexes.length < 1) return null;
 
                     indexes.forEach(index => claimedIndexes.add(index));
                     const rawRecommendedIds = Array.isArray(group.recommended_keep_ids)
@@ -8725,15 +8740,100 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         : [indexes[0]];
 
                     return {
-                        id: String(group.group_id ?? group.groupId ?? `redundancy-${groupIndex + 1}`).trim() || `redundancy-${groupIndex + 1}`,
-                        label: normalizeObjectiveRedundancyLabel(group.label ?? group.title),
-                        reason: String(group.reason ?? group.explanation ?? 'These statements appear to repeat or substantially overlap the same clinical thread.').trim()
-                            || 'These statements appear to repeat or substantially overlap the same clinical thread.',
+                        id: String(group.group_id ?? group.groupId ?? `topic-${groupIndex + 1}`).trim() || `topic-${groupIndex + 1}`,
+                        label: normalizeObjectiveRedundancyLabel(group.label ?? group.title ?? group.topic),
+                        reason: String(group.reason ?? group.explanation ?? '').trim(),
                         itemIndexes: indexes,
                         recommendedKeepIndexes,
                         selectedItemIndexes
                     };
                 }).filter(Boolean);
+            };
+
+            const deriveObjectiveTopicLabel = (reviewItems, indexes) => {
+                const tokenCounts = new Map();
+                (indexes || []).forEach(index => {
+                    normalizeInterventionText(reviewItems[index]?.text)
+                        .split(' ')
+                        .filter(word => {
+                            const stem = stemInterventionToken(word);
+                            return word.length > 2 && !soapTopicStopWords.has(word) && !soapTopicWeakAnchorTokens.has(stem);
+                        })
+                        .forEach(word => tokenCounts.set(word, (tokenCounts.get(word) || 0) + 1));
+                });
+                const words = [...tokenCounts.entries()]
+                    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+                    .slice(0, 3)
+                    .map(([word]) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`);
+                return normalizeObjectiveRedundancyLabel(words.join(' ') || 'Related Topics');
+            };
+
+            const buildLocalObjectiveTopicGroups = (reviewItems, candidateIndexes = null) => {
+                const indexes = Array.isArray(candidateIndexes)
+                    ? candidateIndexes.filter(index => Number.isInteger(index) && index >= 0 && index < reviewItems.length)
+                    : reviewItems.map((_, index) => index);
+                if (indexes.length === 0) return [];
+
+                const { assignments } = buildObjectiveTopicClusters(indexes.map(index => reviewItems[index]?.text || ''));
+                const buckets = new Map();
+                indexes.forEach((itemIndex, localIndex) => {
+                    const topicIndex = assignments[localIndex];
+                    const key = Number.isFinite(topicIndex) ? `topic-${topicIndex}` : `single-${itemIndex}`;
+                    if (!buckets.has(key)) buckets.set(key, []);
+                    buckets.get(key).push(itemIndex);
+                });
+
+                return [...buckets.values()].map((itemIndexes, groupIndex) => ({
+                    id: `topic-local-${groupIndex + 1}`,
+                    label: deriveObjectiveTopicLabel(reviewItems, itemIndexes),
+                    reason: '',
+                    itemIndexes,
+                    recommendedKeepIndexes: [itemIndexes[0]],
+                    selectedItemIndexes: [itemIndexes[0]]
+                }));
+            };
+
+            const completeObjectiveTopicGroups = (reviewItems, groups) => {
+                const claimedIndexes = new Set();
+                const completeGroups = (Array.isArray(groups) ? groups : []).map((group, groupIndex) => {
+                    const itemIndexes = [...new Set(Array.isArray(group?.itemIndexes) ? group.itemIndexes : [])]
+                        .filter(index => Number.isInteger(index) && index >= 0 && index < reviewItems.length && !claimedIndexes.has(index));
+                    if (itemIndexes.length === 0) return null;
+                    itemIndexes.forEach(index => claimedIndexes.add(index));
+                    const selectedItemIndexes = Array.isArray(group.selectedItemIndexes)
+                        ? [...new Set(group.selectedItemIndexes.filter(index => itemIndexes.includes(index)))]
+                        : [itemIndexes[0]];
+                    return {
+                        ...group,
+                        id: String(group.id || `topic-${groupIndex + 1}`),
+                        label: normalizeObjectiveRedundancyLabel(String(group.label || '')
+                            .replace(/^Objective\s+Grouping\s+\d+\s*:\s*/i, '')
+                            .replace(/\s*\(\d+\s+statements?\)\s*$/i, '')),
+                        itemIndexes,
+                        recommendedKeepIndexes: Array.isArray(group.recommendedKeepIndexes)
+                            ? group.recommendedKeepIndexes.filter(index => itemIndexes.includes(index))
+                            : [],
+                        selectedItemIndexes
+                    };
+                }).filter(Boolean);
+
+                const unassignedIndexes = reviewItems.map((_, index) => index).filter(index => !claimedIndexes.has(index));
+                completeGroups.push(...buildLocalObjectiveTopicGroups(reviewItems, unassignedIndexes));
+                return completeGroups;
+            };
+
+            const limitObjectiveReviewDefaults = (groups, limit = 5) => {
+                const recommendedIndexes = [];
+                (Array.isArray(groups) ? groups : []).forEach(group => {
+                    (Array.isArray(group?.selectedItemIndexes) ? group.selectedItemIndexes : []).forEach(index => {
+                        if (!recommendedIndexes.includes(index)) recommendedIndexes.push(index);
+                    });
+                });
+                const selected = new Set(recommendedIndexes.slice(0, Math.max(1, limit)));
+                return (Array.isArray(groups) ? groups : []).map(group => ({
+                    ...group,
+                    selectedItemIndexes: (group.selectedItemIndexes || []).filter(index => selected.has(index))
+                }));
             };
 
             const buildLocalObjectiveRedundancyGroups = (reviewItems) => {
@@ -8884,26 +8984,25 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (reviewItems.length < 2) return [];
 
                 const objectiveContext = reviewItems
-                    .map(item => `${item.id} [${item.kind === 'suggestion' ? 'Suggested Objective' : 'Generated Objective'}]: ${item.text}`)
+                    .map(item => `${item.id}: ${item.text}`)
                     .join('\n');
                 const systemPrompt = [
-                    'You are reviewing a behavioral-health SOAP Objective section for redundancy before it is organized. Review both Generated Objective statements and Suggested Objective statements.',
-                    'Strict redundancy definition: group statements only when they are interchangeable paraphrases or near-duplicates that communicate the same clinical event, client report, Writer intervention, or treatment action, so removing one would lose no distinct clinical information.',
-                    'Shared topic or category is not redundancy. Do not group statements merely because they mention the same diagnosis, goal, value, person, setting, symptom area, treatment theme, modality, or broad intervention.',
-                    'Keep statements separate when they add a different trigger, mechanism, causal explanation, relationship dynamic, emotional function, response, or clinically meaningful intervention—even when they support the same overall theme. If uncertain, do not group; prefer a false negative over a false positive.',
-                    'Review every Suggested Objective against every Generated Objective. A suggestion that restates an existing objective with the same event or intervention belongs in that group even if it adds minor wording. For example, statements repeating values exploration, dissociation/autopilot, the same lifestyle routines, or social awkwardness/meaning-making should be grouped with their matching Objective statement. Do not group separate sadness, identity, relational, or causal content unless it repeats a specific Objective statement.',
-                    'Example: a statement about reframing demanding professional tasks around Ct values may be redundant with a statement about aligning those same tasks with personal values to restore agency. Do not group that pair with separate statements about impostor syndrome and organizational pressure or about senior leadership guidance triggering self-doubt; those add distinct mechanisms and relational details.',
-                    'Do not rewrite, merge, reorder, or delete any statement. Groups must be disjoint, contain at least two item IDs, and use the original item IDs exactly, including S-numbers for Suggested Objective statements. Recommend one or more items to keep in each group, preferring the most complete or specific statement.',
-                    'Return only JSON exactly as {"redundancy_groups":[{"group_id":"R1","label":"...","reason":"...","item_ids":["O2","S1"],"recommended_keep_ids":["O2"]}]}. '
+                    'You are organizing every behavioral-health SOAP Objective option into editable topic groups before the clinician approves anything. The items include generated Objective statements and suggested additions; categorize both.',
+                    'Group by a specific clinical focus, such as cannabis cessation, family support, workplace stress, or emotion regulation. Topics are categories, not claims of redundancy: complementary interventions and distinct details may belong in the same group as separate selectable options.',
+                    'Include every supplied item ID exactly once across disjoint groups. Do not omit, rewrite, merge, or create statements. Keep each original item as its own option so the clinician can edit it and choose multiple complementary options.',
+                    'Use a concise 2-3 word title for each group. Aim for groups of 2-3 related options where supported by the content. Keep unrelated clinical focuses in separate groups, and do not combine items just to hit a target count.',
+                    'Recommend checkboxes for about five of the strongest final statements overall. Prefer specific, session-grounded statements that capture an important intervention or response; leave overlapping or lower-value alternatives unchecked. Do not force a fixed count, and allow multiple checked items within a group when they contribute distinct useful content.',
+                    'Order groups by the importance of their recommended final statements, strongest first.',
+                    'Return only JSON exactly as {"objective_groups":[{"group_id":"G1","label":"Cannabis Cessation","item_ids":["O2","S1"],"recommended_keep_ids":["O2"]}]}. '
                 ].join(' ');
-                const userPrompt = `Objective statements to review (the supplied item ID is the only identifier):\n${objectiveContext}\n\nReturn only redundancy groups. If no true redundancy exists, return {"redundancy_groups":[]}. Do not include any statement text outside the required JSON.`;
+                const userPrompt = `Objective options to categorize. Every listed ID must appear in exactly one topic group:\n${objectiveContext}\n\nReturn only the required JSON. The recommended_keep_ids are the options that should start checked; the clinician can change any text and select more than one option in a group.`;
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
                 return normalizeObjectiveRedundancyGroupsFromAi(reviewItems, aiPayload);
             };
 
             const prepareObjectiveRedundancyReview = async (appointment, client) => {
                 if (!appointment?.soap) return [];
-                const reviewData = buildObjectiveRedundancyReviewData(appointment);
+                let reviewData = buildObjectiveRedundancyReviewData(appointment);
                 if (reviewData.items.length === 0) {
                     delete appointment.soap.objectiveRedundancyReview;
                     return [];
@@ -8914,29 +9013,22 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     try {
                         groups = await fetchObjectiveRedundancyReviewFromAI(reviewData.items);
                     } catch (error) {
-                        console.warn('Objective redundancy review AI failed; checking for exact duplicates locally.', error);
+                        console.warn('Objective topic grouping AI failed; creating local topic groups.', error);
                         groups = [];
                     }
                 }
 
-                groups = mergeObjectiveRedundancyGroups(
-                    reviewData.items,
-                    groups,
-                    [
-                        ...buildLocalObjectiveRedundancyGroups(reviewData.items),
-                        ...buildHighConfidenceObjectiveRedundancyGroups(reviewData.items)
-                    ]
-                );
+                const latestReviewData = buildObjectiveRedundancyReviewData(appointment);
+                if (latestReviewData.objectiveText !== reviewData.objectiveText
+                    || JSON.stringify(latestReviewData.suggestionSnapshot) !== JSON.stringify(reviewData.suggestionSnapshot)) {
+                    reviewData = latestReviewData;
+                    groups = [];
+                }
 
-                const selectedItemIndexes = reviewData.items
-                    .map((item, index) => item.kind === 'objective' ? index : -1)
-                    .filter(index => index >= 0);
-                groups.forEach(group => {
-                    (Array.isArray(group.selectedItemIndexes) ? group.selectedItemIndexes : []).forEach(index => {
-                        if (!selectedItemIndexes.includes(index)) selectedItemIndexes.push(index);
-                    });
-                });
+                groups = limitObjectiveReviewDefaults(completeObjectiveTopicGroups(reviewData.items, groups));
+                const selectedItemIndexes = [...new Set(groups.flatMap(group => group.selectedItemIndexes || []))];
                 appointment.soap.objectiveRedundancyReview = {
+                    reviewId: `objective-review-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                     objectiveText: reviewData.objectiveText,
                     suggestionSnapshot: reviewData.suggestionSnapshot,
                     items: reviewData.items,
@@ -10061,7 +10153,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 renderGoals();
                 renderSoap();
                 
-                generateNoteBtn.disabled = !appointment || !hasAppointmentGenerationInput(appointment);
+                updateGenerateNoteButtonState();
             };
 
             const getGoalStatusLabel = (status) => {
@@ -10270,6 +10362,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (!Array.isArray(appointment.selectedInterventions)) appointment.selectedInterventions = [];
                 const missingSoapRequirements = getMissingSoapClientRequirements(client);
                 const objectiveOrganized = isObjectiveOrganizeCompleted(appointment);
+                const appointmentContext = { clientId: client.id, appointmentId: appointment.id, appointment };
+                const objectiveOrganizing = isObjectiveOrganizationInFlight(appointmentContext);
+                const objectiveReviewPreparing = isObjectiveReviewPreparationInFlight(appointmentContext);
                 const objectiveDerivedInterventions = objectiveOrganized
                     ? getObjectiveDerivedInterventions(appointment, client)
                     : [];
@@ -10277,6 +10372,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     ? formatInterventionsByModality(objectiveDerivedInterventions)
                     : '';
                 const auditResult = appointment.auditCheck || null;
+                const objectiveReviewPending = Boolean(getObjectiveRedundancyReview(appointment));
+                const objectiveBusy = objectiveOrganizing || objectiveReviewPreparing;
                 soapContentEl.innerHTML = `
                     <div class="soap-section" data-soap-section-key="s">
                         <div class="soap-header"><span>Subjective</span>${renderSoapCopyButton('soapS', 'Subjective')}</div>
@@ -10287,13 +10384,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-header">
                             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <span>Objective</span>
-                                <button id="organizeObjectiveBtn" class="copy-btn" style="padding: 4px 10px;">Organize</button>
+                                <button id="organizeObjectiveBtn" class="copy-btn" style="padding: 4px 10px;"${objectiveBusy ? ' disabled' : ''}>${objectiveBusy ? `<span class="soap-action-spinner" aria-hidden="true"></span>${objectiveReviewPreparing ? 'Grouping...' : 'Organizing...'}` : 'Organize'}</button>
                             </div>
-                            ${renderSoapCopyButton('soapO', 'Objective')}
+                            ${objectiveReviewPending || objectiveReviewPreparing ? '' : renderSoapCopyButton('soapO', 'Objective')}
                         </div>
-                        <textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.o || ''}</textarea>
+                        ${objectiveReviewPending ? '' : `<textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true"${objectiveBusy ? ' disabled' : ''}>${escapeGoalDraftHtml(soapData.o || '')}</textarea>`}
                         ${renderObjectiveRedundancySuggestions(appointment)}
-                        ${renderObjectiveRedundancyReview(appointment)}
+                        ${renderObjectiveRedundancyReview(appointment, objectiveOrganizing)}
                     </div>
                     <div class="soap-section" data-soap-section-key="interventions">
                         <div class="soap-header">
@@ -10421,6 +10518,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
 
                 refreshObjectiveActionButtons(appointment);
+                setSoapPostObjectiveProcessingState(objectiveOrganizing);
             };
 
             const renderSuggestionBox = (type, suggestion, index) => {
@@ -10471,6 +10569,17 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     if (JSON.stringify(currentSnapshot) !== JSON.stringify(review.suggestionSnapshot)) return null;
                 }
                 if (getObjectiveRedundancyItemsForReview(review).length === 0) return null;
+                const previousSelected = getSelectedObjectiveRedundancyItemIndexes(review);
+                const previousGrouped = getObjectiveRedundancyGroupedItemIndexes(review);
+                review.groups = completeObjectiveTopicGroups(getObjectiveRedundancyItemsForReview(review), review.groups);
+                review.groups.forEach(group => {
+                    if (!group.id.startsWith('topic-local-')) return;
+                    group.selectedItemIndexes = group.itemIndexes.filter(index => (
+                        previousGrouped.has(index) ? getSelectedObjectiveRedundancyIndexes(group).includes(index) : previousSelected.has(index)
+                    ));
+                });
+                review.selectedItemIndexes = [...getSelectedObjectiveRedundancyItemIndexes(review)];
+                if (!review.reviewId) review.reviewId = `objective-review-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
                 return review;
             };
 
@@ -10512,6 +10621,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const remapIndexes = indexes => (indexes || [])
                     .filter(index => indexMap.has(index))
                     .map(index => indexMap.get(index));
+                const previousIndexByCurrentIndex = new Map([...indexMap].map(([previousIndex, currentIndex]) => [currentIndex, previousIndex]));
+                const currentItems = current.items.map((item, index) => {
+                    const previousItem = previousItems[previousIndexByCurrentIndex.get(index)];
+                    return previousItem?.editedText === undefined ? item : { ...item, editedText: previousItem.editedText };
+                });
                 const groups = (previousReview.groups || []).map(group => ({
                     ...group,
                     itemIndexes: remapIndexes(group.itemIndexes),
@@ -10530,6 +10644,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 appointment.soap.objectiveRedundancyReview = {
                     ...previousReview,
                     ...current,
+                    items: currentItems,
                     groups,
                     selectedItemIndexes: [...selectedItemIndexes]
                 };
@@ -10611,6 +10726,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             const syncObjectiveRedundancySelectionsFromDom = (review) => {
                 const container = document.getElementById('objectiveRedundancyReview');
                 if (!review || !container) return;
+                if (container.dataset.reviewId && review.reviewId && container.dataset.reviewId !== review.reviewId) return;
                 const selections = new Map();
                 container.querySelectorAll('.objective-redundancy-checkbox').forEach(checkbox => {
                     const index = Number.parseInt(checkbox.dataset.itemIndex, 10);
@@ -10618,34 +10734,36 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     selections.set(index, Boolean(selections.get(index) || checkbox.checked));
                 });
                 selections.forEach((checked, index) => setObjectiveRedundancyItemSelected(review, index, checked));
+                container.querySelectorAll('.objective-review-editor').forEach(editor => {
+                    const index = Number.parseInt(editor.dataset.itemIndex, 10);
+                    const item = getObjectiveRedundancyItemsForReview(review)[index];
+                    if (!item) return;
+                    item.editedText = String(editor.value || '').replace(/\s*\n+\s*/g, ' ').trim();
+                });
             };
 
-            const renderObjectiveRedundancyItem = (item, itemIndex, selectedIndexes, groupId = '') => {
-                const sourceLabel = item.kind === 'suggestion' ? 'Suggestion' : 'Objective';
+            const renderObjectiveRedundancyItem = (item, itemIndex, selectedIndexes, groupId = '', reviewId = '', isBusy = false) => {
                 return `
-                    <div class="objective-redundancy-item ${item.kind === 'suggestion' ? 'objective-redundancy-suggestion-item' : ''}">
-                        <label class="objective-redundancy-option">
-                            <input type="checkbox" class="objective-redundancy-checkbox" data-group-id="${escapeGoalDraftHtml(groupId)}" data-item-index="${itemIndex}" aria-label="Include ${sourceLabel} statement" ${selectedIndexes.has(itemIndex) ? 'checked' : ''}>
-                            <span class="objective-redundancy-item-text"><span class="objective-redundancy-source">${sourceLabel}</span>${escapeGoalDraftHtml(`• ${item.text}`)}</span>
-                        </label>
+                    <div class="objective-redundancy-item">
+                        <input type="checkbox" class="objective-redundancy-checkbox" data-review-id="${escapeGoalDraftHtml(reviewId)}" data-group-id="${escapeGoalDraftHtml(groupId)}" data-item-index="${itemIndex}" aria-label="Keep option ${itemIndex + 1}" ${selectedIndexes.has(itemIndex) ? 'checked' : ''}${isBusy ? ' disabled' : ''}>
+                        <textarea class="objective-review-editor" data-review-id="${escapeGoalDraftHtml(reviewId)}" data-item-index="${itemIndex}" aria-label="Edit option ${itemIndex + 1}" rows="3" spellcheck="true"${isBusy ? ' disabled' : ''}>${escapeGoalDraftHtml(item.editedText ?? item.text)}</textarea>
                     </div>
                 `;
             };
 
             const renderObjectiveRedundancySuggestions = (appointment) => {
                 if (!appointment?.soap || isObjectiveOrganizeCompleted(appointment)) return '';
+                if (getObjectiveRedundancyReview(appointment)) return '';
+                const client = findClient(selectedClientId);
+                const context = client ? { clientId: client.id, appointmentId: appointment.id } : null;
+                if (isObjectiveReviewPreparationInFlight(context)) return '';
                 const suggestions = Array.isArray(appointment.soap.o_suggestion)
                     ? appointment.soap.o_suggestion
                     : [];
-                const groupedSourceIndexes = getObjectiveRedundancyGroupedSuggestionSourceIndexes(
-                    getObjectiveRedundancyReview(appointment)
-                );
-                return suggestions
-                    .map((suggestion, index) => groupedSourceIndexes.has(index) ? '' : renderSuggestionBox('o', suggestion, index))
-                    .join('');
+                return suggestions.map((suggestion, index) => renderSuggestionBox('o', suggestion, index)).join('');
             };
 
-            const renderObjectiveRedundancyReview = (appointment) => {
+            const renderObjectiveRedundancyReview = (appointment, isBusy = false) => {
                 const review = getObjectiveRedundancyReview(appointment);
                 if (!review) return '';
                 const reviewItems = getObjectiveRedundancyItemsForReview(review);
@@ -10655,47 +10773,24 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     itemIndexes: Array.isArray(group?.itemIndexes)
                         ? group.itemIndexes.filter(index => index >= 0 && index < reviewItems.length)
                         : []
-                })).filter(entry => entry.itemIndexes.length > 1);
+                })).filter(entry => entry.itemIndexes.length > 0);
                 if (groups.length === 0) return '';
                 const selectedIndexes = getSelectedObjectiveRedundancyItemIndexes(review);
-                const groupedItemIndexes = getObjectiveRedundancyGroupedItemIndexes(review);
-                const groupsByAnchor = new Map();
-                groups.forEach(entry => {
-                    const anchor = Math.min(...entry.itemIndexes);
-                    if (!groupsByAnchor.has(anchor)) groupsByAnchor.set(anchor, []);
-                    groupsByAnchor.get(anchor).push(entry);
-                });
-                const sequence = [];
-                reviewItems.forEach((item, itemIndex) => {
-                    if (item.kind === 'suggestion' && !groupedItemIndexes.has(itemIndex)) return;
-                    const anchoredGroups = groupsByAnchor.get(itemIndex) || [];
-                    anchoredGroups.forEach(entry => {
-                        const groupId = String(entry.group.id || `redundancy-${entry.groupIndex + 1}`);
-                        sequence.push(`
-                            <div class="objective-redundancy-group objective-redundancy-group-container" data-redundancy-group-id="${escapeGoalDraftHtml(groupId)}">
-                                <div class="objective-redundancy-group-title">
-                                    <span>Objective Grouping ${entry.groupIndex + 1}: ${escapeGoalDraftHtml(entry.group.label || 'Related statements')}</span>
-                                    <span class="objective-redundancy-group-count">(${entry.itemIndexes.length} statements)</span>
-                                </div>
-                                ${entry.itemIndexes.map(index => renderObjectiveRedundancyItem(reviewItems[index], index, selectedIndexes, groupId)).join('')}
-                            </div>
-                        `);
-                    });
-                    if (!groupedItemIndexes.has(itemIndex)) {
-                        sequence.push(renderObjectiveRedundancyItem(item, itemIndex, selectedIndexes));
-                    }
-                });
 
                 return `
-                    <div id="objectiveRedundancyReview" class="objective-redundancy-review">
-                        <div class="objective-redundancy-header">
-                            <strong>Redundancy Review</strong>
-                            <div class="objective-redundancy-help">Check the Objective statements or suggestions to keep. Approve applies the checked items to Objective. Dismiss removes all review options.</div>
-                        </div>
-                        <div class="objective-redundancy-sequence">${sequence.join('')}</div>
+                    <div id="objectiveRedundancyReview" class="objective-redundancy-review" data-review-id="${escapeGoalDraftHtml(review.reviewId || '')}">
+                        <div class="objective-redundancy-groups">${groups.map(entry => {
+                            const groupId = String(entry.group.id || `topic-${entry.groupIndex + 1}`);
+                            return `
+                                <section class="objective-redundancy-group objective-redundancy-group-container" data-redundancy-group-id="${escapeGoalDraftHtml(groupId)}" aria-label="${escapeGoalDraftHtml(entry.group.label)}">
+                                    <div class="objective-redundancy-group-title">${escapeGoalDraftHtml(entry.group.label || 'Related Topics')}</div>
+                                    ${entry.itemIndexes.map(index => renderObjectiveRedundancyItem(reviewItems[index], index, selectedIndexes, groupId, review.reviewId, isBusy)).join('')}
+                                </section>
+                            `;
+                        }).join('')}</div>
                         <div class="objective-redundancy-actions">
-                            <button type="button" id="approveObjectiveRedundancyBtn" class="objective-redundancy-apply">Approve</button>
-                            <button type="button" id="dismissObjectiveRedundancyBtn">Dismiss</button>
+                            <button type="button" id="approveObjectiveRedundancyBtn" class="objective-redundancy-apply"${isBusy ? ' disabled' : ''}>Approve</button>
+                            <button type="button" id="dismissObjectiveRedundancyBtn"${isBusy ? ' disabled' : ''}>Dismiss</button>
                         </div>
                     </div>
                 `;
@@ -11985,7 +12080,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     note.updatedAt = new Date().toISOString();
                     markDirty();
                 }
-                generateNoteBtn.disabled = !appointment || !hasAppointmentGenerationInput(appointment);
+                updateGenerateNoteButtonState();
             };
 
             const saveGeneratedSoapSupport = (textarea) => {
@@ -12126,6 +12221,18 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             });
 
             soapContentEl.addEventListener('input', (e) => {
+                if (e.target.matches('.objective-review-editor')) {
+                    const client = findClient(selectedClientId);
+                    const appointment = findAppointment(client, selectedAppointmentId);
+                    const review = getObjectiveRedundancyReview(appointment);
+                    if (!review || (e.target.dataset.reviewId && e.target.dataset.reviewId !== review.reviewId)) return;
+                    const itemIndex = Number.parseInt(e.target.dataset.itemIndex, 10);
+                    const item = getObjectiveRedundancyItemsForReview(review)[itemIndex];
+                    if (!item) return;
+                    item.editedText = String(e.target.value || '').replace(/\s*\n+\s*/g, ' ').trim();
+                    markDirty();
+                    return;
+                }
                 if (e.target.matches('.soap-textarea')) {
                     if (e.target.id === 'diagnosticSupport' || e.target.id === 'medicalNecessity' || e.target.id === 'presentingProblem') {
                         saveGeneratedSoapSupport(e.target);
@@ -12141,7 +12248,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         if (organizeObjectiveBtn) {
                             organizeObjectiveBtn.disabled = false;
                         }
-                        refreshObjectiveActionButtons(appointment);
+                        const client = findClient(selectedClientId);
+                        refreshObjectiveActionButtons(findAppointment(client, selectedAppointmentId));
                     }
                 }
             });
@@ -12168,7 +12276,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const appointment = findAppointment(client, selectedAppointmentId);
                 const review = getObjectiveRedundancyReview(appointment);
                 const itemIndex = Number.parseInt(e.target.dataset.itemIndex, 10);
-                if (!review || !setObjectiveRedundancyItemSelected(review, itemIndex, e.target.checked)) return;
+                if (!review || (e.target.dataset.reviewId && e.target.dataset.reviewId !== review.reviewId)
+                    || !setObjectiveRedundancyItemSelected(review, itemIndex, e.target.checked)) return;
                 // Older saved reviews can display the same item in multiple groups.
                 soapContentEl.querySelectorAll('.objective-redundancy-checkbox').forEach(checkbox => {
                     if (Number.parseInt(checkbox.dataset.itemIndex, 10) === itemIndex) checkbox.checked = e.target.checked;
@@ -12181,7 +12290,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                      const client = findClient(selectedClientId);
                      const appointment = findAppointment(client, selectedAppointmentId);
                      const review = getObjectiveRedundancyReview(appointment);
-                     if (!review || !applyObjectiveRedundancyDecision(appointment, review, client)) return;
+                     if (!review) {
+                         alert('These Objective options are out of date. Regenerate the note review before approving.');
+                         renderSoap();
+                         return;
+                     }
+                     if (!applyObjectiveRedundancyDecision(appointment, review, client)) return;
                      markDirty();
                      renderSoap();
                      return;
@@ -12191,12 +12305,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                      const appointment = findAppointment(client, selectedAppointmentId);
                      const review = getObjectiveRedundancyReview(appointment);
                      if (!appointment?.soap || !review) return;
-                     if (!confirm('Dismiss the grouped Objective redundancy options? Non-grouped suggestions will remain available.')) return;
-                     const groupedSourceIndexes = getObjectiveRedundancyGroupedSuggestionSourceIndexes(review);
-                     const currentSuggestions = Array.isArray(appointment.soap.o_suggestion)
-                         ? appointment.soap.o_suggestion
-                         : [];
-                     appointment.soap.o_suggestion = currentSuggestions.filter((_, index) => !groupedSourceIndexes.has(index));
+                     if (!confirm('Dismiss all Objective review options? The current Objective text will remain unchanged.')) return;
+                     appointment.soap.o_suggestion = [];
                      delete appointment.soap.objectiveRedundancyReview;
                      refreshObjectiveSuggestionInterventionMatches(appointment, client);
                      markDirty();
@@ -13010,16 +13120,28 @@ Requirements:
                     alert('Please connect to a provider and select a model in Settings.');
                     return;
                 }
-                if (apiProvider === 'openwebui') {
-                    await generateSoapNoteWithOpenWebUI();
-                } else if (apiProvider === 'vertex') {
-                    await generateSoapNoteWithVertex();
-                } else if (apiProvider === 'openai') {
-                    await generateSoapNoteWithOpenAI();
-                } else if (apiProvider === 'ollama') {
-                    await generateSoapNoteWithOllama();
-                } else {
-                    alert('Invalid API provider selected.');
+                const taskKey = getAppointmentTaskKey(client.id, selectedAppointmentId);
+                if (soapNoteGenerationInFlight.has(taskKey)
+                    || objectiveOrganizationInFlight.has(taskKey)
+                    || objectiveReviewPreparationInFlight.has(taskKey)) return;
+                soapNoteGenerationInFlight.add(taskKey);
+                updateGenerateNoteButtonState();
+
+                try {
+                    if (apiProvider === 'openwebui') {
+                        await generateSoapNoteWithOpenWebUI();
+                    } else if (apiProvider === 'vertex') {
+                        await generateSoapNoteWithVertex();
+                    } else if (apiProvider === 'openai') {
+                        await generateSoapNoteWithOpenAI();
+                    } else if (apiProvider === 'ollama') {
+                        await generateSoapNoteWithOllama();
+                    } else {
+                        alert('Invalid API provider selected.');
+                    }
+                } finally {
+                    soapNoteGenerationInFlight.delete(taskKey);
+                    updateGenerateNoteButtonState();
                 }
             };
             
@@ -13108,34 +13230,48 @@ Requirements:
 
             const completeGeneratedSoapNote = async (soapData, appointment, client) => {
                 processAndStoreSoapData(soapData, appointment, client);
-                await prepareObjectiveRedundancyReview(appointment, client);
+                const taskKey = getAppointmentTaskKey(client?.id, appointment?.id);
+                objectiveReviewPreparationInFlight.add(taskKey);
+                const appointmentContext = { clientId: client?.id, appointmentId: appointment?.id, appointment };
+                try {
+                    if (isCurrentAppointmentContext(appointmentContext)) renderSoap();
+                    await prepareObjectiveRedundancyReview(appointment, client);
+                } catch (error) {
+                    console.warn('Objective topic grouping failed; using local topic groups.', error);
+                    const reviewData = buildObjectiveRedundancyReviewData(appointment);
+                    if (reviewData.items.length > 0) {
+                        const groups = limitObjectiveReviewDefaults(completeObjectiveTopicGroups(reviewData.items, []));
+                        appointment.soap.objectiveRedundancyReview = {
+                            reviewId: `objective-review-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                            ...reviewData,
+                            selectedItemIndexes: [...new Set(groups.flatMap(group => group.selectedItemIndexes || []))],
+                            groups
+                        };
+                    }
+                } finally {
+                    objectiveReviewPreparationInFlight.delete(taskKey);
+                }
                 markDirty();
-                renderSoap();
+                if (isCurrentAppointmentContext(appointmentContext)) renderSoap();
             };
 
             const getObjectiveRedundancyDecision = (review) => {
                 const reviewItems = getObjectiveRedundancyItemsForReview(review);
                 const selectedIndexes = getSelectedObjectiveRedundancyItemIndexes(review);
-                const groupedItemIndexes = getObjectiveRedundancyGroupedItemIndexes(review);
-                const objectiveItems = reviewItems
-                    .filter((item, index) => item.kind === 'objective' && selectedIndexes.has(index))
-                    .map(item => item.text)
-                    .filter(Boolean);
-                const acceptedSuggestionItems = reviewItems
-                    .filter((item, index) => item.kind === 'suggestion' && selectedIndexes.has(index))
-                    .map(item => item.text)
-                    .filter(Boolean);
-                const declinedReplacementItems = reviewItems
-                    .filter((item, index) => item.kind === 'suggestion' && groupedItemIndexes.has(index) && !selectedIndexes.has(index) && item.originalText)
-                    .map(item => item.originalText)
-                    .filter(Boolean);
+                const selectedTexts = reviewItems
+                    .map((item, index) => ({ item, index }))
+                    .filter(entry => selectedIndexes.has(entry.index))
+                    .map(({ item }) => normalizeObjectiveLine(item.editedText ?? item.text));
+                const objectiveItems = selectedTexts.filter(Boolean);
+                const selectedEmptyCount = selectedTexts.filter(text => !text).length;
                 const reviewedSuggestionSourceIndexes = new Set(
                     reviewItems
-                        .filter((item, index) => item.kind === 'suggestion' && (groupedItemIndexes.has(index) || selectedIndexes.has(index)) && Number.isInteger(item.sourceIndex))
+                        .filter(item => item.kind === 'suggestion' && Number.isInteger(item.sourceIndex))
                         .map(item => item.sourceIndex)
                 );
                 return {
-                    objectiveItems: [...objectiveItems, ...acceptedSuggestionItems, ...declinedReplacementItems],
+                    objectiveItems,
+                    selectedEmptyCount,
                     reviewedSuggestionSourceIndexes
                 };
             };
@@ -13144,30 +13280,31 @@ Requirements:
                 if (!appointment?.soap || !review) return false;
                 syncObjectiveRedundancySelectionsFromDom(review);
                 const decision = getObjectiveRedundancyDecision(review);
+                if (decision.selectedEmptyCount > 0) {
+                    alert('Each checked option needs text. Add text or uncheck the empty option before approving.');
+                    return false;
+                }
                 if (decision.objectiveItems.length === 0) {
-                    alert('Check at least one Objective statement or suggestion before approving.');
+                    alert('Check at least one option before approving.');
                     return false;
                 }
 
                 updateSoapFieldValue(appointment, 'o', joinSoapBulletItems(decision.objectiveItems));
-                const currentSuggestions = Array.isArray(appointment.soap.o_suggestion)
-                    ? appointment.soap.o_suggestion
-                    : [];
-                appointment.soap.o_suggestion = currentSuggestions.filter((_, index) => (
-                    !decision.reviewedSuggestionSourceIndexes.has(index)
-                ));
+                appointment.soap.o_suggestion = [];
                 delete appointment.soap.objectiveRedundancyReview;
                 refreshObjectiveSuggestionInterventionMatches(appointment, client);
                 return true;
             };
-
-            let objectiveOrganizationInFlight = false;
 
             const organizeObjectiveContent = async () => {
                 const appointmentContext = getSelectedAppointmentContext();
                 const appointment = getAppointmentFromContext(appointmentContext);
                 if (!appointment) return;
                 const client = findClient(appointmentContext.clientId);
+                const taskKey = getAppointmentTaskKey(appointmentContext.clientId, appointmentContext.appointmentId);
+                if (objectiveOrganizationInFlight.has(taskKey)
+                    || soapNoteGenerationInFlight.has(taskKey)
+                    || objectiveReviewPreparationInFlight.has(taskKey)) return;
 
                 let objectiveText = (appointment.soap?.o || '').trim();
                 let objectiveItems = splitSoapBulletItems(objectiveText);
@@ -13176,26 +13313,29 @@ Requirements:
                 if (pendingRedundancyReview) {
                     syncObjectiveRedundancySelectionsFromDom(pendingRedundancyReview);
                     pendingRedundancyDecision = getObjectiveRedundancyDecision(pendingRedundancyReview);
-                    if (pendingRedundancyDecision.objectiveItems.length < 2) {
-                        alert('Keep at least two Objective statements before organizing.');
+                    if (pendingRedundancyDecision.selectedEmptyCount > 0) {
+                        alert('Each checked option needs text. Add text or uncheck the empty option before organizing.');
+                        return;
+                    }
+                    if (pendingRedundancyDecision.objectiveItems.length === 0) {
+                        alert('Check at least one option before organizing.');
                         return;
                     }
                     objectiveItems = pendingRedundancyDecision.objectiveItems;
                     objectiveText = joinSoapBulletItems(objectiveItems);
                 }
-                if (objectiveItems.length < 2) {
-                    alert('Please enter at least two Objective bullet points before organizing.');
+                if (objectiveItems.length === 0) {
+                    alert('Please enter Objective content before organizing.');
                     return;
                 }
-                if (objectiveOrganizationInFlight) return;
-                objectiveOrganizationInFlight = true;
+                objectiveOrganizationInFlight.add(taskKey);
 
                 const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
                 if (organizeObjectiveBtn) {
                     organizeObjectiveBtn.disabled = true;
                     setSoapActionButtonContent(organizeObjectiveBtn, 'Organizing', false, true);
                 }
-                setSoapPostObjectiveProcessingState(true);
+                if (isCurrentAppointmentContext(appointmentContext)) setSoapPostObjectiveProcessingState(true);
 
                 const supportErrors = [];
                 try {
@@ -13282,8 +13422,8 @@ Requirements:
                     console.error('Objective organization error:', error);
                     alert(`Failed to organize Objective content. ${error.message}`);
                 } finally {
-                    objectiveOrganizationInFlight = false;
-                    if (organizeObjectiveBtn?.isConnected) {
+                    objectiveOrganizationInFlight.delete(taskKey);
+                    if (organizeObjectiveBtn?.isConnected && isCurrentAppointmentContext(appointmentContext)) {
                         organizeObjectiveBtn.disabled = false;
                         setSoapActionButtonContent(organizeObjectiveBtn, 'Organize', isObjectiveOrganizeCompleted(appointment));
                     }
@@ -13371,9 +13511,6 @@ Requirements:
                     return;
                 }
 
-                generateNoteBtn.disabled = true;
-                generateNoteBtn.textContent = 'Generating...';
-
                 const treatmentGoalsContext = getTreatmentGoalsContext(client);
                 const candidateObjectivesContext = getCandidateObjectivesContext(client);
                 const interventionContext = getInterventionContext(appointment, client);
@@ -13422,8 +13559,7 @@ Requirements:
                     console.error('OpenAI SOAP Note Generation Error:', error);
                     alert(`Failed to generate SOAP note with OpenAI. Please check your API Key, Model Name, and the console for details.\nError: ${error.message}`);
                 } finally {
-                    generateNoteBtn.disabled = false;
-                    generateNoteBtn.textContent = 'Generate Note';
+                    updateGenerateNoteButtonState();
                 }
             };
 
@@ -13439,9 +13575,6 @@ Requirements:
                     alert('Please select a client and appointment, and enter session information and/or audit-proofing details.');
                     return;
                 }
-
-                generateNoteBtn.disabled = true;
-                generateNoteBtn.textContent = 'Generating...';
 
                 const treatmentGoalsContext = getTreatmentGoalsContext(client);
                 const candidateObjectivesContext = getCandidateObjectivesContext(client);
@@ -13538,8 +13671,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     console.error('Vertex SOAP Note Generation Error:', error);
                     alert(`Failed to generate SOAP note with Vertex AI. Check your Service Account JSON, location, model, and network connection.\nError: ${error.message}`);
                 } finally {
-                    generateNoteBtn.disabled = false;
-                    generateNoteBtn.textContent = 'Generate Note';
+                    updateGenerateNoteButtonState();
                 }
             };
 
@@ -13555,9 +13687,6 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     alert('Please select a client and appointment, and enter session information and/or audit-proofing details.');
                     return;
                 }
-
-                generateNoteBtn.disabled = true;
-                generateNoteBtn.textContent = 'Generating...';
 
                 const treatmentGoalsContext = getTreatmentGoalsContext(client);
                 const candidateObjectivesContext = getCandidateObjectivesContext(client);
@@ -13660,8 +13789,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     }
                     alert(alertMessage);
                 } finally {
-                    generateNoteBtn.disabled = false;
-                    generateNoteBtn.textContent = 'Generate Note';
+                    updateGenerateNoteButtonState();
                 }
             };
 
@@ -13684,9 +13812,6 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     return;
                 }
                 const base = address.endsWith('/') ? address.slice(0, -1) : address;
-
-                generateNoteBtn.disabled = true;
-                generateNoteBtn.textContent = 'Generating...';
 
                 const treatmentGoalsContext = getTreatmentGoalsContext(client);
                 const candidateObjectivesContext = getCandidateObjectivesContext(client);
@@ -13772,8 +13897,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     }
                     alert(alertMessage);
                 } finally {
-                    generateNoteBtn.disabled = false;
-                    generateNoteBtn.textContent = 'Generate Note';
+                    updateGenerateNoteButtonState();
                 }
             };
             

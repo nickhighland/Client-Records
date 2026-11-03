@@ -2,204 +2,200 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-// Exercise the shipped handler and review functions with a small DOM adapter.
-// Sorting deliberately changes positions to catch stale item/source indexes.
 const loadReviewRuntime = (html, appointment) => {
     const names = [
-        'splitSoapBulletItems', 'joinSoapBulletItems', 'normalizeObjectiveLine',
-        'ensureSoapObjectiveActionState', 'updateSoapFieldValue',
-        'getObjectiveRedundancySuggestionItems', 'buildObjectiveRedundancyReviewData',
-        'getObjectiveRedundancyReview', 'getObjectiveRedundancyItemsForReview',
-        'reconcileObjectiveRedundancyReview', 'getSelectedObjectiveRedundancyIndexes',
-        'getSelectedObjectiveRedundancyItemIndexes', 'getObjectiveRedundancyGroupedItemIndexes',
-        'getObjectiveRedundancyGroupedSuggestionSourceIndexes', 'setObjectiveRedundancyItemSelected',
-        'syncObjectiveRedundancySelectionsFromDom',
-        'getObjectiveRedundancyDecision', 'applyObjectiveRedundancyDecision'
+        'soapTopicStopWords', 'soapTopicWeakAnchorTokens', 'normalizeInterventionText', 'stemInterventionToken',
+        'tokenizeForSoapTopic', 'scoreTopicOverlap', 'hasStrongSingleTopicAnchor', 'buildObjectiveTopicClusters',
+        'splitSoapBulletItems', 'joinSoapBulletItems', 'normalizeObjectiveLine', 'normalizeObjectiveRedundancyLabel',
+        'normalizeObjectiveRedundancyGroupsFromAi', 'deriveObjectiveTopicLabel', 'buildLocalObjectiveTopicGroups',
+        'completeObjectiveTopicGroups', 'limitObjectiveReviewDefaults', 'ensureSoapObjectiveActionState', 'updateSoapFieldValue',
+        'getObjectiveRedundancySuggestionItems', 'buildObjectiveRedundancyReviewData', 'getObjectiveRedundancyItemsForReview',
+        'getSelectedObjectiveRedundancyIndexes', 'getSelectedObjectiveRedundancyItemIndexes',
+        'getObjectiveRedundancyGroupedItemIndexes', 'getObjectiveRedundancyGroupedSuggestionSourceIndexes',
+        'getObjectiveRedundancyReview', 'reconcileObjectiveRedundancyReview', 'setObjectiveRedundancyItemSelected',
+        'syncObjectiveRedundancySelectionsFromDom', 'getObjectiveRedundancyDecision', 'applyObjectiveRedundancyDecision'
     ];
     const declarations = names.map(name => {
         const start = html.indexOf(`const ${name} =`);
         assert.ok(start >= 0, `Missing runtime function ${name}`);
         return html.slice(start, html.indexOf('\n            const ', start + 1));
     }).join('\n');
-    const handlerStart = html.indexOf('const handleSuggestion =');
-    const handler = html.slice(handlerStart, html.indexOf('const SOAP_INSTRUCTION_SECTION_DEFS', handlerStart));
+
     return new Function('appointment', `
         const selectedClientId = 'client';
         const selectedAppointmentId = 'appointment';
-        const findClient = () => ({});
+        const findClient = () => ({ id: 'client' });
         const findAppointment = () => appointment;
-        const fields = { soapO: { value: appointment.soap.o, offsetTop: 0 },
-            soapS: { value: appointment.soap.s || '', offsetTop: 0 },
-            soapContent: { scrollTop: 0 } };
-        const document = { getElementById: id => fields[id] };
-        const requestAnimationFrame = callback => callback();
-        const alert = message => { throw new Error(message); };
+        const fields = { soapO: { value: appointment.soap.o, offsetTop: 0 }, soapS: { value: appointment.soap.s || '', offsetTop: 0 } };
+        const document = { getElementById: id => fields[id] || null };
+        const alertMessages = [];
+        const alert = message => alertMessages.push(message);
         const markDirty = () => {};
-        const renderSoap = () => {};
         const refreshObjectiveSuggestionInterventionMatches = () => {};
         const SOAP_SORT_SECTION_KEYS = ['o', 's', 'a', 'p'];
         const ensureSoapSectionOrderOverrides = () => ({});
         const isSoapSectionOrderOverridden = () => false;
-        const alignSoapSectionsByObjectiveOrder = soap => {
-            soap.o = soap.o.split('\\n').reverse().join('\\n');
-            soap.o_suggestion.reverse();
-        };
         ${declarations}
-        ${handler}
+        const makeReview = (groups) => {
+            const data = buildObjectiveRedundancyReviewData(appointment);
+            const completedGroups = limitObjectiveReviewDefaults(completeObjectiveTopicGroups(data.items, groups));
+            appointment.soap.objectiveRedundancyReview = {
+                reviewId: 'review-1',
+                ...data,
+                groups: completedGroups,
+                selectedItemIndexes: [...new Set(completedGroups.flatMap(group => group.selectedItemIndexes))]
+            };
+            fields.objectiveRedundancyReview = {
+                dataset: { reviewId: 'review-1' },
+                checkboxes: [],
+                editors: [],
+                querySelectorAll(selector) {
+                    return selector === '.objective-redundancy-checkbox' ? this.checkboxes
+                        : selector === '.objective-review-editor' ? this.editors : [];
+                }
+            };
+            return appointment.soap.objectiveRedundancyReview;
+        };
+        ${''}
         return {
-            seed(groups) {
-                const data = buildObjectiveRedundancyReviewData(appointment);
-                appointment.soap.objectiveRedundancyReview = { ...data, groups,
-                    selectedItemIndexes: data.items.flatMap((item, i) => item.kind === 'objective' ? [i] : []) };
-            },
-            act(type, index, accepted, close = false) {
-                fields.soapO.value = appointment.soap.o;
-                handleSuggestion({ closest: () => ({ dataset: {
-                    suggestionType: type, suggestionIndex: String(index)
-                } }) }, accepted, close);
-            },
             review: () => getObjectiveRedundancyReview(appointment),
+            makeReview,
+            normalize: payload => normalizeObjectiveRedundancyGroupsFromAi(buildObjectiveRedundancyReviewData(appointment).items, payload),
+            complete: groups => completeObjectiveTopicGroups(buildObjectiveRedundancyReviewData(appointment).items, groups),
             select(index, checked) { return setObjectiveRedundancyItemSelected(getObjectiveRedundancyReview(appointment), index, checked); },
-            approve() { return applyObjectiveRedundancyDecision(appointment, getObjectiveRedundancyReview(appointment)); },
-            showCheckboxes(checkboxes) {
-                fields.objectiveRedundancyReview = {querySelectorAll:()=>checkboxes};
+            showOptions(checkboxes, editors = []) {
+                const container = fields.objectiveRedundancyReview;
+                container.checkboxes = checkboxes;
+                container.editors = editors;
             },
+            approve() { return applyObjectiveRedundancyDecision(appointment, getObjectiveRedundancyReview(appointment)); },
             organizeInput() {
                 const review = getObjectiveRedundancyReview(appointment);
                 syncObjectiveRedundancySelectionsFromDom(review);
                 return getObjectiveRedundancyDecision(review).objectiveItems;
             },
-            groupedSources: () => getObjectiveRedundancyGroupedSuggestionSourceIndexes(getObjectiveRedundancyReview(appointment)),
-            decision: () => getObjectiveRedundancyDecision(getObjectiveRedundancyReview(appointment))
+            decision: () => getObjectiveRedundancyDecision(getObjectiveRedundancyReview(appointment)),
+            alerts: alertMessages,
+            reconcile() {
+                const review = getObjectiveRedundancyReview(appointment);
+                reconcileObjectiveRedundancyReview(appointment, review);
+            }
         };
     `)(appointment);
 };
 
+const setup = html => {
+    const appointment = { soap: {
+        o: '• Ct explored personal values\n• Ct discussed workplace stress',
+        o_suggestion: [
+            'Writer and Ct linked values to recovery goals',
+            'Writer and Ct discussed a new supervisor',
+            'Writer and Ct identified a workplace coping strategy'
+        ]
+    } };
+    return { appointment, runtime: loadReviewRuntime(html, appointment) };
+};
+
 for (const path of ['index.html', 'src/index.html']) {
-    const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-    const setup = (firstSuggestion = 'Unique addition') => {
-        const appointment = { soap: {
-            o: '• Values exploration\n• Workplace discussion',
-            o_suggestion: [firstSuggestion, 'Values paraphrase', 'Workplace paraphrase'],
-            s_suggestion: ['Subjective addition']
-        } };
-        const runtime = loadReviewRuntime(html, appointment);
-        runtime.seed([
-            { id: 'values', label: 'Values', itemIndexes: [0, 3], selectedItemIndexes: [3] },
-            { id: 'work', label: 'Workplace', itemIndexes: [1, 4], selectedItemIndexes: [] }
+    test(`${path}: AI grouping plus local fallback categorizes every Objective option`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const { runtime } = setup(html);
+        const payload = { objective_groups: [
+            { group_id: 'values', label: 'Values Recovery Support', item_ids: ['O1', 'S1'], recommended_keep_ids: ['O1'] },
+            { group_id: 'work', label: 'Workplace Stress', item_ids: ['O2', 'S2'], recommended_keep_ids: ['O2'] }
+        ] };
+        const groups = runtime.complete(runtime.normalize(payload));
+        assert.deepEqual(groups.flatMap(group => group.itemIndexes).sort((a, b) => a - b), [0, 1, 2, 3, 4]);
+        assert.equal(groups.every(group => group.label.split(/\s+/).length >= 2 && group.label.split(/\s+/).length <= 3), true);
+        assert.equal(groups.length, 3);
+    });
+
+    test(`${path}: Approve applies checked and edited options, including multiple complementary options`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const { appointment, runtime } = setup(html);
+        runtime.makeReview([
+            { id: 'values', label: 'Values Recovery', itemIndexes: [0, 2], selectedItemIndexes: [0] },
+            { id: 'work', label: 'Workplace Stress', itemIndexes: [1, 3, 4], selectedItemIndexes: [1] }
         ]);
-        return { appointment, runtime };
-    };
+        runtime.showOptions(
+            [
+                { dataset: { itemIndex: '0' }, checked: true },
+                { dataset: { itemIndex: '1' }, checked: false },
+                { dataset: { itemIndex: '2' }, checked: true },
+                { dataset: { itemIndex: '3' }, checked: true },
+                { dataset: { itemIndex: '4' }, checked: false }
+            ],
+            [
+                { dataset: { itemIndex: '0' }, value: 'Ct named two central values' },
+                { dataset: { itemIndex: '1' }, value: 'Writer and Ct addressed a new supervisor' },
+                { dataset: { itemIndex: '2' }, value: 'Writer linked values and recovery' },
+                { dataset: { itemIndex: '3' }, value: 'Writer and Ct chose a workplace coping strategy' },
+                { dataset: { itemIndex: '4' }, value: 'Writer and Ct discussed a workplace coping strategy' }
+            ]
+        );
 
-    test(`${path}: accepting an ungrouped addition preserves groups, selections and Organize input`, () => {
-        const { appointment, runtime } = setup();
-        runtime.act('o', 0, true);
-        const review = runtime.review();
-        assert.ok(review);
-        assert.deepEqual(review.groups.map(g => g.id), ['values', 'work']);
-        assert.deepEqual(review.groups[0].selectedItemIndexes.map(i => review.items[i].text), ['Values paraphrase']);
-        assert.deepEqual(review.groups[1].selectedItemIndexes, []);
-        assert.deepEqual([...runtime.groupedSources()].sort(), [0, 1]);
-        assert.deepEqual(runtime.decision().objectiveItems.sort(), ['Unique addition', 'Values paraphrase']);
-        assert.match(appointment.soap.o, /Unique addition/);
-        assert.equal(appointment.soap.objectiveActionState.organizedRevision, null);
-    });
-
-    for (const close of [false, true]) {
-        test(`${path}: ${close ? 'closing' : 'declining'} an ungrouped suggestion preserves grouped suggestions`, () => {
-            const { runtime } = setup();
-            runtime.act('o', 0, false, close);
-            assert.equal(runtime.review().groups.length, 2);
-            assert.deepEqual([...runtime.groupedSources()].sort(), [0, 1]);
-            assert.deepEqual(runtime.decision().objectiveItems, ['Values paraphrase']);
-        });
-    }
-
-    test(`${path}: keeping an ungrouped replacement original retains groups`, () => {
-        const { runtime } = setup({ original: 'Original observation', suggested: 'Reworded observation' });
-        runtime.act('o', 0, false);
-        assert.equal(runtime.review().groups.length, 2);
-        assert.deepEqual(runtime.decision().objectiveItems.sort(), ['Original observation', 'Values paraphrase']);
-    });
-
-    test(`${path}: accepting a Subjective suggestion preserves groups after sorting Objective`, () => {
-        const { runtime } = setup();
-        runtime.act('s', 0, true);
-        assert.equal(runtime.review().groups.length, 2);
-        assert.deepEqual([...runtime.groupedSources()].sort(), [0, 1]);
-        assert.deepEqual(runtime.decision().objectiveItems, ['Values paraphrase']);
-    });
-
-    test(`${path}: Approve keeps multiple checked statements from the same group`, () => {
-        const { appointment, runtime } = setup();
-        runtime.select(0, true);
-        runtime.select(3, true);
         assert.equal(runtime.approve(), true);
-        assert.deepEqual(appointment.soap.o.split('\n'), ['• Values exploration', '• Values paraphrase']);
-        assert.deepEqual(appointment.soap.o_suggestion, ['Unique addition']);
+        assert.deepEqual(appointment.soap.o.split('\n'), [
+            '• Ct named two central values',
+            '• Writer linked values and recovery',
+            '• Writer and Ct chose a workplace coping strategy'
+        ]);
+        assert.deepEqual(appointment.soap.o_suggestion, []);
         assert.equal(appointment.soap.objectiveRedundancyReview, undefined);
     });
 
-    test(`${path}: overlapping saved groups cannot erase a checked statement`, () => {
-        const { appointment, runtime } = setup();
-        runtime.seed([
-            {id:'values', itemIndexes:[0,3], selectedItemIndexes:[0,3]},
-            {id:'overlap', itemIndexes:[1,3,4], selectedItemIndexes:[1,4]}
+    test(`${path}: Approve rejects an empty selection and reports why`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const { appointment, runtime } = setup(html);
+        runtime.makeReview([]);
+        runtime.showOptions(appointment.soap.objectiveRedundancyReview.items.map((_, index) => ({
+            dataset: { itemIndex: String(index) }, checked: false
+        })));
+        assert.equal(runtime.approve(), false);
+        assert.equal(runtime.alerts.at(-1), 'Check at least one option before approving.');
+        assert.equal(appointment.soap.objectiveRedundancyReview !== undefined, true);
+    });
+
+    test(`${path}: Organize reads checked and edited options without requiring Approve`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const { runtime } = setup(html);
+        runtime.makeReview([
+            { id: 'values', label: 'Values Recovery', itemIndexes: [0, 2], selectedItemIndexes: [0] },
+            { id: 'work', label: 'Workplace Stress', itemIndexes: [1, 3, 4], selectedItemIndexes: [1] }
         ]);
-        assert.equal(runtime.approve(), true);
-        assert.deepEqual(appointment.soap.o.split('\n'), [
-            '• Values exploration', '• Workplace discussion', '• Values paraphrase', '• Workplace paraphrase'
+        runtime.showOptions(
+            [
+                { dataset: { itemIndex: '0' }, checked: false },
+                { dataset: { itemIndex: '1' }, checked: false },
+                { dataset: { itemIndex: '2' }, checked: true },
+                { dataset: { itemIndex: '3' }, checked: true },
+                { dataset: { itemIndex: '4' }, checked: false }
+            ],
+            [
+                { dataset: { itemIndex: '0' }, value: 'Ct explored personal values' },
+                { dataset: { itemIndex: '1' }, value: 'Writer and Ct discussed a new supervisor' },
+                { dataset: { itemIndex: '2' }, value: 'Writer connected values with recovery' },
+                { dataset: { itemIndex: '3' }, value: 'Writer and Ct picked a coping strategy' },
+                { dataset: { itemIndex: '4' }, value: 'Writer and Ct discussed a coping strategy' }
+            ]
+        );
+        assert.deepEqual(runtime.organizeInput(), [
+            'Writer connected values with recovery',
+            'Writer and Ct picked a coping strategy'
         ]);
     });
 
-    test(`${path}: a checked suggestion survives when its group dissolves after accepting another item`, () => {
-        const { appointment, runtime } = setup();
-        runtime.seed([{id:'suggestions', itemIndexes:[2,3], selectedItemIndexes:[2,3]}]);
-        runtime.act('o', 0, true);
-        assert.equal(runtime.review().groups.length, 0);
-        assert.equal(runtime.approve(), true);
-        assert.match(appointment.soap.o, /Values paraphrase/);
-        assert.match(appointment.soap.o, /Unique addition/);
-        assert.deepEqual(appointment.soap.o_suggestion, ['Workplace paraphrase']);
-    });
-
-    test(`${path}: Approve reads every visible checked box even without a preceding change event`, () => {
-        const { appointment, runtime } = setup();
-        runtime.showCheckboxes([
-            {dataset:{itemIndex:'0'},checked:true},
-            {dataset:{itemIndex:'1'},checked:false},
-            {dataset:{itemIndex:'3'},checked:true},
-            {dataset:{itemIndex:'4'},checked:true}
+    test(`${path}: review reconciliation retains edits and checkbox choices`, async () => {
+        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const { appointment, runtime } = setup(html);
+        const review = runtime.makeReview([
+            { id: 'values', label: 'Values Recovery', itemIndexes: [0, 2], selectedItemIndexes: [0, 2] },
+            { id: 'work', label: 'Workplace Stress', itemIndexes: [1, 3, 4], selectedItemIndexes: [1] }
         ]);
-        assert.equal(runtime.approve(), true);
-        assert.deepEqual(appointment.soap.o.split('\n'), [
-            '• Values exploration', '• Values paraphrase', '• Workplace paraphrase'
-        ]);
-        assert.deepEqual(appointment.soap.o_suggestion, ['Unique addition']);
-    });
-
-    test(`${path}: Organize uses all checked alternatives without requiring Approve first`, () => {
-        const { runtime } = setup();
-        runtime.showCheckboxes([
-            {dataset:{itemIndex:'0'},checked:true},
-            {dataset:{itemIndex:'1'},checked:false},
-            {dataset:{itemIndex:'3'},checked:true},
-            {dataset:{itemIndex:'4'},checked:true}
-        ]);
-        assert.deepEqual(runtime.organizeInput(), ['Values exploration','Values paraphrase','Workplace paraphrase']);
-    });
-
-    test(`${path}: checking and unchecking an overlapping item updates all saved groups`, () => {
-        const { runtime } = setup();
-        runtime.seed([
-            {id:'values', itemIndexes:[0,3], selectedItemIndexes:[0]},
-            {id:'overlap', itemIndexes:[1,3], selectedItemIndexes:[1]}
-        ]);
-        runtime.select(3, true);
-        assert.equal(runtime.decision().objectiveItems.includes('Values paraphrase'), true);
-        assert.ok(runtime.review().groups.every(group=>group.selectedItemIndexes.includes(3)));
-        runtime.select(3, false);
-        assert.equal(runtime.decision().objectiveItems.includes('Values paraphrase'), false);
-        assert.ok(runtime.review().groups.every(group=>!group.selectedItemIndexes.includes(3)));
+        review.items[0].editedText = 'Ct identified a preferred recovery value';
+        runtime.reconcile();
+        const updated = runtime.review();
+        assert.equal(updated.items.find(item => item.id === 'O1').editedText, 'Ct identified a preferred recovery value');
+        assert.equal(runtime.decision().objectiveItems.includes('Ct identified a preferred recovery value'), true);
     });
 }

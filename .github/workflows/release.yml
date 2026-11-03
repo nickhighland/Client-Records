@@ -70,7 +70,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'Based on v3.0.48. Fixes Objective redundancy review so Approve and Organize retain every checked statement, including multiple statements in one group. Includes macOS bundle signing and signature verification. The withdrawn v3.0.49 workflow and Lab changes are excluded.'
+          releaseBody: 'Based on v3.0.50. Reworks the Objective review into editable topic groups covering every generated statement and suggestion, with concise recommended selections. Approve and Organize apply every checked option. Per-note processing allows different notes to generate and organize concurrently without mixing chart data. Existing note content and database storage are preserved.'
           releaseDraft: true
           prerelease: false
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.46</title>
+    <title>SmartEMR v3.0.47</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2257,6 +2257,14 @@
             color: var(--text-color-primary);
             font-size: 0.82rem;
             font-weight: 700;
+        }
+        .objective-redundancy-group-count {
+            flex: 0 0 auto;
+            margin-left: auto;
+            color: var(--text-color-secondary);
+            font-size: 0.72rem;
+            font-weight: 400;
+            white-space: nowrap;
         }
         .objective-redundancy-reason {
             margin: 3px 0 7px;
@@ -8628,7 +8636,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 .split(/\s+/)
                 .filter(Boolean)
                 .slice(0, 2)
-                .join(' ') || 'Related statements';
+                .filter((word, index, words) => !(index === words.length - 1 && /^(to|and|or|of|for|with|in|on)$/i.test(word)))
+                .join(' ') || 'Related';
 
             const normalizeObjectiveRedundancyGroupsFromAi = (reviewItems, aiPayload) => {
                 const rawGroups = Array.isArray(aiPayload?.redundancy_groups)
@@ -8702,6 +8711,87 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     }));
             };
 
+            const OBJECTIVE_REDUNDANCY_WEAK_TOKENS = new Set([
+                'adjust', 'anxiet', 'behavio', 'believ', 'coping', 'depress', 'engag', 'emotion',
+                'experienc', 'explor', 'feel', 'ident', 'interperson', 'internal', 'mean', 'narrativ',
+                'pattern', 'personal', 'profession', 'relat', 'self', 'social', 'support', 'treatment',
+                'value', 'work'
+            ]);
+
+            const getObjectiveRedundancyContentTokens = (text) => new Set(
+                tokenizeForSoapTopic(text)
+                    .filter(token => token.length > 2)
+            );
+
+            const buildHighConfidenceObjectiveRedundancyGroups = (reviewItems) => {
+                const objectiveItems = reviewItems
+                    .map((item, index) => ({ item, index }))
+                    .filter(entry => entry.item?.kind === 'objective');
+                const suggestionItems = reviewItems
+                    .map((item, index) => ({ item, index }))
+                    .filter(entry => entry.item?.kind === 'suggestion');
+                const candidates = [];
+
+                objectiveItems.forEach(objectiveEntry => {
+                    const objectiveTokens = getObjectiveRedundancyContentTokens(objectiveEntry.item.text);
+                    suggestionItems.forEach(suggestionEntry => {
+                        const suggestionTokens = getObjectiveRedundancyContentTokens(suggestionEntry.item.text);
+                        const sharedTokens = [...objectiveTokens].filter(token => suggestionTokens.has(token));
+                        const strongSharedTokens = sharedTokens.filter(token => !OBJECTIVE_REDUNDANCY_WEAK_TOKENS.has(token));
+                        if (sharedTokens.length < 2 || strongSharedTokens.length === 0) return;
+
+                        candidates.push({
+                            id: `redundancy-local-${objectiveEntry.index + 1}-${suggestionEntry.index + 1}`,
+                            label: 'Repeated',
+                            reason: 'These statements share the same documented event or intervention with distinct wording.',
+                            itemIndexes: [objectiveEntry.index, suggestionEntry.index],
+                            recommendedKeepIndexes: [objectiveEntry.index],
+                            selectedItemIndexes: [objectiveEntry.index],
+                            score: (strongSharedTokens.length * 10) + sharedTokens.length
+                        });
+                    });
+                });
+
+                return candidates.sort((left, right) => right.score - left.score);
+            };
+
+            const mergeObjectiveRedundancyGroups = (reviewItems, primaryGroups, supplementalGroups) => {
+                const mergedGroups = (Array.isArray(primaryGroups) ? primaryGroups : []).map(group => ({
+                    ...group,
+                    itemIndexes: [...(Array.isArray(group?.itemIndexes) ? group.itemIndexes : [])],
+                    recommendedKeepIndexes: [...(Array.isArray(group?.recommendedKeepIndexes) ? group.recommendedKeepIndexes : [])],
+                    selectedItemIndexes: [...(Array.isArray(group?.selectedItemIndexes) ? group.selectedItemIndexes : [])]
+                }));
+
+                (Array.isArray(supplementalGroups) ? supplementalGroups : []).forEach(candidate => {
+                    const candidateIndexes = [...new Set(Array.isArray(candidate?.itemIndexes) ? candidate.itemIndexes : [])]
+                        .filter(index => index >= 0 && index < reviewItems.length);
+                    if (candidateIndexes.length < 2) return;
+                    const overlappingGroups = mergedGroups.filter(group => (
+                        group.itemIndexes.some(index => candidateIndexes.includes(index))
+                    ));
+                    if (overlappingGroups.length === 0) {
+                        mergedGroups.push({
+                            ...candidate,
+                            itemIndexes: candidateIndexes,
+                            recommendedKeepIndexes: [...(candidate.recommendedKeepIndexes || [])],
+                            selectedItemIndexes: [...(candidate.selectedItemIndexes || [])]
+                        });
+                        return;
+                    }
+                    if (overlappingGroups.length === 1) {
+                        const target = overlappingGroups[0];
+                        candidateIndexes.forEach(index => {
+                            if (!target.itemIndexes.includes(index)) target.itemIndexes.push(index);
+                        });
+                    }
+                });
+
+                return mergedGroups.sort((left, right) => (
+                    Math.min(...left.itemIndexes) - Math.min(...right.itemIndexes)
+                ));
+            };
+
             const getObjectiveRedundancySuggestionItems = (appointment) => {
                 const suggestions = Array.isArray(appointment?.soap?.o_suggestion)
                     ? appointment.soap.o_suggestion
@@ -8755,6 +8845,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     'Strict redundancy definition: group statements only when they are interchangeable paraphrases or near-duplicates that communicate the same clinical event, client report, Writer intervention, or treatment action, so removing one would lose no distinct clinical information.',
                     'Shared topic or category is not redundancy. Do not group statements merely because they mention the same diagnosis, goal, value, person, setting, symptom area, treatment theme, modality, or broad intervention.',
                     'Keep statements separate when they add a different trigger, mechanism, causal explanation, relationship dynamic, emotional function, response, or clinically meaningful intervention—even when they support the same overall theme. If uncertain, do not group; prefer a false negative over a false positive.',
+                    'Review every Suggested Objective against every Generated Objective. A suggestion that restates an existing objective with the same event or intervention belongs in that group even if it adds minor wording. For example, statements repeating values exploration, dissociation/autopilot, the same lifestyle routines, or social awkwardness/meaning-making should be grouped with their matching Objective statement. Do not group separate sadness, identity, relational, or causal content unless it repeats a specific Objective statement.',
                     'Example: a statement about reframing demanding professional tasks around Ct values may be redundant with a statement about aligning those same tasks with personal values to restore agency. Do not group that pair with separate statements about impostor syndrome and organizational pressure or about senior leadership guidance triggering self-doubt; those add distinct mechanisms and relational details.',
                     'Do not rewrite, merge, reorder, or delete any statement. Groups must be disjoint, contain at least two item IDs, and use the original item IDs exactly, including S-numbers for Suggested Objective statements. Recommend one or more items to keep in each group, preferring the most complete or specific statement.',
                     'Return only JSON exactly as {"redundancy_groups":[{"group_id":"R1","label":"...","reason":"...","item_ids":["O2","S1"],"recommended_keep_ids":["O2"]}]}. '
@@ -8778,9 +8869,18 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         groups = await fetchObjectiveRedundancyReviewFromAI(reviewData.items);
                     } catch (error) {
                         console.warn('Objective redundancy review AI failed; checking for exact duplicates locally.', error);
-                        groups = buildLocalObjectiveRedundancyGroups(reviewData.items);
+                        groups = [];
                     }
                 }
+
+                groups = mergeObjectiveRedundancyGroups(
+                    reviewData.items,
+                    groups,
+                    [
+                        ...buildLocalObjectiveRedundancyGroups(reviewData.items),
+                        ...buildHighConfidenceObjectiveRedundancyGroups(reviewData.items)
+                    ]
+                );
 
                 const selectedItemIndexes = reviewData.items
                     .map((item, index) => item.kind === 'objective' ? index : -1)
@@ -10381,7 +10481,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             <div class="objective-redundancy-group objective-redundancy-group-container" data-redundancy-group-id="${escapeGoalDraftHtml(groupId)}">
                                 <div class="objective-redundancy-group-title">
                                     <span>Objective Grouping ${entry.groupIndex + 1}: ${escapeGoalDraftHtml(entry.group.label || 'Related statements')}</span>
-                                    <span>${entry.itemIndexes.length} statements</span>
+                                    <span class="objective-redundancy-group-count">(${entry.itemIndexes.length} statements)</span>
                                 </div>
                                 ${entry.itemIndexes.map(index => renderObjectiveRedundancyItem(reviewItems[index], index, selectedIndexes, groupId)).join('')}
                             </div>

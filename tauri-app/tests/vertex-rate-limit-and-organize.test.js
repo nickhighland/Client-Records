@@ -20,6 +20,9 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /Strict redundancy definition/);
         assert.match(html, /Shared topic or category is not redundancy/);
         assert.match(html, /prefer a false negative over a false positive/);
+        assert.match(html, /const buildHighConfidenceObjectiveRedundancyGroups =/);
+        assert.match(html, /const mergeObjectiveRedundancyGroups =/);
+        assert.match(html, /same lifestyle routines/);
         assert.match(html, /const getObjectiveRedundancySuggestionItems =/);
         assert.match(html, /const buildObjectiveRedundancyReviewData =/);
         assert.match(html, /const fetchObjectiveRedundancyReviewFromAI =/);
@@ -44,6 +47,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /setSoapPostObjectiveProcessingState\(true\)/);
         assert.match(html, /Objective Grouping/);
         assert.match(html, /objective-redundancy-group-container/);
+        assert.match(html, /objective-redundancy-group-count/);
         assert.match(html, /const renderObjectiveRedundancySuggestions =/);
         assert.match(html, /const getObjectiveRedundancyGroupedSuggestionSourceIndexes =/);
         assert.match(html, /if \(groups\.length === 0\) return ''/);

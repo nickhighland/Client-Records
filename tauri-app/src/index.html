@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.47</title>
+    <title>SmartEMR v3.0.48</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2171,6 +2171,52 @@
             min-height: 100px;
             border-radius: 0;
             border: none;
+        }
+        .soap-static-textarea {
+            min-height: 70px;
+            border-radius: 0;
+            border: none;
+        }
+        .soap-treatment-plan-items {
+            display: grid;
+            gap: 8px;
+            padding: 10px;
+            border-top: 1px solid var(--panel-border);
+            background: var(--panel-bg);
+        }
+        .soap-treatment-plan-goal {
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 8px 10px;
+            background: var(--input-bg);
+        }
+        .soap-treatment-plan-item-header,
+        .soap-treatment-plan-objective {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .soap-treatment-plan-item-header {
+            font-weight: 700;
+        }
+        .soap-treatment-plan-objectives {
+            display: grid;
+            gap: 5px;
+            margin-top: 7px;
+            padding-left: 14px;
+        }
+        .soap-treatment-plan-objective-text {
+            flex: 1 1 auto;
+            min-width: 0;
+            line-height: 1.35;
+        }
+        .soap-treatment-plan-objective-text::before {
+            content: '• ';
+        }
+        .soap-treatment-plan-copy-btn {
+            flex: 0 0 auto;
+            white-space: nowrap;
         }
 
         .suggestion-box {
@@ -10033,6 +10079,63 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             const formatObjectiveCopyText = (objective) => String(objective.text || '').trim();
 
+            const formatDiagnosisWithSubstantiationText = (client) => getClientDiagnoses(client)
+                .map(diagnosis => {
+                    const name = String(diagnosis?.name || '').trim();
+                    const substantiation = String(diagnosis?.substantiation || '').trim();
+                    if (!name) return '';
+                    return substantiation ? `${name}: ${substantiation}` : name;
+                })
+                .filter(Boolean)
+                .join('\n\n');
+
+            const formatDiagnosisWithoutSubstantiationText = (client) => getClientDiagnosisNames(client)
+                .join('\n');
+
+            const getActiveTreatmentPlanGoals = (client) => Array.isArray(client?.goals)
+                ? client.goals.filter(goal => goal?.status === 'active' && formatGoalCopyText(goal))
+                : [];
+
+            const formatTreatmentPlanCopyText = (client) => getActiveTreatmentPlanGoals(client)
+                .map(goal => {
+                    const objectiveText = (goal.objectives || [])
+                        .map(formatObjectiveCopyText)
+                        .filter(Boolean)
+                        .map(text => `• ${text}`);
+                    return [formatGoalCopyText(goal), ...objectiveText].join('\n');
+                })
+                .join('\n\n');
+
+            const renderSoapTreatmentPlanItems = (client) => {
+                const activeGoals = getActiveTreatmentPlanGoals(client);
+                if (activeGoals.length === 0) {
+                    return '<div class="no-selection">No active treatment plan goals recorded.</div>';
+                }
+
+                return activeGoals.map((goal, goalIndex) => {
+                    const objectiveRows = (goal.objectives || []).map(objective => {
+                        const objectiveText = formatObjectiveCopyText(objective);
+                        if (!objectiveText) return '';
+                        return `
+                            <div class="soap-treatment-plan-objective">
+                                <span class="soap-treatment-plan-objective-text">${escapeGoalDraftHtml(objectiveText)}</span>
+                                ${getPlanCopyButtonMarkup('Objective', 'soap-treatment-plan-copy-btn', `data-soap-plan-copy-type="objective" data-goal-id="${escapeGoalDraftHtml(goal.id)}" data-objective-id="${escapeGoalDraftHtml(objective.id)}"`)}
+                            </div>
+                        `;
+                    }).join('');
+                    return `
+                        <div class="soap-treatment-plan-goal" data-soap-plan-goal-id="${escapeGoalDraftHtml(goal.id)}">
+                            <div class="soap-treatment-plan-item-header">
+                                <span>Goal ${goalIndex + 1}</span>
+                                ${getPlanCopyButtonMarkup('Goal', 'soap-treatment-plan-copy-btn', `data-soap-plan-copy-type="goal" data-goal-id="${escapeGoalDraftHtml(goal.id)}"`)}
+                            </div>
+                            <div>${escapeGoalDraftHtml(formatGoalCopyText(goal))}</div>
+                            ${objectiveRows ? `<div class="soap-treatment-plan-objectives">${objectiveRows}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            };
+
             const setPlanCopyButtonFeedback = (button, label, copied) => {
                 if (!button) return;
                 button.classList.toggle('is-copied', copied);
@@ -10175,12 +10278,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     : '';
                 const auditResult = appointment.auditCheck || null;
                 soapContentEl.innerHTML = `
-                    <div class="soap-section">
+                    <div class="soap-section" data-soap-section-key="s">
                         <div class="soap-header"><span>Subjective</span>${renderSoapCopyButton('soapS', 'Subjective')}</div>
                         <textarea id="soapS" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.s || ''}</textarea>
                         ${(soapData.s_suggestion || []).map((s, i) => renderSuggestionBox('s', s, i)).join('')}
                     </div>
-                    <div class="soap-section">
+                    <div class="soap-section" data-soap-section-key="o">
                         <div class="soap-header">
                             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <span>Objective</span>
@@ -10192,7 +10295,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         ${renderObjectiveRedundancySuggestions(appointment)}
                         ${renderObjectiveRedundancyReview(appointment)}
                     </div>
-                    <div class="soap-section">
+                    <div class="soap-section" data-soap-section-key="interventions">
                         <div class="soap-header">
                             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <span>Interventions</span>
@@ -10205,17 +10308,31 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         </div>
                     <textarea id="interventions" class="soap-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${interventions}</textarea>
                     </div>
-                    <div class="soap-section">
+                    <div class="soap-section" data-soap-section-key="a">
                         <div class="soap-header"><span>Assessment</span>${renderSoapCopyButton('soapA', 'Assessment')}</div>
                         <textarea id="soapA" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.a || ''}</textarea>
                         ${(soapData.a_suggestion || []).map((s, i) => renderSuggestionBox('a', s, i)).join('')}
                     </div>
-                    <div class="soap-section">
+                    <div class="soap-section" data-soap-section-key="p">
                         <div class="soap-header"><span>Plan</span>${renderSoapCopyButton('soapP', 'Plan')}</div>
                         <textarea id="soapP" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.p || ''}</textarea>
                         ${(soapData.p_suggestion || []).map((s, i) => renderSuggestionBox('p', s, i)).join('')}
                     </div>
-                    <div class="soap-support-block">
+                    <div class="soap-support-block" data-soap-section-key="diagnosisWithSubstantiation">
+                        <div class="soap-support-header">
+                            <span>Diagnosis with substantiation</span>
+                            ${renderSoapCopyButton('soapDiagnosisWithSubstantiation', 'Diagnosis with substantiation')}
+                        </div>
+                        <textarea id="soapDiagnosisWithSubstantiation" class="soap-textarea soap-static-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(formatDiagnosisWithSubstantiationText(client))}</textarea>
+                    </div>
+                    <div class="soap-support-block" data-soap-section-key="diagnosisWithoutSubstantiation">
+                        <div class="soap-support-header">
+                            <span>Diagnosis without substantiation</span>
+                            ${renderSoapCopyButton('soapDiagnosisWithoutSubstantiation', 'Diagnosis without substantiation')}
+                        </div>
+                        <textarea id="soapDiagnosisWithoutSubstantiation" class="soap-textarea soap-static-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(formatDiagnosisWithoutSubstantiationText(client))}</textarea>
+                    </div>
+                    <div class="soap-support-block" data-soap-section-key="presentingProblem">
                         <div class="soap-support-header">
                             <span>Presenting Problem</span>
                             <div class="soap-action-group">
@@ -10225,7 +10342,17 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         </div>
                         <textarea id="presentingProblem" class="soap-textarea soap-support-textarea" placeholder="Press Organize in Objective to generate a session-based presenting problem." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.presentingProblem || '')}</textarea>
                     </div>
-                    <div class="soap-support-block">
+                    <div class="soap-support-block" data-soap-section-key="treatmentPlan">
+                        <div class="soap-support-header">
+                            <span>Treatment Plan</span>
+                            ${renderSoapCopyButton('soapTreatmentPlan', 'Treatment Plan')}
+                        </div>
+                        <textarea id="soapTreatmentPlan" class="soap-textarea soap-static-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(formatTreatmentPlanCopyText(client))}</textarea>
+                        <div class="soap-treatment-plan-items">
+                            ${renderSoapTreatmentPlanItems(client)}
+                        </div>
+                    </div>
+                    <div class="soap-support-block" data-soap-section-key="diagnosticSupport">
                         <div class="soap-support-header">
                             <span>Diagnostic Support</span>
                             <div class="soap-action-group">
@@ -10235,7 +10362,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         </div>
                         <textarea id="diagnosticSupport" class="soap-textarea soap-support-textarea" placeholder="Press Organize in Objective to generate a separate 3-4 sentence section for each diagnosis." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.diagnosticSupport || '')}</textarea>
                     </div>
-                    <div class="soap-support-block">
+                    <div class="soap-support-block" data-soap-section-key="medicalNecessity">
                         <div class="soap-support-header">
                             <span>Medical Necessity</span>
                             <div class="soap-action-group">
@@ -10244,16 +10371,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         </div>
                         <textarea id="medicalNecessity" class="soap-textarea soap-support-textarea" placeholder="Press Organize in Objective to generate a medical necessity statement." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.medicalNecessity || getAuditProofingData(appointment).medicalNecessity || '')}</textarea>
                     </div>
-                    <div class="soap-section">
+                    <div class="soap-section" data-soap-section-key="auditCheck">
                         <div class="soap-header"><span>Audit Check</span><button id="runSoapAuditBtn" class="copy-btn">Audit</button></div>
                         ${renderAuditResults(auditResult)}
                     </div>`;
 
                 const renderedSoapSections = Array.from(soapContentEl.children);
                 const soapSectionsByKey = new Map();
-                SOAP_PLATFORM_DEFAULT_ORDER.forEach((sectionKey, index) => {
-                    const sectionElement = renderedSoapSections[index];
-                    if (sectionElement) soapSectionsByKey.set(sectionKey, sectionElement);
+                renderedSoapSections.forEach(sectionElement => {
+                    const sectionKey = sectionElement.dataset.soapSectionKey;
+                    if (sectionKey) soapSectionsByKey.set(sectionKey, sectionElement);
                 });
                 const configuredSoapSections = getSoapPlatformSectionKeysForAppointment(client, appointment);
                 soapContentEl.replaceChildren(
@@ -10356,6 +10483,56 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     text: normalizeObjectiveLine(text),
                     originalText: ''
                 }));
+            };
+
+            const reconcileObjectiveRedundancyReview = (appointment, previousReview) => {
+                if (!appointment?.soap || !previousReview) return;
+                const current = buildObjectiveRedundancyReviewData(appointment);
+                const previousItems = getObjectiveRedundancyItemsForReview(previousReview);
+                const previousSelected = getSelectedObjectiveRedundancyItemIndexes(previousReview);
+                // Item positions change when suggestions are removed or topic sorting runs.
+                // Match by content and kind, consuming each occurrence once so identical
+                // statements retain separate checkbox selections.
+                const itemKey = item => JSON.stringify([
+                    item.kind,
+                    normalizeObjectiveLine(item.text),
+                    normalizeObjectiveLine(item.originalText || '')
+                ]);
+                const availableIndexes = new Map();
+                current.items.forEach((item, index) => {
+                    const key = itemKey(item);
+                    if (!availableIndexes.has(key)) availableIndexes.set(key, []);
+                    availableIndexes.get(key).push(index);
+                });
+                const indexMap = new Map();
+                previousItems.forEach((item, index) => {
+                    const nextIndex = availableIndexes.get(itemKey(item))?.shift();
+                    if (Number.isInteger(nextIndex)) indexMap.set(index, nextIndex);
+                });
+                const remapIndexes = indexes => (indexes || [])
+                    .filter(index => indexMap.has(index))
+                    .map(index => indexMap.get(index));
+                const groups = (previousReview.groups || []).map(group => ({
+                    ...group,
+                    itemIndexes: remapIndexes(group.itemIndexes),
+                    recommendedKeepIndexes: remapIndexes(group.recommendedKeepIndexes),
+                    selectedItemIndexes: remapIndexes(getSelectedObjectiveRedundancyIndexes(group))
+                })).filter(group => group.itemIndexes.length > 1);
+                const selectedItemIndexes = new Set(remapIndexes([...previousSelected]));
+                const matchedIndexes = new Set(indexMap.values());
+                current.items.forEach((item, index) => {
+                    // A newly accepted addition is already approved and must survive
+                    // a later Approve or Organize action on the pending groups.
+                    if (item.kind === 'objective' && !matchedIndexes.has(index)) {
+                        selectedItemIndexes.add(index);
+                    }
+                });
+                appointment.soap.objectiveRedundancyReview = {
+                    ...previousReview,
+                    ...current,
+                    groups,
+                    selectedItemIndexes: [...selectedItemIndexes]
+                };
             };
 
             const getSelectedObjectiveRedundancyIndexes = (group) => {
@@ -12049,6 +12226,12 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                      interventionPickerModal.classList.remove('hidden');
                      return;
                  }
+                 if (clickedButton?.classList.contains('soap-treatment-plan-copy-btn')) {
+                     const goalId = clickedButton.dataset.goalId || '';
+                     const objectiveId = clickedButton.dataset.objectiveId || '';
+                     void copyPlanItem(goalId, objectiveId || null, clickedButton);
+                     return;
+                 }
                  const copyButton = clickedButton?.classList.contains('copy-btn') ? clickedButton : null;
                  if (copyButton) {
                      const targetId = copyButton.dataset.target;
@@ -12102,6 +12285,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const suggestionData = appointment.soap[suggestionKey]?.[index];
                 if (!suggestionData) return;
                 const sectionKey = type.toLowerCase();
+                const previousRedundancyReview = getObjectiveRedundancyReview(appointment);
 
                 const textarea = document.getElementById(`soap${type.toUpperCase()}`);
                 const sectionViewportOffset = textarea
@@ -12152,10 +12336,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (Array.isArray(appointment.soap[suggestionKey])) {
                     appointment.soap[suggestionKey].splice(index, 1);
                 }
-                if (sectionKey === 'o') {
-                    delete appointment.soap.objectiveRedundancyReview;
-                }
-
                 if (isAccepted && textToAdd && !skipAppend && SOAP_SORT_SECTION_KEYS.includes(sectionKey)) {
                     const overrides = ensureSoapSectionOrderOverrides(appointment.soap);
                     const skipSections = new Set(SOAP_SORT_SECTION_KEYS.filter(key => overrides[key]));
@@ -12163,6 +12343,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         alignSoapSectionsByObjectiveOrder(appointment.soap, { skipSections });
                     }
                 }
+                reconcileObjectiveRedundancyReview(appointment, previousRedundancyReview);
                 refreshObjectiveSuggestionInterventionMatches(appointment, client);
                 markDirty();
                 renderSoap();
@@ -12226,13 +12407,25 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 { key: 'interventions', label: 'Interventions', description: 'Interventions identified from the organized Objective content.' },
                 { key: 'a', label: 'Assessment', description: 'Clinical interpretation, diagnosis and goal linkage, progress, barriers, and risk when supported.' },
                 { key: 'p', label: 'Plan', description: 'Documented next steps, follow-up, homework, coordination, or safety planning.' },
+                { key: 'diagnosisWithSubstantiation', label: 'Diagnosis with substantiation', description: 'Each clinician-entered diagnosis paired with its saved substantiation in one plain-text block.' },
+                { key: 'diagnosisWithoutSubstantiation', label: 'Diagnosis without substantiation', description: 'The clinician-entered diagnosis list without substantiation.' },
                 { key: 'presentingProblem', label: 'Presenting Problem', description: 'The documented presenting problem combined with how it appeared in the current session.' },
+                { key: 'treatmentPlan', label: 'Treatment Plan', description: 'Active treatment goals and objectives, with copy controls for the full plan or each item.' },
                 { key: 'diagnosticSupport', label: 'Diagnostic Support', description: 'Diagnosis-specific support tied to the current session record.' },
                 { key: 'medicalNecessity', label: 'Medical Necessity', description: 'A brief diagnosis- and session-based statement supporting continued skilled care.' },
                 { key: 'auditCheck', label: 'Audit Check', description: 'The audit-readiness review for the completed SOAP note.' }
             ];
             const SOAP_PLATFORM_SECTION_KEY_SET = new Set(SOAP_PLATFORM_SECTION_DEFS.map(def => def.key));
             const SOAP_PLATFORM_DEFAULT_ORDER = SOAP_PLATFORM_SECTION_DEFS.map(def => def.key);
+            const SOAP_PLATFORM_LEGACY_DEFAULT_ORDER = [
+                's', 'o', 'interventions', 'a', 'p',
+                'presentingProblem', 'diagnosticSupport', 'medicalNecessity', 'auditCheck'
+            ];
+            const SOAP_PLATFORM_NEW_OPTION_KEYS = new Set([
+                'diagnosisWithSubstantiation',
+                'diagnosisWithoutSubstantiation',
+                'treatmentPlan'
+            ]);
             const SOAP_PLATFORM_DEFAULT_ID = 'standard';
 
             const createDefaultSoapPlatform = () => ({
@@ -12245,6 +12438,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             const normalizeSoapPlatformSections = (rawSections) => {
                 const source = Array.isArray(rawSections) ? rawSections : [];
+                const hasPersistedSectionOrder = source.length > 0;
                 const seen = new Set();
                 const normalized = [];
                 source.forEach(entry => {
@@ -12258,7 +12452,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 });
                 SOAP_PLATFORM_DEFAULT_ORDER.forEach(key => {
                     if (seen.has(key)) return;
-                    normalized.push({ key, enabled: true });
+                    normalized.push({
+                        key,
+                        // Do not add newly introduced output sections to an existing
+                        // platform automatically. This keeps existing platform layouts
+                        // and notes stable until the clinician enables the new option.
+                        enabled: !hasPersistedSectionOrder || !SOAP_PLATFORM_NEW_OPTION_KEYS.has(key)
+                    });
                 });
                 return normalized;
             };
@@ -12332,8 +12532,21 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             const getSoapPlatformSectionKeysForAppointment = (client, appointment) => {
                 const snapshotKeys = getSoapPlatformSnapshotSectionKeys(appointment?.soapPlatformSnapshot);
                 if (snapshotKeys) return snapshotKeys;
+                const hasStoredSoapContent = appointment?.soap && [
+                    appointment.soap.s,
+                    appointment.soap.o,
+                    appointment.soap.a,
+                    appointment.soap.p,
+                    appointment.soap.interventions,
+                    appointment.soap.presentingProblem,
+                    appointment.soap.diagnosticSupport,
+                    appointment.soap.medicalNecessity
+                ].some(value => String(value || '').trim());
+                if (!hasStoredSoapContent && getClientSoapPlatform(client)) {
+                    return getSoapPlatformSectionKeys(client, false);
+                }
                 // Existing appointments predate platform assignment. Keep their legacy layout intact.
-                return [...SOAP_PLATFORM_DEFAULT_ORDER];
+                return [...SOAP_PLATFORM_LEGACY_DEFAULT_ORDER];
             };
 
             const captureSoapPlatformSnapshot = (appointment, client) => {

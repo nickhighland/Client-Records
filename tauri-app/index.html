@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.49</title>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <title>SmartEMR Lab v3.1.0-beta.1</title>
     <style>
         :root {
             --bg-main: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -4226,6 +4225,7 @@
                     <input type="password" id="confirmNewPasswordInput" class="setting-input" placeholder="Confirm new password">
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <button id="changePasswordBtn" class="btn">Change Password</button>
+                        <button id="rotateRecoveryKeyBtn" class="btn" type="button">Create new recovery key</button>
                         <span id="changePasswordStatus" style="font-size: 0.875rem; font-weight: 600;"></span>
                     </div>
                     <div style="margin-top: 0.25rem; padding: 12px; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-bg);">
@@ -4742,7 +4742,10 @@
             verifyClinicalCandidate, markClinicalDependencies, confirmedClinicalContext, normalizeNecessity, prepareClinicalGeneration
         } from '/src/soap-clinical-review.js';
         import { invoke } from '@tauri-apps/api/core';
-        import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+        import { fetch as nativeFetch } from '@tauri-apps/plugin-http';
+        import { LAB_BUILD, checkpointDraft, createSaveCoordinator, createAiJobs } from '/src/draft-workflow.js';
+        import { credentialStorage, loadCredentialVault } from '/src/credential-vault.js';
+        import { mountLabWorkspace, showRecoveryKit, askBackupCredentials, escapeText } from '/src/lab-workspace.js';
         import { getCurrentWindow } from '@tauri-apps/api/window';
         import { save, ask, message } from '@tauri-apps/plugin-dialog';
         import { writeTextFile } from '@tauri-apps/plugin-fs';
@@ -4776,6 +4779,10 @@
             getCurrentUser,
             clearActiveSession,
             changePassword,
+            takeRecoveryKit,
+            rotateRecoveryKey,
+            preserveUnsavedDraft,
+            hasPendingVolatileDraft,
             getBiometricAvailability,
             storeCurrentBiometricLogin,
             readBiometricLoginSecret,
@@ -4860,7 +4867,8 @@
         const biometricSettingsStatus = document.getElementById('biometricSettingsStatus');
         const biometricEnrollmentHelp = document.getElementById('biometricEnrollmentHelp');
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadCredentialVault(invoke, localStorage);
             // DOM Elements
             const clientListEl = document.getElementById('clientList');
             const todaySessionsListEl = document.getElementById('todaySessionsList');
@@ -5072,6 +5080,16 @@
             const modelSelectWrapper = document.getElementById('modelSelectWrapper');
             const generateNoteBtn = document.getElementById('generateNoteBtn');
             const fileInput = document.getElementById('fileInput');
+            const restoreBackup = async (payload, sql = false) => {
+                const restore = sql ? importSqlDump : importEncryptedSqlDump;
+                try { return await restore(payload); }
+                catch (error) {
+                    if (!String(error.message || error).includes('BACKUP_PASSWORD_REQUIRED')) throw error;
+                    const credentials = await askBackupCredentials(payload?.format !== 'smartemr-backup-v2');
+                    if (!credentials) throw new Error('Restore cancelled. Existing Lab drafts were retained.');
+                    return restore(payload, credentials.username, credentials.password);
+                }
+            };
             const appModeEmrBtn = document.getElementById('appModeEmrBtn');
             const appModeDsmBtn = document.getElementById('appModeDsmBtn');
             const appModeAssessmentsBtn = document.getElementById('appModeAssessmentsBtn');
@@ -5124,6 +5142,13 @@
             let vertexModelCatalog = [];
             let openaiApiKey = null;
             let selectedModel = null;
+            let labUI = null;
+            let aiJobStatus = '';
+            const aiJobs = createAiJobs(nativeFetch, { onStatus: status => { aiJobStatus = status; labUI?.update(); } });
+            const tauriFetch = (...args) => aiJobs.fetch(...args);
+            const jobSource = (client, appointment) => JSON.stringify([appointment?.sessionInfo, appointment?.auditProofing,
+                appointment?.sessionInstructions, client?.persistentInstructions, client?.diagnosis, client?.diagnoses, client?.goals, client?.presentingProblem, client?.sessionType,
+                client?.preferredPronouns, client?.sessionMembers, client?.soapPlatformId, data.soapPlatforms, selectedModel, apiProvider, selectedClientId, selectedAppointmentId]);
             let persistentInstructions = '';
             let activeNotesTab = 'clientDetails';
             let activeSoapPlatformId = null;
@@ -6535,15 +6560,15 @@
                             <span><strong>Audit Score:</strong> ${resolvedAudit.score}%</span>
                             <span class="audit-badge ${resolvedAudit.likelyPass ? 'pass' : 'fail'}">${resolvedAudit.likelyPass ? 'Likely Pass' : 'Needs Revision'}</span>
                         </div>
-                        <div style="font-size: 0.84rem; margin-bottom: 6px; color: var(--text-color-secondary);">${resolvedAudit.summary}</div>
+                        <div style="font-size: 0.84rem; margin-bottom: 6px; color: var(--text-color-secondary);">${escapeGoalDraftHtml(resolvedAudit.summary)}</div>
                         <ul class="audit-items">
-                            ${resolvedAudit.checks.map(check => `<li class="${check.pass ? 'audit-item-pass' : 'audit-item-fail'}"><div style="display: flex; align-items: center; gap: 8px;"><label style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; white-space: nowrap;"><input type="checkbox" class="audit-manual-check" data-check-label="${check.label.replace(/\"/g, '&quot;')}" ${check.manualOverride ? 'checked' : ''}></label><span>${check.pass ? '✓' : '✗'} ${check.label}</span></div></li>`).join('')}
+                            ${resolvedAudit.checks.map(check => `<li class="${check.pass ? 'audit-item-pass' : 'audit-item-fail'}"><div style="display: flex; align-items: center; gap: 8px;"><label style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; white-space: nowrap;"><input type="checkbox" class="audit-manual-check" data-check-label="${check.label.replace(/\"/g, '&quot;')}" ${check.manualOverride ? 'checked' : ''}></label><span>${check.pass ? '✓' : '✗'} ${escapeGoalDraftHtml(check.label)}</span></div></li>`).join('')}
                         </ul>
                         ${resolvedAudit.opportunities && resolvedAudit.opportunities.length > 0 ? `
                             <div class="audit-remediation">
                                 <strong>Ways to strengthen this note:</strong>
                                 <ul>
-                                    ${resolvedAudit.opportunities.map(item => `<li>${item}</li>`).join('')}
+                                    ${resolvedAudit.opportunities.map(item => `<li>${escapeGoalDraftHtml(item)}</li>`).join('')}
                                 </ul>
                             </div>
                         ` : ''}
@@ -7408,6 +7433,7 @@
                 const next = String(nextValue ?? '');
                 const current = String(appointment.soap[fieldKey] ?? '');
                 if (current === next) return false;
+                checkpointDraft(appointment, 'Before editing');
                 appointment.soap[fieldKey] = next;
                 if (fieldKey === 'o') {
                     if (appointment.soap.clinicalReview) markClinicalDependencies(appointment.soap, current, next);
@@ -7898,7 +7924,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 interventionBankList.innerHTML = [...groups.entries()].map(([modality, group]) => `
                     <div class="intervention-group">
                         <div class="intervention-group-header">
-                            <span>${modality}</span>
+                            <span>${escapeGoalDraftHtml(modality)}</span>
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <span class="intervention-group-count">${group.items.length} item${group.items.length === 1 ? '' : 's'}</span>
                                 ${group.header && group.items.length === 0 ? `<button class="action-btn delete-btn" data-bank-id="${group.header.id}" title="Delete empty modality bank" style="width:20px;height:20px;">×</button>` : ''}
@@ -7906,17 +7932,17 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         </div>
                         <div class="intervention-group-body" data-drop-modality="${modality.replace(/"/g, '&quot;')}">
                             ${group.items.length > 0 ? group.items.map(entry => `
-                                <div class="intervention-row intervention-bank-row" draggable="true" data-bank-id="${entry.id}" data-bank-modality="${entry.modality.replace(/"/g, '&quot;')}">
+                                <div class="intervention-row intervention-bank-row" draggable="true" data-bank-id="${escapeGoalDraftHtml(entry.id)}" data-bank-modality="${entry.modality.replace(/"/g, '&quot;')}">
                                     <div class="intervention-bank-name">
-                                        <span>${entry.name}</span>
+                                        <span>${escapeGoalDraftHtml(entry.name)}</span>
                                         ${entry.couplesOnly ? '<span class="couples-only-badge">Couples only</span>' : ''}
                                     </div>
                                     <div class="intervention-bank-controls">
                                         <label class="intervention-scope-toggle" title="Only offer this intervention for Couple sessions">
-                                            <input type="checkbox" class="intervention-couples-only-toggle" data-bank-id="${entry.id}" ${entry.couplesOnly ? 'checked' : ''}>
+                                            <input type="checkbox" class="intervention-couples-only-toggle" data-bank-id="${escapeGoalDraftHtml(entry.id)}" ${entry.couplesOnly ? 'checked' : ''}>
                                             Couples only
                                         </label>
-                                        <button class="action-btn delete-btn" data-bank-id="${entry.id}" title="Remove intervention" style="width:20px;height:20px;">×</button>
+                                        <button class="action-btn delete-btn" data-bank-id="${escapeGoalDraftHtml(entry.id)}" title="Remove intervention" style="width:20px;height:20px;">×</button>
                                     </div>
                                 </div>
                             `).join('') : `<div class="intervention-group-empty">Drag interventions here or add a new one under this modality.</div>`}
@@ -7948,13 +7974,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 interventionPickerList.innerHTML = [...groups.entries()].map(([modality, groupEntries]) => `
                     <div class="intervention-group">
                         <div class="intervention-group-header">
-                            <span>${modality}</span>
+                            <span>${escapeGoalDraftHtml(modality)}</span>
                             <span class="intervention-group-count">${groupEntries.length} item${groupEntries.length === 1 ? '' : 's'}</span>
                         </div>
                         <div class="intervention-group-body">
                             ${groupEntries.map(entry => `
                                 <label class="intervention-row" style="cursor:pointer;">
-                                    <span class="intervention-bank-name"><span>${entry.name}</span>${entry.couplesOnly ? '<span class="couples-only-badge">Couples only</span>' : ''}</span>
+                                    <span class="intervention-bank-name"><span>${escapeGoalDraftHtml(entry.name)}</span>${entry.couplesOnly ? '<span class="couples-only-badge">Couples only</span>' : ''}</span>
                                     <input type="checkbox" class="picker-intervention" value="${entry.name.replace(/"/g, '&quot;')}" ${selected.has(entry.name) ? 'checked' : ''}>
                                 </label>
                             `).join('')}
@@ -7989,7 +8015,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (!newInterventionModalitySelect || !newInterventionModalityOtherWrap || !newInterventionModalityOther) return;
                 const currentValue = newInterventionModalitySelect.value;
                 const modalities = getInterventionBankModalities();
-                const modalityOptions = modalities.map(modality => `<option value="${modality.replace(/"/g, '&quot;')}" ${modality === currentValue ? 'selected' : ''}>${modality}</option>`).join('');
+                const modalityOptions = modalities.map(modality => `<option value="${modality.replace(/"/g, '&quot;')}" ${modality === currentValue ? 'selected' : ''}>${escapeGoalDraftHtml(modality)}</option>`).join('');
                 const hasCustomValue = currentValue && currentValue !== '__new__' && !modalities.includes(currentValue);
                 newInterventionModalitySelect.innerHTML = `
                     <option value="" ${!currentValue ? 'selected' : ''}>Choose modality...</option>
@@ -8521,6 +8547,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const requestJsonObjectFromCurrentProvider = async (systemPrompt, userPrompt) => {
+                const context = getSelectedAppointmentContext();
+                const appointment = getAppointmentFromContext(context);
+                const client = context ? findClient(context.clientId) : null;
+                const execute = async () => { const result = await requestJsonObjectFromCurrentProviderImpl(systemPrompt, userPrompt); aiJobs.check(); return result; };
+                return aiJobs.busy ? execute() : aiJobs.run('Reviewing clinical content…', () => jobSource(client, appointment), execute);
+            };
+            const requestJsonObjectFromCurrentProviderImpl = async (systemPrompt, userPrompt) => {
                 if (!systemPrompt.includes(GOLDEN_THREAD_INSTRUCTIONS)) systemPrompt += '\n' + GOLDEN_THREAD_INSTRUCTIONS;
                 systemPrompt += '\nUse the response schema requested for this operation; do not add unrelated fields.';
                 if (!selectedModel) {
@@ -9519,11 +9552,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 normalizeClientData();
 
                 const renderClientCard = (client, listType, todayIndex = null) => `
-                    <div class="client-item ${client.id === selectedClientId ? 'active' : ''}" data-client-id="${client.id}" data-list-type="${listType}">
+                    <div class="client-item ${client.id === selectedClientId ? 'active' : ''}" data-client-id="${escapeGoalDraftHtml(client.id)}" data-list-type="${listType}">
                         <div class="client-item-main">
                             <div class="client-item-leading">
                                 ${listType === 'today' ? `<span class="today-session-rank">${todayIndex + 1}</span>` : ''}
-                                <span class="client-name-label">${client.name || 'Untitled Client'}</span>
+                                <span class="client-name-label">${escapeGoalDraftHtml(client.name || 'Untitled Client')}</span>
                             </div>
                         </div>
                         <div class="action-buttons client-action-buttons">
@@ -9609,7 +9642,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const appointmentsHtml = appointments.length > 0 ? `
                     <div class="list-subheader">Appointments</div>
                     ${appointments.map(appt => `
-                        <div class="appointment-item ${appt.id === selectedAppointmentId ? 'active' : ''}" data-appointment-id="${appt.id}">
+                        <div class="appointment-item ${appt.id === selectedAppointmentId ? 'active' : ''}" data-appointment-id="${escapeGoalDraftHtml(appt.id)}">
                             <div class="appointment-date">${new Date(appt.date).toLocaleDateString()}</div>
                             <div class="action-buttons">
                                 <button class="action-btn delete-btn" title="Delete Appointment">×</button>
@@ -9621,8 +9654,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const notesHtml = notes.length > 0 ? `
                     <div class="list-subheader">Notes</div>
                     ${notes.map(note => `
-                        <div class="note-item ${note.id === selectedNoteId ? 'active' : ''}" data-note-id="${note.id}">
-                            <div class="note-name">📝 ${note.name}</div>
+                        <div class="note-item ${note.id === selectedNoteId ? 'active' : ''}" data-note-id="${escapeGoalDraftHtml(note.id)}">
+                            <div class="note-name">📝 ${escapeGoalDraftHtml(note.name)}</div>
                             <div class="action-buttons">
                                 <button class="action-btn edit-btn" title="Rename Note">✏️</button>
                                 <button class="action-btn delete-btn" title="Delete Note">×</button>
@@ -9634,7 +9667,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const intakeHtml = intakeSessions.length > 0 ? `
                     <div class="list-subheader">Intake Sessions</div>
                     ${intakeSessions.map(intake => `
-                        <div class="intake-item ${intake.id === selectedIntakeId ? 'active' : ''}" data-intake-id="${intake.id}">
+                        <div class="intake-item ${intake.id === selectedIntakeId ? 'active' : ''}" data-intake-id="${escapeGoalDraftHtml(intake.id)}">
                             <div class="note-name">📋 Intake Session ${new Date(intake.createdAt).toLocaleDateString()}</div>
                             <div class="action-buttons">
                                 <button class="action-btn delete-btn" title="Delete Intake Session">×</button>
@@ -10006,6 +10039,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const renderDetails = () => {
+                labUI?.update();
                 const client = recordViewClearedForSelectedClient ? null : findClient(selectedClientId);
                 const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
                 const note = client ? findNote(client, selectedNoteId) : null;
@@ -10181,7 +10215,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const copyPlanItem = async (goalId, objectiveId, button) => {
-                const client = findClient(selectedClientId);
+                const selectedClient = findClient(selectedClientId);
+                const client = button?.classList.contains('soap-treatment-plan-copy-btn')
+                    ? findAppointment(selectedClient, selectedAppointmentId)?.chartSnapshot || selectedClient : selectedClient;
                 const goal = client?.goals?.find(item => item.id === goalId);
                 const objective = goal && objectiveId
                     ? (goal.objectives || []).find(item => item.id === objectiveId)
@@ -10223,7 +10259,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
 
                 goalsListInTabEl.innerHTML = client.goals.map((goal, goalIndex) => `
-                    <div class="goal-item" data-goal-id="${goal.id}">
+                    <div class="goal-item" data-goal-id="${escapeGoalDraftHtml(goal.id)}">
                         <div class="goal-header">
                             <div class="goal-heading">
                                 <div class="goal-kicker">Goal ${goalIndex + 1}</div>
@@ -10232,7 +10268,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             <div class="goal-header-right">
                                 <div class="goal-meta">
                                     <div class="goal-status">${goal.timelineMonths || DEFAULT_GOAL_TIMELINE_MONTHS} mo</div>
-                                    <div class="goal-status ${goal.status || 'active'}">${getGoalStatusLabel(goal.status)}</div>
+                                    <div class="goal-status ${escapeGoalDraftHtml(goal.status || 'active')}">${getGoalStatusLabel(goal.status)}</div>
                                 </div>
                                 ${renderTreatmentPlanDateRange(getGoalTreatmentPlanStartDate(client, goal), goal.timelineMonths || DEFAULT_GOAL_TIMELINE_MONTHS)}
                                 <div class="goal-header-actions">
@@ -10251,7 +10287,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 <span class="objective-count">${(goal.objectives || []).length} total</span>
                             </div>
                             ${(goal.objectives || []).map((obj, objectiveIndex) => `
-                                <div class="objective-item" data-objective-id="${obj.id}">
+                                <div class="objective-item" data-objective-id="${escapeGoalDraftHtml(obj.id)}">
                                     <input type="checkbox" class="objective-checkbox" aria-label="Mark objective ${objectiveIndex + 1} complete" ${obj.completed ? 'checked' : ''}>
                                     <div class="objective-main">
                                         <div class="objective-label">Objective ${objectiveIndex + 1}</div>
@@ -10270,7 +10306,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                     </div>
                                 </div>
                             `).join('')}
-                            <button class="add-objective-btn" data-goal-id="${goal.id}">+ Add Objective</button>
+                            <button class="add-objective-btn" data-goal-id="${escapeGoalDraftHtml(goal.id)}">+ Add Objective</button>
                         </div>
                     </div>
                 `).join('');
@@ -10389,6 +10425,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const renderSoap = () => {
+                labUI?.captureView();
                 if (recordViewClearedForSelectedClient) {
                     soapContentEl.innerHTML = '';
                     return;
@@ -10413,6 +10450,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
 
                 const soapData = appointment.soap || { s: '', o: '', a: '', p: '' };
+                const chartClient = appointment.chartSnapshot || client;
                 if (!Array.isArray(appointment.selectedInterventions)) appointment.selectedInterventions = [];
                 const missingSoapRequirements = getMissingSoapClientRequirements(client);
                 const objectiveOrganized = isObjectiveOrganizeCompleted(appointment);
@@ -10426,7 +10464,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 soapContentEl.innerHTML = `
                     <div class="soap-section" data-soap-section-key="s">
                         <div class="soap-header"><span>Subjective</span>${renderSoapCopyButton('soapS', 'Subjective')}</div>
-                        <textarea id="soapS" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.s || ''}</textarea>
+                        <textarea id="soapS" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.s || '')}</textarea>
                         ${(soapData.s_suggestion || []).map((s, i) => renderSuggestionBox('s', s, i)).join('')}
                     </div>
                     <div class="soap-section" data-soap-section-key="o">
@@ -10437,7 +10475,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             </div>
                             ${renderSoapCopyButton('soapO', 'Objective')}
                         </div>
-                        <textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.o || ''}</textarea>
+                        <textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.o || '')}</textarea>
                         ${renderObjectiveRedundancySuggestions(appointment)}
                         ${renderObjectiveRedundancyReview(appointment)}
                         ${renderClinicalReview(appointment)}
@@ -10453,16 +10491,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 ${renderSoapCopyButton('interventions', 'Interventions')}
                             </div>
                         </div>
-                    <textarea id="interventions" class="soap-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${interventions}</textarea>
+                    <textarea id="interventions" class="soap-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(interventions)}</textarea>
                     </div>
                     <div class="soap-section" data-soap-section-key="a">
                         <div class="soap-header"><span>Assessment</span>${renderSoapCopyButton('soapA', 'Assessment')}</div>
-                        <textarea id="soapA" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.a || ''}</textarea>
+                        <textarea id="soapA" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.a || '')}</textarea>
                         ${(soapData.a_suggestion || []).map((s, i) => renderSuggestionBox('a', s, i)).join('')}
                     </div>
                     <div class="soap-section" data-soap-section-key="p">
                         <div class="soap-header"><span>Plan</span>${renderSoapCopyButton('soapP', 'Plan')}</div>
-                        <textarea id="soapP" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.p || ''}</textarea>
+                        <textarea id="soapP" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.p || '')}</textarea>
                         ${(soapData.p_suggestion || []).map((s, i) => renderSuggestionBox('p', s, i)).join('')}
                     </div>
                     <div class="soap-support-block" data-soap-section-key="diagnosisWithSubstantiation">
@@ -10470,14 +10508,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             <span>Diagnosis with substantiation</span>
                             ${renderSoapCopyButton('soapDiagnosisWithSubstantiation', 'Diagnosis with substantiation')}
                         </div>
-                        <textarea id="soapDiagnosisWithSubstantiation" class="soap-textarea soap-static-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(formatDiagnosisWithSubstantiationText(client))}</textarea>
+                        <textarea id="soapDiagnosisWithSubstantiation" class="soap-textarea soap-static-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(formatDiagnosisWithSubstantiationText(chartClient))}</textarea>
                     </div>
                     <div class="soap-support-block" data-soap-section-key="diagnosisWithoutSubstantiation">
                         <div class="soap-support-header">
                             <span>Diagnosis without substantiation</span>
                             ${renderSoapCopyButton('soapDiagnosisWithoutSubstantiation', 'Diagnosis without substantiation')}
                         </div>
-                        <textarea id="soapDiagnosisWithoutSubstantiation" class="soap-textarea soap-static-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(formatDiagnosisWithoutSubstantiationText(client))}</textarea>
+                        <textarea id="soapDiagnosisWithoutSubstantiation" class="soap-textarea soap-static-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(formatDiagnosisWithoutSubstantiationText(chartClient))}</textarea>
                     </div>
                     <div class="soap-support-block" data-soap-section-key="presentingProblem">
                         <div class="soap-support-header">
@@ -10494,9 +10532,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             <span>Treatment Plan</span>
                             ${renderSoapCopyButton('soapTreatmentPlan', 'Treatment Plan')}
                         </div>
-                        <textarea id="soapTreatmentPlan" class="soap-textarea soap-static-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(formatTreatmentPlanCopyText(client))}</textarea>
+                        <textarea id="soapTreatmentPlan" class="soap-textarea soap-static-textarea" readonly autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(formatTreatmentPlanCopyText(chartClient))}</textarea>
                         <div class="soap-treatment-plan-items">
-                            ${renderSoapTreatmentPlanItems(client)}
+                            ${renderSoapTreatmentPlanItems(chartClient)}
                         </div>
                     </div>
                     <div class="soap-support-block" data-soap-section-key="diagnosticSupport">
@@ -10565,11 +10603,17 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const organizeObjectiveBtn = document.getElementById('organizeObjectiveBtn');
                 if (organizeObjectiveBtn) {
                     organizeObjectiveBtn.addEventListener('click', () => {
-                        void organizeObjectiveContent();
+                        const context = getSelectedAppointmentContext();
+                        if (!context) return;
+                        const client = findClient(context.clientId), appointment = context.appointment;
+                        if (aiJobs.busy) { updateSaveStatus('Finish or cancel the current AI operation first.', false, 3000); return; }
+                        void aiJobs.run('Organizing Objective and supporting sections…', () => jobSource(client, appointment), organizeObjectiveContent)
+                            .catch(error => updateSaveStatus(error.message, false, 5000));
                     });
                 }
 
                 refreshObjectiveActionButtons(appointment);
+                labUI?.restoreView();
             };
 
             const renderSuggestionBox = (type, suggestion, index) => {
@@ -10584,8 +10628,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (isReplacement) {
                     suggestionTitle = 'Clinical Language Suggestion:';
                     suggestionContent = `
-                        <div><strong>Original:</strong> ${suggestion.original}</div>
-                        <div style="margin-top: 4px;"><strong>Suggested:</strong> ${suggestion.suggested}</div>
+                        <div><strong>Original:</strong> ${escapeGoalDraftHtml(suggestion.original)}</div>
+                        <div style="margin-top: 4px;"><strong>Suggested:</strong> ${escapeGoalDraftHtml(suggestion.suggested)}</div>
                     `;
                     actionsHtml = `
                         <button class="suggestion-decline">Keep Original</button>
@@ -10593,7 +10637,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     `;
                 } else { // It's a new suggestion (string)
                     suggestionTitle = 'Suggestion for Addition:';
-                    suggestionContent = `<strong>${suggestionTitle}</strong> ${suggestion}`;
+                    suggestionContent = `<strong>${suggestionTitle}</strong> ${escapeGoalDraftHtml(suggestion)}`;
                     actionsHtml = `
                         <button class="suggestion-accept">Accept</button>
                         <button class="suggestion-decline">Decline</button>
@@ -10841,7 +10885,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 deletedItems.clients.forEach(client => {
                     const div = document.createElement('div');
                     div.className = 'deleted-item';
-                    div.innerHTML = `<span>${client.name}</span><button class="restore-btn" data-id="${client.id}">Restore</button>`;
+                    div.innerHTML = `<span>${escapeGoalDraftHtml(client.name)}</span><button class="restore-btn" data-id="${escapeGoalDraftHtml(client.id)}">Restore</button>`;
                     deletedClientsListEl.appendChild(div);
                 });
 
@@ -10859,21 +10903,21 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 deletedAppointmentsForClient.forEach(appt => {
                     const div = document.createElement('div');
                     div.className = 'deleted-item';
-                    div.innerHTML = `<span>Appt: ${new Date(appt.date).toLocaleDateString()}</span><button class="restore-btn" data-type="appointment" data-id="${appt.id}">Restore</button>`;
+                    div.innerHTML = `<span>Appt: ${new Date(appt.date).toLocaleDateString()}</span><button class="restore-btn" data-type="appointment" data-id="${escapeGoalDraftHtml(appt.id)}">Restore</button>`;
                     deletedAppointmentsListEl.appendChild(div);
                 });
 
                 deletedIntakesForClient.forEach(intake => {
                     const div = document.createElement('div');
                     div.className = 'deleted-item';
-                    div.innerHTML = `<span>Intake: ${new Date(intake.createdAt).toLocaleDateString()}</span><button class="restore-btn" data-type="intake" data-id="${intake.id}">Restore</button>`;
+                    div.innerHTML = `<span>Intake: ${new Date(intake.createdAt).toLocaleDateString()}</span><button class="restore-btn" data-type="intake" data-id="${escapeGoalDraftHtml(intake.id)}">Restore</button>`;
                     deletedAppointmentsListEl.appendChild(div);
                 });
 
                 deletedNotesForClient.forEach(note => {
                     const div = document.createElement('div');
                     div.className = 'deleted-item';
-                    div.innerHTML = `<span>Note: ${note.name || 'Untitled Note'}</span><button class="restore-btn" data-type="note" data-id="${note.id}">Restore</button>`;
+                    div.innerHTML = `<span>Note: ${escapeGoalDraftHtml(note.name || 'Untitled Note')}</span><button class="restore-btn" data-type="note" data-id="${escapeGoalDraftHtml(note.id)}">Restore</button>`;
                     deletedAppointmentsListEl.appendChild(div);
                 });
             };
@@ -10883,7 +10927,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 (data.archivedClients || []).forEach(client => {
                      const div = document.createElement('div');
                      div.className = 'deleted-item';
-                     div.innerHTML = `<span>${client.name}</span><button class="restore-btn" data-id="${client.id}">Unarchive</button>`;
+                     div.innerHTML = `<span>${escapeGoalDraftHtml(client.name)}</span><button class="restore-btn" data-id="${escapeGoalDraftHtml(client.id)}">Unarchive</button>`;
                      archivedClientsListEl.appendChild(div);
                 });
             };
@@ -12138,6 +12182,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     : textarea.id === 'presentingProblem'
                         ? 'presentingProblem'
                         : 'diagnosticSupport';
+                checkpointDraft(appointment, 'Before editing');
                 appointment.soap[fieldKey] = textarea.value;
                 if (appointment.soap.clinicalReview) {
                     const state = appointment.soap.clinicalReview;
@@ -12165,6 +12210,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         if (key === 'o') {
                             updateSoapFieldValue(appointment, key, textarea.value);
                         } else {
+                            checkpointDraft(appointment, 'Before editing');
                             appointment.soap[key] = textarea.value;
                         }
                         if (SOAP_SORT_SECTION_KEYS.includes(key) && isManualEdit) {
@@ -13241,26 +13287,31 @@ Requirements:
                     alert('Please connect to a provider and select a model in Settings.');
                     return;
                 }
-                if (apiProvider === 'openwebui') {
-                    await generateSoapNoteWithOpenWebUI();
-                } else if (apiProvider === 'vertex') {
-                    await generateSoapNoteWithVertex();
-                } else if (apiProvider === 'openai') {
-                    await generateSoapNoteWithOpenAI();
-                } else if (apiProvider === 'ollama') {
-                    await generateSoapNoteWithOllama();
-                } else {
-                    alert('Invalid API provider selected.');
-                }
+                const appointment = findAppointment(client, selectedAppointmentId);
+                if (!appointment) return;
+                try {
+                    await aiJobs.run('Generating draft…', () => jobSource(client, appointment), async () => {
+                        if (apiProvider === 'openwebui') await generateSoapNoteWithOpenWebUI();
+                        else if (apiProvider === 'vertex') await generateSoapNoteWithVertex();
+                        else if (apiProvider === 'openai') await generateSoapNoteWithOpenAI();
+                        else if (apiProvider === 'ollama') await generateSoapNoteWithOllama();
+                        else alert('Invalid API provider selected.');
+                    });
+                } catch (error) { alert(error.message); }
             };
             
             const processAndStoreSoapData = (soapData, appointment, client = null) => {
+                aiJobs.check();
+                checkpointDraft(appointment, 'Before AI generation');
                 const prepared = prepareClinicalGeneration(soapData, appointment.sessionInfo, crypto.randomUUID(), appointment.soap || {});
                 const preservedSupport = Object.fromEntries(['presentingProblem', 'diagnosticSupport', 'medicalNecessity'].filter(field => prepared.state.manualEdits?.[field]).map(field => [field, appointment.soap[field]]));
                 soapData = prepared.payload;
                 soapData = normalizeCoupleCollectiveReferences(soapData, client);
                  if (!appointment.soap) appointment.soap = {};
                 appointment.soap.clinicalReview = normalizeCoupleCollectiveReferences(prepared.state, client);
+                appointment.chartSnapshot = { diagnoses: structuredClone(getClientDiagnoses(client)), diagnosis: client.diagnosis,
+                    goals: structuredClone(client.goals || []), presentingProblem: client.presentingProblem,
+                    treatmentPlanStartDate: client.treatmentPlanStartDate, capturedAt: new Date().toISOString() };
                 captureSoapPlatformSnapshot(appointment, client);
                   delete appointment.auditCheck;
                   const auditProofing = getAuditProofingData(appointment);
@@ -13440,10 +13491,12 @@ Requirements:
                     try {
                         organizedObjective = await fetchOrganizedObjectiveFromAI(objectiveText);
                     } catch (error) {
+                        if (error.name === 'AbortError') throw error;
                         console.warn('Objective organization AI failed; falling back to local topic grouping.', error);
                         organizedObjective = organizeObjectiveContentLocally(objectiveText);
                     }
 
+                    aiJobs.check();
                     if (appointment.soap.o !== objectiveBeforeRequest) throw new Error('Objective changed during organization. Review the updated content and organize again.');
                     updateSoapFieldValue(appointment, 'o', organizedObjective || objectiveText);
                     appointment.soap.o_suggestion = [];
@@ -13886,7 +13939,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                         }
 
                     } catch (parseError) {
-                        console.error("Failed to parse the following JSON string from the AI:", content);
+                        console.error("AI returned malformed JSON; clinical content omitted from logs.");
                         throw new Error(`The AI model returned malformed JSON that could not be automatically fixed. Check the browser console for the raw output. Details: ${parseError.message}`);
                     }
                     
@@ -13999,7 +14052,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                             soapData = JSON.parse(cleanedString);
                         }
                     } catch (parseError) {
-                        console.error('Failed to parse the following JSON string from Ollama:', content);
+                        console.error('Ollama returned malformed JSON; clinical content omitted from logs.');
                         throw new Error(`The AI model returned malformed JSON that could not be automatically fixed. Check the console for the raw output. Details: ${parseError.message}`);
                     }
 
@@ -14296,7 +14349,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     });
 
                     localStorage.setItem('apiProvider', 'vertex');
-                    localStorage.setItem('vertexServiceAccount', vertexServiceAccount);
+                    credentialStorage.setItem('vertexServiceAccount', vertexServiceAccount);
                     localStorage.setItem('vertexLocation', vertexLocation);
                     if (selectedModel) {
                         localStorage.setItem('vertexModel', selectedModel);
@@ -14402,7 +14455,7 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     openaiModelInput.disabled = false;
 
                     localStorage.setItem('apiProvider', 'openai');
-                    localStorage.setItem('openaiApiKey', openaiApiKey);
+                    credentialStorage.setItem('openaiApiKey', openaiApiKey);
                     localStorage.setItem('openaiModel', selectedModel);
 
                     apiStatus.textContent = 'Connected';
@@ -14435,9 +14488,9 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                 localStorage.setItem('apiProvider', 'openwebui');
                 localStorage.setItem('serverAddress', serverAddress);
                 if (apiKey) {
-                    localStorage.setItem('apiKey', apiKey);
+                    credentialStorage.setItem('apiKey', apiKey);
                 } else {
-                    localStorage.removeItem('apiKey');
+                    credentialStorage.removeItem('apiKey');
                 }
 
                 apiStatus.textContent = 'Connecting...';
@@ -14462,8 +14515,8 @@ ${appointmentSessionInfo}${treatmentGoalsContext}${candidateObjectivesContext}${
                     apiStatus.style.color = 'green';
                     
                     // localStorage.setItem('serverAddress', serverAddress);
-                    // if (apiKey) localStorage.setItem('apiKey', apiKey);
-                    // else localStorage.removeItem('apiKey');
+                    // if (apiKey) credentialStorage.setItem('apiKey', apiKey);
+                    // else credentialStorage.removeItem('apiKey');
                     
                     modelSelect.innerHTML = '';
                     const models = data.data;
@@ -14655,6 +14708,7 @@ This error cannot be fixed within this application's code; it requires a configu
             }
 
             const markDirty = () => {
+                saveCoordinator.touch();
                 if (!isDirty) {
                     isDirty = true;
                     updateSaveStatus('Unsaved changes...', false);
@@ -14662,27 +14716,22 @@ This error cannot be fixed within this application's code; it requires a configu
                 debouncedAutoSave();
             };
 
+            const saveCoordinator = createSaveCoordinator({
+                capture: () => ({ data, deletedItems, selectedClientId, selectedAppointmentId, selectedNoteId, selectedIntakeId }),
+                persist: async state => {
+                    const saved = await saveEncryptedState({ state, databaseReady: isDatabaseInitialized(), saveDatabaseState: saveState, legacyStorage: localStorage });
+                    if (!saved) throw new Error('Unlock the Lab workspace before saving.');
+                },
+                onSaved: result => { isDirty = result.dirty; }
+            });
             const saveDataToLocalStorage = async () => {
                 try {
-                    const state = { data, deletedItems, selectedClientId, selectedAppointmentId, selectedNoteId, selectedIntakeId };
-
-                    const saved = await saveEncryptedState({
-                        state,
-                        databaseReady: isDatabaseInitialized(),
-                        saveDatabaseState: saveState,
-                        legacyStorage: localStorage
-                    });
-                    if (!saved) {
-                        console.warn('Chart save skipped because the encrypted database is locked.');
-                        return false;
-                    }
-
-                    isDirty = false;
+                    await saveCoordinator.flush();
                     await persistEncryptedAutoBackup();
                     return true;
-                } catch (e) {
-                    console.error("Failed to save data", e);
-                    updateSaveStatus('Save failed!', false, 3000);
+                } catch (error) {
+                    isDirty = true;
+                    updateSaveStatus('Draft save failed. Keep the app open and retry.', false, 0);
                     return false;
                 }
             };
@@ -14715,18 +14764,18 @@ This error cannot be fixed within this application's code; it requires a configu
                             toggleProviderSettings();
                         }
                         serverAddressInput.value = localStorage.getItem('serverAddress') || '';
-                        apiKeyInput.value = localStorage.getItem('apiKey') || '';
+                        apiKeyInput.value = credentialStorage.getItem('apiKey') || '';
                         if (ollamaAddressInput) {
                             ollamaAddressInput.value = localStorage.getItem('ollamaAddress') || '';
                         }
-                        vertexServiceAccountInput.value = localStorage.getItem('vertexServiceAccount') || '';
+                        vertexServiceAccountInput.value = credentialStorage.getItem('vertexServiceAccount') || '';
                         if (vertexServiceAccountInput.value) {
                             vertexKeyStatus.textContent = 'Key loaded from storage';
                             vertexKeyStatus.style.color = '#27ae60';
                             clearVertexKeyBtn.classList.remove('hidden');
                         }
                         vertexLocationInput.value = localStorage.getItem('vertexLocation') || 'global';
-                        openaiApiKeyInput.value = localStorage.getItem('openaiApiKey') || '';
+                        openaiApiKeyInput.value = credentialStorage.getItem('openaiApiKey') || '';
                     }
 
                     loadAutoBackupPathFromStorage();
@@ -14745,7 +14794,7 @@ This error cannot be fixed within this application's code; it requires a configu
                             throw new Error('Encrypted SQL export requires an active authenticated desktop session.');
                         }
 
-                        await saveDataToLocalStorage();
+                        if (!await saveDataToLocalStorage()) throw new Error('Save the current draft successfully before exporting.');
                         const encryptedSqlPayload = await exportEncryptedSqlDump();
                         exportDataText.value = JSON.stringify(encryptedSqlPayload, null, 2);
                         exportDataModal.classList.remove('hidden');
@@ -14821,7 +14870,7 @@ This error cannot be fixed within this application's code; it requires a configu
                             throw new Error('SQL import requires an active authenticated desktop session.');
                         }
 
-                        await importSqlDump(contents);
+                        await restoreBackup(contents, true);
                         const restoredState = await loadState();
                         if (!restoredState) {
                             throw new Error('SQL import completed, but no application state could be loaded.');
@@ -14842,7 +14891,7 @@ This error cannot be fixed within this application's code; it requires a configu
                                 throw new Error('SQL import requires an active authenticated desktop session.');
                             }
 
-                            await importSqlDump(contents);
+                            await restoreBackup(contents, true);
                             const restoredState = await loadState();
                             if (!restoredState) {
                                 throw new Error('SQL import completed, but no application state could be loaded.');
@@ -14856,12 +14905,12 @@ This error cannot be fixed within this application's code; it requires a configu
                         throw new Error('File is neither valid JSON state nor SQL dump.');
                     }
 
-                    if (parsed && parsed.format === 'client-records-sql-export' && typeof parsed.data === 'string') {
+                    if (parsed && ['client-records-sql-export', 'smartemr-backup-v2'].includes(parsed.format) && typeof parsed.data === 'string') {
                         if (!isDatabaseInitialized()) {
                             throw new Error('Encrypted SQL import requires an active authenticated desktop session.');
                         }
 
-                        await importEncryptedSqlDump(parsed);
+                        await restoreBackup(parsed);
                         const restoredState = await loadState();
                         if (!restoredState) {
                             throw new Error('Encrypted SQL import completed, but state could not be loaded.');
@@ -14903,10 +14952,10 @@ This error cannot be fixed within this application's code; it requires a configu
                     isDirty = false;
                     localStorage.removeItem('clientData');
                     localStorage.removeItem('serverAddress');
-                    localStorage.removeItem('apiKey');
-                    localStorage.removeItem('vertexServiceAccount');
+                    credentialStorage.removeItem('apiKey');
+                    credentialStorage.removeItem('vertexServiceAccount');
                     localStorage.removeItem('vertexLocation');
-                    localStorage.removeItem('openaiApiKey');
+                    credentialStorage.removeItem('openaiApiKey');
                     localStorage.removeItem('vertexModel');
                     localStorage.removeItem('openaiModel');
                     localStorage.removeItem('apiProvider');
@@ -15575,9 +15624,9 @@ This error cannot be fixed within this application's code; it requires a configu
             importBtn.addEventListener('click', loadFile);
             eraseAllBtn.addEventListener('click', eraseAllData);
             changePasswordBtn.addEventListener('click', async () => {
-                const currentPassword = (currentPasswordInput.value || '').trim();
-                const newPassword = (newPasswordInput.value || '').trim();
-                const confirmNewPassword = (confirmNewPasswordInput.value || '').trim();
+                const currentPassword = currentPasswordInput.value || '';
+                const newPassword = newPasswordInput.value || '';
+                const confirmNewPassword = confirmNewPasswordInput.value || '';
                 const currentUsername = (getCurrentUser() || '').trim();
                 const shouldRefreshBiometricLogin = currentUsername && currentUsername === getRememberedBiometricUsername();
 
@@ -15606,7 +15655,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 changePasswordStatus.style.color = '#f39c12';
 
                 try {
-                    await saveDataToLocalStorage();
+                    if (!await saveDataToLocalStorage()) throw new Error('The draft could not be saved.');
                 } catch (error) {
                     changePasswordStatus.textContent = 'Save failed. Try again before changing password.';
                     changePasswordStatus.style.color = '#e74c3c';
@@ -15641,6 +15690,10 @@ This error cannot be fixed within this application's code; it requires a configu
                 }
                 changePasswordBtn.disabled = false;
             });
+            document.getElementById('rotateRecoveryKeyBtn').addEventListener('click', async () => {
+                try { showRecoveryKit(await rotateRecoveryKey(currentPasswordInput.value)); currentPasswordInput.value = ''; }
+                catch { alert('Enter your current password in the Security section to create a new recovery key.'); }
+            });
             generateNoteBtn.addEventListener('click', generateSoapNote);
             connectApiBtn.addEventListener('click', connectToServer);
             verifyApiBtn.addEventListener('click', verifyApiConnection);
@@ -15652,7 +15705,7 @@ This error cannot be fixed within this application's code; it requires a configu
             
             clearVertexKeyBtn.addEventListener('click', () => {
                 vertexServiceAccountInput.value = '';
-                localStorage.removeItem('vertexServiceAccount');
+                credentialStorage.removeItem('vertexServiceAccount');
                 vertexKeyStatus.textContent = 'No file selected';
                 vertexKeyStatus.style.color = 'var(--text-color-secondary)';
                 clearVertexKeyBtn.classList.add('hidden');
@@ -15689,7 +15742,7 @@ This error cannot be fixed within this application's code; it requires a configu
                         refreshVertexModelsBtn.disabled = false;
                         
                         // Auto-save to localStorage
-                        localStorage.setItem('vertexServiceAccount', jsonContent);
+                        credentialStorage.setItem('vertexServiceAccount', jsonContent);
                         
                     } catch (err) {
                         alert('Error parsing JSON file: ' + err.message);
@@ -15846,6 +15899,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 showErrors = false,
                 setAsteriskIfAvailable = false
             } = {}) => {
+                if (LAB_BUILD) return null;
                 if (!isTauriRuntime()) return null;
                 if (updateCheckInProgress) return null;
 
@@ -16834,10 +16888,10 @@ This error cannot be fixed within this application's code; it requires a configu
                 }
                 
                 const savedAddress = localStorage.getItem('serverAddress');
-                const savedApiKey = localStorage.getItem('apiKey');
-                const savedVertexServiceAccount = localStorage.getItem('vertexServiceAccount');
+                const savedApiKey = credentialStorage.getItem('apiKey');
+                const savedVertexServiceAccount = credentialStorage.getItem('vertexServiceAccount');
                 const savedVertexLocation = localStorage.getItem('vertexLocation');
-                const savedOpenAIKey = localStorage.getItem('openaiApiKey');
+                const savedOpenAIKey = credentialStorage.getItem('openaiApiKey');
                 const savedOllamaAddress = localStorage.getItem('ollamaAddress');
                 
                 toggleProviderSettings(); // Set initial UI state
@@ -16872,6 +16926,47 @@ This error cannot be fixed within this application's code; it requires a configu
             
             // Data loading is now handled by unlockApp()
             
+            labUI = mountLabWorkspace({
+                context: () => {
+                    const client = findClient(selectedClientId);
+                    const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
+                    return { client, appointment, platform: appointment?.soapPlatformSnapshot?.platformName || getClientSoapPlatform(client)?.name || '',
+                        sections: appointment ? getSoapPlatformSectionKeysForAppointment(client, appointment) : [] };
+                },
+                provider: () => `AI provider: ${apiProvider} · ${apiProvider === 'ollama' ? (ollamaAddressInput.value || 'not connected') : apiProvider === 'openwebui' ? (serverAddressInput.value || 'not connected') : 'external service'} · ${selectedModel || 'select a model'}`,
+                jobStatus: () => aiJobStatus, busy: () => aiJobs.busy, cancel: () => aiJobs.cancel(),
+                save: markDirty, render: () => renderDetails(),
+                review: () => validateClinicalNote({ disabled: false, textContent: '', isConnected: false }),
+                demo: () => {
+                    const sessionInfo = 'Explored guilt about setting boundaries. Reviewed a successful boundary-setting moment. Used scaffolding questions to examine the actions Ct took.';
+                    const appointment = { id: crypto.randomUUID(), date: new Date().toISOString(), sessionInfo, selectedInterventions: [], soap: { s:'',o:'',a:'',p:'' } };
+                    const client = { id: crypto.randomUUID(), name: 'DEMO · Morgan', sessionType:'individual', sessionTypeAssigned:true, preferredPronouns:{value:'they/them/theirs'},
+                        soapPlatformId: getDefaultSoapPlatformId(), diagnosis:'F41.1 Generalized anxiety disorder', diagnoses:[{id:crypto.randomUUID(),name:'F41.1 Generalized anxiety disorder',substantiation:''}],
+                        presentingProblem:'Difficulty setting interpersonal boundaries.', goals:[{id:crypto.randomUUID(),title:'Develop effective interpersonal boundaries.',status:'active',timelineMonths:3,objectives:[]}],
+                        appointments:[appointment], notes:[], intakeSessions:[] };
+                    data.clients.push(client);
+                    processAndStoreSoapData({s:'Ct discussed boundary-setting concerns.',o:'Writer explored guilt about boundaries.\nWriter used scaffolding questions to examine a successful boundary-setting moment.',a:'Boundary-setting remains a treatment focus.',p:'',
+                        objective_items:[{id:'E1',text:'Writer explored guilt about boundaries.',evidence_category:'direct',source_quote:'Explored guilt about setting boundaries.'},
+                            {id:'E2',text:'Writer used scaffolding questions to examine a successful boundary-setting moment.',evidence_category:'direct',source_quote:'Used scaffolding questions to examine the actions Ct took.'}],
+                        statement_dependencies:{a:[{text:'Boundary-setting remains a treatment focus.',evidence_ids:['E1']}]},clinical_suggestions:[
+                            {id:'C1',text:'Writer utilized narrative externalization to explore the influence of guilt on boundary-setting.',candidate_kind:'intervention',evidence_category:'hypothesis',source_quote:'Explored guilt about setting boundaries.',technique:'NT: Externalization',rationale:'Plausible narrative technique requiring confirmation.'},
+                            {id:'C2',text:'Guilt may reflect internalized relational expectations.',candidate_kind:'formulation',evidence_category:'inferred',source_quote:'Explored guilt about setting boundaries.',rationale:'Possible formulation, not evidence of a completed intervention.'}]},appointment,client);
+                    selectClient(client.id); selectAppointment(appointment.id); markDirty();
+                }
+            });
+            window.addEventListener('credential-storage-unavailable', () => updateSaveStatus('Provider credential is session-only; OS credential storage was unavailable.', false, 0));
+            document.getElementById('checkForUpdatesBtn').hidden = true;
+            let closingAfterSave = false;
+            if (isTauriRuntime()) await getCurrentWindow().onCloseRequested(async event => {
+                if (closingAfterSave) return;
+                if (!isDatabaseInitialized()) {
+                    if (hasPendingVolatileDraft()) { event.preventDefault(); alert('An unsaved draft is protected in memory. Unlock and save it before closing the Lab.'); }
+                    return;
+                }
+                event.preventDefault();
+                if (await saveDataToLocalStorage()) { closingAfterSave = true; await getCurrentWindow().destroy(); }
+                else alert('The draft could not be saved. The Lab remains open so you can retry or copy your work.');
+            });
             loadServerSettings();
             loadColumnSizes();
             initializeColumnCollapsers();
@@ -16887,6 +16982,7 @@ This error cannot be fixed within this application's code; it requires a configu
 
             window.__appAuthHooks = {
                 saveDataToLocalStorage,
+                protectUnsavedDraft: () => preserveUnsavedDraft({ data, deletedItems, selectedClientId, selectedAppointmentId, selectedNoteId, selectedIntakeId }),
                 loadDataFromLocalStorage,
                 normalizeClientData,
                 fullRender
@@ -17065,6 +17161,7 @@ This error cannot be fixed within this application's code; it requires a configu
 
             hooks.normalizeClientData();
             hooks.fullRender();
+            showRecoveryKit(takeRecoveryKit());
             setBiometricStatusMessage('');
             refreshBiometricSettingsUI();
         }
@@ -17296,9 +17393,14 @@ This error cannot be fixed within this application's code; it requires a configu
             const hooks = window.__appAuthHooks;
             if (isAppUnlocked() && hooks?.saveDataToLocalStorage) {
                 try {
-                    await hooks.saveDataToLocalStorage();
+                    if (!await hooks.saveDataToLocalStorage()) {
+                        await hooks.protectUnsavedDraft();
+                        alert('The disk save failed. Your draft is encrypted in memory and will return after unlocking. Keep SmartEMR Lab running until it saves successfully.');
+                    }
                 } catch (error) {
-                    console.error('Failed to save before lock:', error);
+                    alert('The draft could not be saved or protected. Keep the Lab open and copy your work before retrying.');
+                    resetInactivityTimer();
+                    return;
                 }
             }
             clearActiveSession();
@@ -17338,10 +17440,10 @@ This error cannot be fixed within this application's code; it requires a configu
                 loginErrorMsg.style.display = 'none';
             }
             if (isFirstLogin) {
-                document.getElementById('loginTitle').textContent = "Create Account";
-                document.getElementById('loginSubtitle').textContent = "Create a username/password and recovery email + SMTP settings.";
+                document.getElementById('loginTitle').textContent = "Create Lab Account";
+                document.getElementById('loginSubtitle').textContent = "Separate experimental workspace. Create a password and save the recovery key shown after setup.";
                 loginBtn.textContent = "Create Account";
-                onboardingRecoverySection.style.display = 'block';
+                onboardingRecoverySection.style.display = 'none';
                 forgotPasswordBtn.style.display = 'none';
                 loginToolsMenu.style.display = 'none';
                 resetPanel.style.display = 'none';
@@ -17349,7 +17451,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 smtpSettingsPanel.style.display = 'none';
                 deleteAccountPanel.style.display = 'none';
             } else {
-                document.getElementById('loginTitle').textContent = "SmartEMR Login";
+                document.getElementById('loginTitle').textContent = "SmartEMR Lab Login";
                 document.getElementById('loginSubtitle').textContent = "Enter your username and password to unlock SmartEMR.";
                 loginBtn.textContent = "Unlock";
                 onboardingRecoverySection.style.display = 'none';
@@ -17397,12 +17499,7 @@ This error cannot be fixed within this application's code; it requires a configu
                     });
 
                     if (success) {
-                        showVerificationPanel(username);
-                        const verifyStatus = document.getElementById('verifyEmailStatusMsg');
-                        verifyStatus.style.color = '#27ae60';
-                        verifyStatus.textContent = 'Verification code sent. Enter it below to finish setup.';
-                        loginErrorMsg.style.display = 'none';
-                        return;
+                        success = await loginUser(username, password);
                     }
                 } else {
                     success = await loginUser(username, password);
@@ -17792,7 +17889,10 @@ This error cannot be fixed within this application's code; it requires a configu
             }
         });
 
-        // Initialize login screen
+        // Initialize the isolated Lab account and recovery-key workflow.
+        document.getElementById('resetCodeInput').placeholder = 'Recovery key (RK-…)';
+        document.getElementById('resetCodeInput').type = 'password';
+        document.getElementById('sendResetCodeBtn').hidden = true;
         initLoginScreen();
 
         const autolockSelect = document.getElementById('autolockSelect');

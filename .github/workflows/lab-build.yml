@@ -1,0 +1,50 @@
+name: SmartEMR Lab build
+on:
+  push:
+    branches: [codex/documentation-lab]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lab:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+      - name: Verify isolated identity
+        working-directory: tauri-app
+        run: node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json')); if(c.identifier !== 'com.clientrecords.tauriapp.lab' || c.productName !== 'SmartEMR Lab') process.exit(1);"
+      - run: npm ci
+        working-directory: tauri-app
+      - run: npm test
+        working-directory: tauri-app
+      - run: cargo test --lib --locked
+        working-directory: tauri-app/src-tauri
+      - run: npm run tauri build -- --target aarch64-apple-darwin --bundles dmg
+        working-directory: tauri-app
+      - run: npx playwright install chromium
+        working-directory: tauri-app
+      - name: Exercise transfer and failed-save recovery under production CSP
+        working-directory: tauri-app
+        run: |
+          npm run preview -- --port 4173 > "$RUNNER_TEMP/lab-preview.log" 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid"' EXIT
+          for attempt in {1..30}; do
+            if curl --silent --fail http://localhost:4173/ > /dev/null; then break; fi
+            sleep 1
+          done
+          npm run test:browser
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SmartEMR-Lab-Apple-Silicon
+          path: tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 30

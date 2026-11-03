@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { checkpointDraft } from '../src/draft-workflow.js';
 
 // Exercise the shipped handler and review functions with a small DOM adapter.
 // Sorting deliberately changes positions to catch stale item/source indexes.
@@ -21,7 +22,7 @@ const loadReviewRuntime = (html, appointment) => {
     }).join('\n');
     const handlerStart = html.indexOf('const handleSuggestion =');
     const handler = html.slice(handlerStart, html.indexOf('const SOAP_INSTRUCTION_SECTION_DEFS', handlerStart));
-    return new Function('appointment', `
+    return new Function('appointment', 'checkpointDraft', `
         const selectedClientId = 'client';
         const selectedAppointmentId = 'appointment';
         const findClient = () => ({});
@@ -59,7 +60,7 @@ const loadReviewRuntime = (html, appointment) => {
             groupedSources: () => getObjectiveRedundancyGroupedSuggestionSourceIndexes(getObjectiveRedundancyReview(appointment)),
             decision: () => getObjectiveRedundancyDecision(getObjectiveRedundancyReview(appointment))
         };
-    `)(appointment);
+    `)(appointment, checkpointDraft);
 };
 
 for (const path of ['index.html', 'src/index.html']) {

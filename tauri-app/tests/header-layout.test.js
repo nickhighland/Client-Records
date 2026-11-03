@@ -23,12 +23,12 @@ for (const path of ['index.html', 'src/index.html']) {
         const autoLockIndex = html.indexOf('<div class="autolock-wrapper"', utilityRowIndex);
         assert.ok(headerActionsIndex >= 0 && menuIndex > headerActionsIndex);
         assert.ok(utilityRowIndex >= 0 && columnPillsIndex > utilityRowIndex && autoLockIndex > columnPillsIndex);
-        assert.match(html, new RegExp(`<title>SmartEMR v${config.version}<\/title>`));
+        assert.ok(html.includes(`<title>${config.productName} v${config.version}</title>`));
         assert.doesNotMatch(html, /class="version-badge"/);
         assert.doesNotMatch(html, /<h1>[\s\S]*?SmartEMR/);
     });
 }
 
 test('Tauri window title includes the current SmartEMR version', async () => {
-    assert.equal(config.app.windows[0].title, `SmartEMR v${config.version}`);
+    assert.equal(config.app.windows[0].title, `${config.productName} v${config.version}`);
 });

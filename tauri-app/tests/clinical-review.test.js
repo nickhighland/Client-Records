@@ -186,8 +186,8 @@ for (const file of ['index.html', 'src/index.html']) {
                 const selectedModel='fixture-model', openaiApiKey='fixture', serverAddress='http://fixture', apiKey='fixture';
                 const ollamaAddressInput={value:'http://fixture'}, vertexServiceAccount='{"project_id":"fixture"}', vertexLocation='global';
                 const getGoogleAccessToken=async()=> 'fixture'; const rememberVertexEffectiveLocation=()=>{}; const extractJsonObject=JSON.parse;
-                ${declaration('requestJsonObjectFromCurrentProvider')}
-                return requestJsonObjectFromCurrentProvider;
+                ${declaration('requestJsonObjectFromCurrentProviderImpl')}
+                return requestJsonObjectFromCurrentProviderImpl;
             `)(provider, send, vertex, GOLDEN_THREAD_INSTRUCTIONS);
             const result = await request(CLINICAL_REVIEW_INSTRUCTIONS, 'Discussed boundaries.');
             assert.deepEqual(result, body);

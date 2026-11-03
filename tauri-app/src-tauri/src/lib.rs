@@ -2,6 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 
 mod biometric;
+mod secrets;
+mod vault_migration;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -27,6 +29,14 @@ fn write_backup_file_blocking(path: String, contents: String) -> Result<(), Stri
         return Err("Backup path must be an absolute file path.".to_string());
     }
 
+    if backup_path.exists() {
+        let existing = fs::read_to_string(&backup_path).map_err(|e| e.to_string())?;
+        let payload: serde_json::Value = serde_json::from_str(&existing).unwrap_or_default();
+        if payload["workspace"] != "smartemr-lab" {
+            return Err("Choose a new Lab backup file. Existing SmartEMR backups are protected from replacement.".into());
+        }
+    }
+
     let parent_dir = backup_path
         .parent()
         .ok_or_else(|| "Backup path must include a parent directory.".to_string())?;
@@ -34,8 +44,28 @@ fn write_backup_file_blocking(path: String, contents: String) -> Result<(), Stri
     fs::create_dir_all(parent_dir)
         .map_err(|error| format!("Failed to prepare backup directory: {error}"))?;
 
-    fs::write(&backup_path, contents)
-        .map_err(|error| format!("Failed to write backup file: {error}"))?;
+    use std::io::Write;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let suffix = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| e.to_string())?.as_nanos();
+    let temp_path = parent_dir.join(format!(".smartemr-{}-{suffix}.tmp", std::process::id()));
+    let result: Result<(), String> = (|| {
+        let mut options = fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)] { use std::os::unix::fs::OpenOptionsExt; options.mode(0o600); }
+        let mut file = options.open(&temp_path).map_err(|e| e.to_string())?;
+        file.write_all(contents.as_bytes()).map_err(|e| e.to_string())?;
+        file.sync_all().map_err(|e| e.to_string())?;
+        // Retain three prior encrypted backups before atomic replacement.
+        for index in (1..3).rev() {
+            let older = PathBuf::from(format!("{}.{}", backup_path.display(), index));
+            if older.exists() { fs::copy(&older, format!("{}.{}", backup_path.display(), index + 1)).map_err(|e| e.to_string())?; }
+        }
+        if backup_path.exists() { fs::copy(&backup_path, format!("{}.1", backup_path.display())).map_err(|e| e.to_string())?; }
+        fs::rename(&temp_path, &backup_path).map_err(|e| e.to_string())?;
+        Ok(())
+    })();
+    if result.is_err() { let _ = fs::remove_file(&temp_path); }
+    result?;
 
     Ok(())
 }
@@ -114,6 +144,34 @@ mod backup_tests {
             "Backup path must be an absolute file path."
         );
     }
+
+    #[test]
+    fn rotation_preserves_three_previous_lab_backups() {
+        let unique = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let directory = std::env::temp_dir().join(format!("smartemr-rotation-{unique}"));
+        let path = directory.join("lab.json");
+        for version in 1..=5 {
+            let contents = serde_json::json!({"workspace":"smartemr-lab","version":version}).to_string();
+            write_backup_file_blocking(path.to_string_lossy().into_owned(), contents).unwrap();
+        }
+        for (suffix, expected) in [("",5),(".1",4),(".2",3),(".3",2)] {
+            let contents = fs::read_to_string(format!("{}{suffix}",path.display())).unwrap();
+            let parsed: serde_json::Value = serde_json::from_str(&contents).unwrap();
+            assert_eq!(parsed["version"],expected);
+        }
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn lab_never_overwrites_a_regular_smartemr_backup() {
+        let unique = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let path = std::env::temp_dir().join(format!("smartemr-protected-{unique}.json"));
+        let original = r#"{"format":"client-records-sql-export","data":"original encrypted notes"}"#;
+        fs::write(&path,original).unwrap();
+        assert!(write_backup_file_blocking(path.to_string_lossy().into_owned(),"new lab backup".into()).is_err());
+        assert_eq!(fs::read_to_string(&path).unwrap(),original);
+        fs::remove_file(path).unwrap();
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -131,6 +189,10 @@ pub fn run() {
             greet,
             write_backup_file,
             write_binary_file,
+            secrets::store_app_secret,
+            secrets::read_app_secret,
+            secrets::remove_app_secret,
+            vault_migration::migrate_legacy_vault,
             biometric::get_biometric_availability,
             biometric::store_biometric_secret,
             biometric::read_biometric_secret,

@@ -1,7 +1,7 @@
 {
-  "productName": "SmartEMR",
-  "version": "3.0.49",
-  "identifier": "com.clientrecords.tauriapp",
+  "productName": "SmartEMR Lab",
+  "version": "3.1.0-beta.1",
+  "identifier": "com.clientrecords.tauriapp.lab",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -12,19 +12,19 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "SmartEMR v3.0.49",
+        "title": "SmartEMR Lab v3.1.0-beta.1",
         "width": 1200,
         "height": 800
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost http://localhost:* http://127.0.0.1:* https:; frame-src 'self'; object-src 'none'; base-uri 'self'"
     }
   },
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/nickhighland/Client-Records/releases/latest/download/latest.json"
+        "https://example.invalid/smartemr-lab-updates-disabled"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQxNkVFMDk4QjUyRjE1MTAKUldRUUZTKzFtT0J1MGJ0NGJYbHRCc1lzamZBc3JCejNSKzVvZjRmaXNoeUVyNXY3bEFhUGF0ZkMK"
     }

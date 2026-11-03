@@ -1,4 +1,4 @@
-const BIOMETRIC_SERVICE_NAME: &str = "com.clientrecords.tauriapp.biometric-unlock.v1";
+const BIOMETRIC_SERVICE_NAME: &str = "com.clientrecords.tauriapp.lab.biometric-unlock.v1";
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]

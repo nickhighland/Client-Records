@@ -48,6 +48,10 @@ jobs:
         working-directory: ./tauri-app
         run: npm install
 
+      - name: Protect stable release from experimental builds
+        working-directory: ./tauri-app
+        run: node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json')); if(c.productName !== 'SmartEMR' || c.identifier.endsWith('.lab') || c.version.includes('-')) throw new Error('Experimental builds must use the Lab artifact workflow.');"
+
       - name: Build and release Tauri app
         uses: tauri-apps/tauri-action@v0
         env:

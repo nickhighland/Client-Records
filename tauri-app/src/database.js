@@ -1,10 +1,38 @@
 import Database from '@tauri-apps/plugin-sql';
 import CryptoJS from 'crypto-js';
+import { createVaultCredentials, unlockVaultRecord, unlockVaultRecoveryRecord, recoverVaultRecord, changeVaultPassword, isVaultRecord,
+    encryptVaultState, decryptVaultState } from './vault-crypto.js';
+import { readCredential, writeCredential } from './credential-vault.js';
+import { unlockLegacyBackup } from './legacy-backup.js';
 
 let db = null;
 let encryptionKey = null;
 let currentUser = null;
 let lastAuthError = '';
+let pendingRecoveryKit = null;
+const pendingDrafts = new Map();
+export const hasPendingVolatileDraft = () => pendingDrafts.size > 0;
+export async function preserveUnsavedDraft(state) {
+    if (!encryptionKey || !currentUser) throw new Error('Unlock the workspace first.');
+    const encrypted = await encryptVaultState(state, encryptionKey);
+    if (JSON.stringify(await decryptVaultState(encrypted, encryptionKey)) !== JSON.stringify(state)) throw new Error('Draft protection failed. Keep the app open.');
+    pendingDrafts.set(currentUser, encrypted);
+}
+export function takeRecoveryKit() { const kit = pendingRecoveryKit; pendingRecoveryKit = null; return kit; }
+async function authenticatedVerifier(username, password, database) {
+    const rows = await database.select('SELECT password_hash FROM users WHERE username = $1', [username]);
+    const stored = rows?.[0]?.password_hash;
+    if (!stored) return '';
+    if (!isVaultRecord(stored)) return stored === CryptoJS.SHA256(password).toString() ? stored : '';
+    try { await unlockVaultRecord(stored, password); return stored; } catch { return ''; }
+}
+async function hydrateSmtpSecret(user, database) {
+    if (user.smtp_password) {
+        await writeCredential(`smtp:${user.username}`, user.smtp_password);
+        await database.execute('UPDATE users SET smtp_password = NULL WHERE username = $1', [user.username]);
+    } else user.smtp_password = await readCredential(`smtp:${user.username}`);
+    return user;
+}
 const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
 const CODE_RESEND_COOLDOWN_MS = 60 * 1000;
 const CODE_MAX_PER_HOUR = 5;
@@ -142,7 +170,7 @@ async function sendEmailVerificationCode(database, normalizedUsername) {
         return false;
     }
 
-    const user = rows[0];
+    const user = await hydrateSmtpSecret(rows[0], database);
     if (Number(user.email_verified) === 1) {
         lastAuthError = 'Email is already verified. You can log in now.';
         return false;
@@ -158,7 +186,7 @@ async function sendEmailVerificationCode(database, normalizedUsername) {
         return false;
     }
 
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
     const codeHash = CryptoJS.SHA256(`${normalizedUsername}:verify:${code}`).toString();
     const now = Date.now();
     const expiresAt = now + EMAIL_CODE_TTL_MS;
@@ -170,17 +198,6 @@ async function sendEmailVerificationCode(database, normalizedUsername) {
     );
 
     try {
-        console.log('[DEBUG] Sending verification email with args:', {
-            username: normalizedUsername,
-            toEmail: user.email,
-            smtpHost: user.smtp_host,
-            smtpPort: Number(user.smtp_port),
-            smtpSecurity: (user.smtp_security || 'starttls').toLowerCase(),
-            smtpUsername: user.smtp_username,
-            smtpPassword: user.smtp_password ? '***' : 'MISSING',
-            fromEmail: user.smtp_from,
-            code
-        });
         await invokeTauriCommand('send_email_verification_email', {
             args: {
                 username: normalizedUsername,
@@ -194,7 +211,6 @@ async function sendEmailVerificationCode(database, normalizedUsername) {
                 code
             }
         });
-        console.log('[DEBUG] Verification email sent successfully');
     } catch (error) {
         console.error('[DEBUG] Verification email error:', error);
         const detail = typeof error === 'string' ? ` ${error}` : (error?.message ? ` ${error.message}` : '');
@@ -263,91 +279,52 @@ export async function checkFirstLogin() {
 export async function createUser(username, password, email = '', recoveryConfig = null) {
     try {
         const database = await getDb();
-        const normalizedUsername = (username || '').trim();
-        const normalizedEmail = (email || '').trim();
-        if (!normalizedUsername) {
-            lastAuthError = 'Username is required.';
-            return false;
-        }
-
-        if (!normalizedEmail) {
-            lastAuthError = 'Email is required for account recovery.';
-            return false;
-        }
-
-        const existingUser = await database.select('SELECT id FROM users WHERE username = $1', [normalizedUsername]);
-        if (existingUser?.length) {
-            lastAuthError = 'User already exists. Please log in.';
-            return false;
-        }
-
-        const passwordHash = CryptoJS.SHA256(password).toString();
-        const smtpHost = (recoveryConfig?.smtpHost || '').trim();
-        const smtpPort = Number(recoveryConfig?.smtpPort || 0);
-        const smtpSecurity = (recoveryConfig?.smtpSecurity || 'starttls').trim().toLowerCase();
-        const smtpUsername = (recoveryConfig?.smtpUsername || '').trim();
-        const smtpFrom = (recoveryConfig?.smtpFrom || normalizedEmail).trim();
-        const smtpPassword = (recoveryConfig?.smtpPassword || '').trim();
-        const smtpValidationError = validateSmtpConfig(smtpHost, smtpPort, smtpSecurity, smtpUsername, smtpFrom, smtpPassword);
-        if (smtpValidationError) {
-            lastAuthError = smtpValidationError;
-            return false;
-        }
-        const recoveryEnabled = smtpHost && smtpPort > 0 && smtpUsername && smtpFrom && smtpPassword ? 1 : 0;
-        if (!recoveryEnabled) {
-            lastAuthError = 'SMTP settings are required for email verification.';
-            return false;
-        }
-
-        await database.execute(
-            'INSERT INTO users (username, password_hash, email, smtp_host, smtp_port, smtp_security, smtp_username, smtp_from, smtp_password, recovery_enabled, email_verified, email_verified_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0, NULL)',
-            [normalizedUsername, passwordHash, normalizedEmail, smtpHost, smtpPort || null, smtpSecurity, smtpUsername, smtpFrom, smtpPassword, recoveryEnabled]
-        );
-        
-        const sent = await sendEmailVerificationCode(database, normalizedUsername);
-        if (!sent) {
-            await database.execute('DELETE FROM users WHERE username = $1', [normalizedUsername]);
-            await database.execute('DELETE FROM email_verification_codes WHERE username = $1', [normalizedUsername]);
-            await database.execute('DELETE FROM password_reset_codes WHERE username = $1', [normalizedUsername]);
-
-            return false;
-        }
-
-        encryptionKey = null;
-        currentUser = null;
+        const normalizedUsername = String(username || '').trim();
+        if (!normalizedUsername) throw new Error('Username is required.');
+        if ((await database.select('SELECT id FROM users WHERE username = $1', [normalizedUsername])).length) throw new Error('User already exists. Please log in.');
+        const credentials = await createVaultCredentials(password);
+        await database.execute('INSERT INTO users (username, password_hash, email, recovery_enabled, email_verified, email_verified_at) VALUES ($1,$2,$3,0,1,$4)',
+            [normalizedUsername, credentials.record, String(email || '').trim(), Date.now()]);
+        pendingRecoveryKit = { username: normalizedUsername, recoveryCode: credentials.recoveryCode };
         lastAuthError = '';
         return true;
-    } catch (error) {
-        console.error("Failed to create user:", error);
-        lastAuthError = 'Failed to create user. Please try again.';
-        return false;
-    }
+    } catch (error) { lastAuthError = error.message || 'Could not create account.'; return false; }
 }
 
 export async function loginUser(username, password) {
     try {
         const database = await getDb();
-        const normalizedUsername = (username || '').trim();
-        const passwordHash = CryptoJS.SHA256(password || '').toString();
-        const result = await database.select('SELECT * FROM users WHERE username = $1 AND password_hash = $2', [normalizedUsername, passwordHash]);
-        
-        if (result.length > 0) {
-            if (Number(result[0].email_verified) !== 1) {
-                lastAuthError = 'Email not verified. Enter your verification code to continue.';
-                return false;
+        const normalizedUsername = String(username || '').trim();
+        const rows = await database.select('SELECT * FROM users WHERE username = $1', [normalizedUsername]);
+        const user = rows?.[0];
+        if (!user || !await authenticatedVerifier(normalizedUsername, password, database)) throw new Error('Incorrect username or password.');
+        let key;
+        if (isVaultRecord(user.password_hash)) key = await unlockVaultRecord(user.password_hash, password);
+        else {
+            const oldKey = deriveEncryptionKey(normalizedUsername, password);
+            const saved = await database.select('SELECT value FROM app_state WHERE key = $1', ['main_state']);
+            let oldState = null;
+            if (saved.length) {
+                const decoded = CryptoJS.AES.decrypt(saved[0].value, oldKey).toString(CryptoJS.enc.Utf8);
+                if (!decoded) throw new Error('Existing drafts could not be decrypted. No account data was changed.');
+                oldState = JSON.parse(decoded);
             }
-            encryptionKey = await getOrMigrateEncryptionKey(normalizedUsername, password, database);
-            currentUser = normalizedUsername;
-            lastAuthError = '';
-            return true;
+            const credentials = await createVaultCredentials(password);
+            const encrypted = oldState === null ? null : await encryptVaultState(oldState, credentials.dataKey);
+            if (encrypted && JSON.stringify(await decryptVaultState(encrypted, credentials.dataKey)) !== JSON.stringify(oldState)) throw new Error('Encryption verification failed. Existing drafts were not changed.');
+            await invokeTauriCommand('migrate_legacy_vault', { args: {
+                username: normalizedUsername, oldVerifier: user.password_hash,
+                oldState: saved?.[0]?.value ?? null, newVerifier: credentials.record, newState: encrypted
+            } });
+            pendingRecoveryKit = { username: normalizedUsername, recoveryCode: credentials.recoveryCode };
+            key = credentials.dataKey;
         }
-        lastAuthError = 'Incorrect username or password.';
-        return false;
-    } catch (error) {
-        console.error("Failed to login:", error);
-        lastAuthError = 'Login failed. Please restart the app.';
-        return false;
-    }
+        encryptionKey = key;
+        currentUser = normalizedUsername;
+        if (user.smtp_password) { try { await hydrateSmtpSecret(user, database); } catch { /* Retain existing SMTP data until secure migration succeeds. */ } }
+        lastAuthError = '';
+        return true;
+    } catch (error) { encryptionKey = null; currentUser = null; lastAuthError = error.message || 'Login failed.'; return false; }
 }
 
 export async function loginUserWithBiometricSecret(username, storedEncryptionKey) {
@@ -384,62 +361,22 @@ export async function loginUserWithBiometricSecret(username, storedEncryptionKey
 
 export async function changePassword(currentPassword, newPassword) {
     if (!db || !currentUser || !encryptionKey) return false;
-
     try {
-        const normalizedCurrentPassword = (currentPassword || '').trim();
-        const normalizedNewPassword = (newPassword || '').trim();
-        if (!normalizedCurrentPassword || !normalizedNewPassword) {
-            lastAuthError = 'Current and new password are required.';
-            return false;
-        }
-
-        const currentPasswordHash = CryptoJS.SHA256(normalizedCurrentPassword).toString();
-        const userResult = await db.select(
-            'SELECT password_hash FROM users WHERE username = $1',
-            [currentUser]
-        );
-
-        if (!userResult?.length || userResult[0].password_hash !== currentPasswordHash) {
-            lastAuthError = 'Incorrect current password.';
-            return false;
-        }
-
-        const existingState = await loadState();
-        const newPasswordHash = CryptoJS.SHA256(normalizedNewPassword).toString();
-        const newEncryptionKey = deriveEncryptionKey(currentUser, normalizedNewPassword);
-
-        await db.execute('BEGIN TRANSACTION');
-        try {
-            await db.execute(
-                'UPDATE users SET password_hash = $1 WHERE username = $2',
-                [newPasswordHash, currentUser]
-            );
-
-            if (existingState !== null) {
-                const encryptedState = encryptStateString(existingState, newEncryptionKey);
-                await db.execute(
-                    'INSERT INTO app_state (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = $2',
-                    ['main_state', encryptedState]
-                );
-            }
-
-            await db.execute('COMMIT');
-        } catch (error) {
-            try {
-                await db.execute('ROLLBACK');
-            } catch (_rollbackError) {
-            }
-            throw error;
-        }
-
-        encryptionKey = newEncryptionKey;
+        const rows = await db.select('SELECT password_hash FROM users WHERE username = $1', [currentUser]);
+        const updated = await changeVaultPassword(rows[0].password_hash, currentPassword, newPassword);
+        await db.execute('UPDATE users SET password_hash = $1 WHERE username = $2', [updated.record, currentUser]);
         lastAuthError = '';
         return true;
-    } catch (error) {
-        console.error('Failed to change password:', error);
-        lastAuthError = 'Failed to change password.';
-        return false;
-    }
+    } catch { lastAuthError = 'Password change failed. Verify the current password and use at least eight characters for the new password.'; return false; }
+}
+
+export async function rotateRecoveryKey(password) {
+    if (!db || !currentUser || !encryptionKey) throw new Error('Unlock the app first.');
+    const rows = await db.select('SELECT password_hash FROM users WHERE username = $1', [currentUser]);
+    const key = await unlockVaultRecord(rows[0].password_hash, password);
+    const credentials = await createVaultCredentials(password, key);
+    await db.execute('UPDATE users SET password_hash = $1 WHERE username = $2', [credentials.record, currentUser]);
+    return { username: currentUser, recoveryCode: credentials.recoveryCode };
 }
 
 export function getLastAuthError() {
@@ -545,72 +482,9 @@ export async function removeBiometricLoginForUser(username) {
     }
 }
 
-export async function requestPasswordReset(username) {
-    try {
-        const database = await getDb();
-        const normalizedUsername = (username || '').trim();
-        if (!normalizedUsername) {
-            lastAuthError = 'Username is required.';
-            return false;
-        }
-
-        const rows = await database.select(
-            'SELECT username, email, smtp_host, smtp_port, smtp_security, smtp_username, smtp_from, smtp_password, recovery_enabled, email_verified FROM users WHERE username = $1',
-            [normalizedUsername]
-        );
-        if (!rows?.length) {
-            lastAuthError = 'Account not found.';
-            return false;
-        }
-
-        const user = rows[0];
-        if (Number(user.email_verified) !== 1) {
-            lastAuthError = 'Email must be verified before password recovery can be used.';
-            return false;
-        }
-
-        if (!user.recovery_enabled || !user.email || !user.smtp_host || !user.smtp_port || !user.smtp_username || !user.smtp_from || !user.smtp_password) {
-            lastAuthError = 'Recovery email is not configured for this account.';
-            return false;
-        }
-
-        const rateAllowed = await enforceCodeRateLimit(database, 'password_reset_codes', normalizedUsername, 'reset');
-        if (!rateAllowed) {
-            return false;
-        }
-
-        const code = String(Math.floor(100000 + Math.random() * 900000));
-        const codeHash = CryptoJS.SHA256(`${normalizedUsername}:${code}`).toString();
-        const now = Date.now();
-        const expiresAt = now + (10 * 60 * 1000);
-
-        await database.execute('DELETE FROM password_reset_codes WHERE username = $1 OR expires_at < $2 OR used = 1', [normalizedUsername, now - (24 * 60 * 60 * 1000)]);
-        await database.execute(
-            'INSERT INTO password_reset_codes (username, code_hash, expires_at, attempts, used, created_at) VALUES ($1, $2, $3, 0, 0, $4)',
-            [normalizedUsername, codeHash, expiresAt, now]
-        );
-
-        await invokeTauriCommand('send_password_reset_email', {
-            args: {
-                username: normalizedUsername,
-                toEmail: user.email,
-                smtpHost: user.smtp_host,
-                smtpPort: Number(user.smtp_port),
-                smtpSecurity: (user.smtp_security || 'starttls').toLowerCase(),
-                smtpUsername: user.smtp_username,
-                smtpPassword: user.smtp_password,
-                fromEmail: user.smtp_from,
-                code
-            }
-        });
-
-        lastAuthError = `Reset code sent to ${user.email}.`;
-        return true;
-    } catch (error) {
-        console.error('Failed to request password reset:', error);
-        lastAuthError = 'Failed to send reset code. Check SMTP settings.';
-        return false;
-    }
+export async function requestPasswordReset() {
+    lastAuthError = 'Use your saved Lab recovery key to reset the password while keeping encrypted notes accessible. Email codes do not recover encryption keys.';
+    return false;
 }
 
 export async function requestEmailVerification(username) {
@@ -656,7 +530,7 @@ export async function updateRecoverySettings(username, password, email = '', rec
             return false;
         }
 
-        const passwordHash = CryptoJS.SHA256(normalizedPassword).toString();
+        const passwordHash = await authenticatedVerifier(normalizedUsername, normalizedPassword, database);
         const matched = await database.select(
             'SELECT id FROM users WHERE username = $1 AND password_hash = $2',
             [normalizedUsername, passwordHash]
@@ -685,9 +559,10 @@ export async function updateRecoverySettings(username, password, email = '', rec
             return false;
         }
 
+        await writeCredential(`smtp:${normalizedUsername}`, smtpPassword);
         await database.execute(
             'UPDATE users SET email = $1, smtp_host = $2, smtp_port = $3, smtp_security = $4, smtp_username = $5, smtp_from = $6, smtp_password = $7, recovery_enabled = 1, email_verified = 0, email_verified_at = NULL WHERE username = $8',
-            [normalizedEmail, smtpHost, smtpPort, smtpSecurity, smtpUsername, smtpFrom, smtpPassword, normalizedUsername]
+            [normalizedEmail, smtpHost, smtpPort, smtpSecurity, smtpUsername, smtpFrom, null, normalizedUsername]
         );
 
         if (sendVerificationCode) {
@@ -722,7 +597,7 @@ export async function getRecoverySettings(username, password) {
             return null;
         }
 
-        const passwordHash = CryptoJS.SHA256(normalizedPassword).toString();
+        const passwordHash = await authenticatedVerifier(normalizedUsername, normalizedPassword, database);
         const rows = await database.select(
             'SELECT email, smtp_host, smtp_port, smtp_security, smtp_username, smtp_from FROM users WHERE username = $1 AND password_hash = $2',
             [normalizedUsername, passwordHash]
@@ -762,7 +637,7 @@ export async function testSmtpSettings(username, password, email = '', recoveryC
             return false;
         }
 
-        const passwordHash = CryptoJS.SHA256(normalizedPassword).toString();
+        const passwordHash = await authenticatedVerifier(normalizedUsername, normalizedPassword, database);
         const rows = await database.select(
             'SELECT id FROM users WHERE username = $1 AND password_hash = $2',
             [normalizedUsername, passwordHash]
@@ -876,66 +751,17 @@ export async function confirmEmailVerification(username, code) {
     }
 }
 
-export async function confirmPasswordReset(username, code, newPassword) {
+export async function confirmPasswordReset(username, recoveryCode, newPassword) {
     try {
         const database = await getDb();
-        const normalizedUsername = (username || '').trim();
-        const normalizedCode = (code || '').trim();
-        if (!normalizedUsername || !normalizedCode || !newPassword) {
-            lastAuthError = 'Username, code, and new password are required.';
-            return false;
-        }
-
-        if (newPassword.length < 8) {
-            lastAuthError = 'New password must be at least 8 characters.';
-            return false;
-        }
-
-        const rows = await database.select(
-            'SELECT id, code_hash, attempts, expires_at, used FROM password_reset_codes WHERE username = $1 ORDER BY created_at DESC LIMIT 1',
-            [normalizedUsername]
-        );
-
-        if (!rows?.length) {
-            lastAuthError = 'No active reset request found. Request a new code.';
-            return false;
-        }
-
-        const row = rows[0];
-        const now = Date.now();
-        if (row.used || Number(row.expires_at) < now) {
-            lastAuthError = 'Reset code expired. Request a new code.';
-            return false;
-        }
-
-        if (Number(row.attempts) >= 5) {
-            lastAuthError = 'Too many failed attempts. Request a new code.';
-            return false;
-        }
-
-        const expectedHash = CryptoJS.SHA256(`${normalizedUsername}:${normalizedCode}`).toString();
-        if (expectedHash !== row.code_hash) {
-            const attempts = Number(row.attempts) + 1;
-            const used = attempts >= 5 ? 1 : 0;
-            await database.execute('UPDATE password_reset_codes SET attempts = $1, used = $2 WHERE id = $3', [attempts, used, row.id]);
-            lastAuthError = used
-                ? 'Too many failed attempts. Request a new code.'
-                : `Invalid code. ${Math.max(0, 5 - attempts)} attempt(s) remaining.`;
-            return false;
-        }
-
-        const newPasswordHash = CryptoJS.SHA256(newPassword).toString();
-        await database.execute('UPDATE users SET password_hash = $1 WHERE username = $2', [newPasswordHash, normalizedUsername]);
-        await database.execute('UPDATE password_reset_codes SET used = 1 WHERE id = $1', [row.id]);
-        await database.execute('DELETE FROM password_reset_codes WHERE username = $1 AND id != $2', [normalizedUsername, row.id]);
-
+        const normalizedUsername = String(username || '').trim();
+        const rows = await database.select('SELECT password_hash FROM users WHERE username = $1', [normalizedUsername]);
+        if (!rows.length || !isVaultRecord(rows[0].password_hash)) throw new Error('This legacy account requires its original password or saved biometric unlock. An email code cannot recover its encryption key.');
+        const recovered = await recoverVaultRecord(rows[0].password_hash, recoveryCode, newPassword);
+        await database.execute('UPDATE users SET password_hash = $1 WHERE username = $2', [recovered.record, normalizedUsername]);
         lastAuthError = '';
         return true;
-    } catch (error) {
-        console.error('Failed to confirm password reset:', error);
-        lastAuthError = 'Password reset failed. Please try again.';
-        return false;
-    }
+    } catch (error) { lastAuthError = 'Recovery failed. Verify the recovery key and account name. ' + (error.message || ''); return false; }
 }
 
 export async function deleteUserAccount(username, password) {
@@ -948,7 +774,7 @@ export async function deleteUserAccount(username, password) {
             return false;
         }
 
-        const passwordHash = CryptoJS.SHA256(normalizedPassword).toString();
+        const passwordHash = await authenticatedVerifier(normalizedUsername, normalizedPassword, database);
         const matched = await database.select(
             'SELECT id FROM users WHERE username = $1 AND password_hash = $2',
             [normalizedUsername, passwordHash]
@@ -988,40 +814,11 @@ const sqlEscape = (value) => {
 };
 
 export async function exportEncryptedSqlDump() {
-    if (!db || !encryptionKey) {
-        throw new Error('Database is not initialized. Please log in first.');
-    }
-
-    const schemaRows = await db.select(
-        "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
-    );
-
-    let sqlDump = '-- SmartEMR SQL Export\n';
-    sqlDump += `-- Generated: ${new Date().toISOString()}\n\n`;
-
-    for (const row of schemaRows) {
-        sqlDump += `${row.sql};\n`;
-
-        const rows = await db.select(`SELECT * FROM ${row.name}`);
-        if (rows.length > 0) {
-            const columns = Object.keys(rows[0]);
-            for (const record of rows) {
-                const values = columns.map((column) => sqlEscape(record[column])).join(', ');
-                sqlDump += `INSERT INTO ${row.name} (${columns.join(', ')}) VALUES (${values});\n`;
-            }
-        }
-
-        sqlDump += '\n';
-    }
-
-    const encryptedSqlDump = CryptoJS.AES.encrypt(sqlDump, encryptionKey).toString();
-    return {
-        format: 'client-records-sql-export',
-        encrypted: true,
-        algorithm: 'AES',
-        createdAt: new Date().toISOString(),
-        data: encryptedSqlDump
-    };
+    if (!db || !encryptionKey || !currentUser) throw new Error('Unlock the workspace before backing it up.');
+    const users = await db.select('SELECT password_hash FROM users WHERE username = $1', [currentUser]);
+    const state = await loadState();
+    return { format: 'smartemr-backup-v2', workspace: 'smartemr-lab', encrypted: true, algorithm: 'AES-256-GCM', createdAt: new Date().toISOString(),
+        credentials: users[0].password_hash, data: await encryptVaultState(state, encryptionKey) };
 }
 
 const splitSqlStatements = (sqlScript) => {
@@ -1065,77 +862,57 @@ const splitSqlStatements = (sqlScript) => {
     return statements;
 };
 
-export async function importSqlDump(sqlDumpText) {
-    if (!db) {
-        throw new Error('Database is not initialized. Please log in first.');
-    }
-
-    if (typeof sqlDumpText !== 'string' || sqlDumpText.trim().length === 0) {
-        throw new Error('SQL import file is empty or invalid.');
-    }
-
-    const statements = splitSqlStatements(sqlDumpText);
-    if (statements.length === 0) {
-        throw new Error('No SQL statements found in import file.');
-    }
-
-    try {
-        await db.execute('BEGIN TRANSACTION');
-        await db.execute('PRAGMA foreign_keys = OFF');
-
-        const tableRows = await db.select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
-        for (const row of tableRows) {
-            await db.execute(`DROP TABLE IF EXISTS ${row.name}`);
-        }
-
-        for (const statement of statements) {
-            await db.execute(statement);
-        }
-
-        await db.execute('PRAGMA foreign_keys = ON');
-        await db.execute('COMMIT');
-    } catch (error) {
-        try {
-            await db.execute('ROLLBACK');
-            await db.execute('PRAGMA foreign_keys = ON');
-        } catch (_rollbackError) {
-        }
-        throw error;
-    }
+export async function importSqlDump(sql, sourceUsername = '', sourcePassword = '') {
+    if (!db || !encryptionKey) throw new Error('Unlock the Lab workspace before restoring.');
+    if (!sourcePassword) throw new Error('BACKUP_PASSWORD_REQUIRED');
+    const state = unlockLegacyBackup(sql, sourceUsername, sourcePassword);
+    await saveImportedState(state);
 }
 
-export async function importEncryptedSqlDump(exportPayload) {
-    if (!db || !encryptionKey) {
-        throw new Error('Database is not initialized. Please log in first.');
+async function saveImportedState(state) {
+    // Keep the displaced Lab workspace encrypted under the same data key.
+    const prior = await db.select('SELECT value FROM app_state WHERE key = $1', ['main_state']);
+    if (prior.length) {
+        await db.execute('CREATE TABLE IF NOT EXISTS vault_restore_snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, encrypted_state TEXT NOT NULL, created_at INTEGER NOT NULL)');
+        await db.execute('INSERT INTO vault_restore_snapshots (username, encrypted_state, created_at) VALUES ($1,$2,$3)', [currentUser, prior[0].value, Date.now()]);
     }
+    if (!await saveState(state)) throw new Error('Restore could not be saved. Previous workspace retained.');
+}
 
-    if (!exportPayload || typeof exportPayload !== 'object') {
-        throw new Error('Invalid encrypted SQL import payload.');
-    }
-
-    if (exportPayload.format !== 'client-records-sql-export' || typeof exportPayload.data !== 'string') {
-        throw new Error('Unsupported SQL import format.');
-    }
-
-    const decryptedBytes = CryptoJS.AES.decrypt(exportPayload.data, encryptionKey);
-    const decryptedSql = decryptedBytes.toString(CryptoJS.enc.Utf8);
-    if (!decryptedSql) {
-        throw new Error('Failed to decrypt SQL import. Ensure you are logged in as the correct user.');
-    }
-
-    await importSqlDump(decryptedSql);
+export async function importEncryptedSqlDump(payload, sourceUsername = '', sourcePassword = '') {
+    if (!db || !encryptionKey) throw new Error('Unlock the Lab workspace before restoring.');
+    let state;
+    if (payload?.format === 'smartemr-backup-v2') {
+        try { state = await decryptVaultState(payload.data, encryptionKey); }
+        catch {
+            if (!sourcePassword) throw new Error('BACKUP_PASSWORD_REQUIRED');
+            const sourceKey = sourcePassword.trim().startsWith('RK-')
+                ? await unlockVaultRecoveryRecord(payload.credentials, sourcePassword)
+                : await unlockVaultRecord(payload.credentials, sourcePassword);
+            state = await decryptVaultState(payload.data, sourceKey);
+        }
+    } else if (payload?.format === 'client-records-sql-export') {
+        if (!sourcePassword) throw new Error('BACKUP_PASSWORD_REQUIRED');
+        state = unlockLegacyBackup(payload, sourceUsername, sourcePassword);
+    } else throw new Error('Unsupported backup format.');
+    if (!state?.data || !Array.isArray(state.data.clients)) throw new Error('Backup workspace is invalid.');
+    await saveImportedState(state);
 }
 
 export async function saveState(state) {
     if (!db || !encryptionKey) return false;
     
     try {
-        const encryptedState = encryptStateString(state, encryptionKey);
+        const encryptedState = await encryptVaultState(state, encryptionKey);
+        const verified = await decryptVaultState(encryptedState, encryptionKey);
+        if (JSON.stringify(verified) !== JSON.stringify(state)) throw new Error('Encrypted draft verification failed. Previous saved data retained.');
         
         await db.execute(
             'INSERT INTO app_state (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = $2',
             ['main_state', encryptedState]
         );
+        const pending = pendingDrafts.get(currentUser);
+        if (pending && JSON.stringify(await decryptVaultState(pending, encryptionKey)) === JSON.stringify(state)) pendingDrafts.delete(currentUser);
         return true;
     } catch (error) {
         console.error("Failed to save state to database:", error);
@@ -1147,10 +924,12 @@ export async function loadState() {
     if (!db || !encryptionKey) return null;
     
     try {
+        if (pendingDrafts.has(currentUser)) return await decryptVaultState(pendingDrafts.get(currentUser), encryptionKey);
         const result = await db.select('SELECT value FROM app_state WHERE key = $1', ['main_state']);
         
         if (result && result.length > 0) {
             const encryptedState = result[0].value;
+            if (encryptedState.trim().startsWith('{')) return decryptVaultState(encryptedState, encryptionKey);
             const decryptedBytes = CryptoJS.AES.decrypt(encryptedState, encryptionKey);
             const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
             

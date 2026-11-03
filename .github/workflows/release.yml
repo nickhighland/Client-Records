@@ -46,7 +46,18 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ./tauri-app
-        run: npm install
+        run: npm ci
+
+      - name: Validate version and stable app identity
+        working-directory: ./tauri-app
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json')); if(process.env.RELEASE_TAG !== 'v'+c.version || c.identifier !== 'com.clientrecords.tauriapp' || c.productName !== 'SmartEMR') throw new Error('Release tag or app identity does not match the stable app.');"
+
+      - name: Run regression tests
+        working-directory: ./tauri-app
+        run: node --test tests/*.test.js
 
       - name: Build and release Tauri app
         uses: tauri-apps/tauri-action@v0
@@ -59,8 +70,8 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: false
+          releaseBody: 'Based on v3.0.48. Fixes Objective redundancy review so Approve and Organize retain every checked statement, including multiple statements in one group. Includes macOS bundle signing and signature verification. The withdrawn v3.0.49 workflow and Lab changes are excluded.'
+          releaseDraft: true
           prerelease: false
 
       - name: Verify native Apple Silicon bundle
@@ -77,6 +88,7 @@ jobs:
             echo "ERROR: Release executable is not arm64-only and may require Rosetta"
             exit 1
           fi
+          codesign --verify --deep --strict "$GITHUB_WORKSPACE/tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/SmartEMR.app"
 
       - name: Create signed updater bundle
         id: updater_bundle
@@ -120,3 +132,9 @@ jobs:
             --clobber \
             "${{ steps.updater_bundle.outputs.targz_path }}" \
             "${{ steps.updater_bundle.outputs.sig_path }}"
+
+      - name: Publish verified release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: gh release edit "$RELEASE_TAG" --repo "${{ github.repository }}" --draft=false --latest=false

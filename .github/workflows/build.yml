@@ -69,6 +69,7 @@ jobs:
             echo "ERROR: Build executable is not arm64-only and may require Rosetta"
             exit 1
           fi
+          codesign --verify --deep --strict "$GITHUB_WORKSPACE/tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/SmartEMR.app"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

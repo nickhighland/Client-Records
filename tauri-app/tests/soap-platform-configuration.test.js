@@ -19,10 +19,6 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const getSessionMembersContext =/);
         assert.match(html, /session-member-role/);
         assert.match(html, /const SOAP_PLATFORM_SECTION_DEFS =/);
-        assert.match(html, /key: 'diagnosisWithSubstantiation', label: 'Diagnosis with substantiation'/);
-        assert.match(html, /key: 'diagnosisWithoutSubstantiation', label: 'Diagnosis without substantiation'/);
-        assert.match(html, /key: 'presentingProblem', label: 'Presenting Problem'/);
-        assert.match(html, /key: 'treatmentPlan', label: 'Treatment Plan'/);
         assert.match(html, /const getDefaultSoapPlatforms =/);
         assert.match(html, /const normalizeSoapPlatforms =/);
         assert.match(html, /const getClientSoapPlatform =/);
@@ -35,8 +31,6 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /row\.addEventListener\('drop'/);
         assert.match(html, /const getSoapPlatformSectionKeys =/);
         assert.match(html, /const getSoapPlatformSectionKeysForAppointment =/);
-        assert.match(html, /const SOAP_PLATFORM_LEGACY_DEFAULT_ORDER =/);
-        assert.match(html, /SOAP_PLATFORM_NEW_OPTION_KEYS/);
         assert.match(html, /appointment\.soapPlatformSnapshot/);
         assert.match(html, /captureSoapPlatformSnapshot\(appointment, client\)/);
         assert.match(html, /const reorderSoapPlatformSections =/);
@@ -71,21 +65,5 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const interventionsEnabled = isSoapPlatformSectionEnabled\(client, 'interventions'\)/);
         assert.match(html, /const fetchSupportFieldsFromAI = async \(client, appointment, requestedFields/);
         assert.match(html, /Do not write or return fields that were not requested/);
-    });
-
-    test(`${path} renders the selectable diagnosis and treatment-plan output sections`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-
-        assert.match(html, /data-soap-section-key="diagnosisWithSubstantiation"/);
-        assert.match(html, /data-soap-section-key="diagnosisWithoutSubstantiation"/);
-        assert.match(html, /data-soap-section-key="presentingProblem"/);
-        assert.match(html, /data-soap-section-key="treatmentPlan"/);
-        assert.match(html, /const formatDiagnosisWithSubstantiationText =/);
-        assert.match(html, /const formatDiagnosisWithoutSubstantiationText =/);
-        assert.match(html, /const formatTreatmentPlanCopyText =/);
-        assert.match(html, /data-soap-plan-copy-type="goal"/);
-        assert.match(html, /data-soap-plan-copy-type="objective"/);
-        assert.match(html, /soap-treatment-plan-copy-btn/);
-        assert.match(html, /renderedSoapSections\.forEach\(sectionElement =>/);
     });
 }

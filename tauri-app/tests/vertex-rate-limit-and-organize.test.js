@@ -35,7 +35,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /id="dismissObjectiveRedundancyBtn"/);
         assert.match(html, /const setObjectiveRedundancyItemSelected =/);
         assert.match(html, /const applyObjectiveRedundancyDecision =/);
-        assert.match(html, /Dismiss all Objective redundancy review options/);
+        assert.match(html, /Dismiss the grouped Objective redundancy options/);
         assert.match(html, /addEventListener\('change', \(e\) =>/);
         assert.match(html, /organizeObjectiveBtn\.disabled = false/);
         assert.match(html, /class="soap-action-spinner"/);
@@ -44,10 +44,13 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /setSoapPostObjectiveProcessingState\(true\)/);
         assert.match(html, /Objective Grouping/);
         assert.match(html, /objective-redundancy-group-container/);
+        assert.match(html, /const renderObjectiveRedundancySuggestions =/);
+        assert.match(html, /const getObjectiveRedundancyGroupedSuggestionSourceIndexes =/);
+        assert.match(html, /if \(groups\.length === 0\) return ''/);
         assert.match(html, /const getObjectiveRedundancyDecision =/);
         assert.match(html, /const pendingRedundancyReview = getObjectiveRedundancyReview\(appointment\)/);
-        assert.match(html, /appointment\.soap\.o_suggestion = pendingRedundancyDecision/);
-        assert.match(html, /isObjectiveOrganizeCompleted\(appointment\) \? '' : \(soapData\.o_suggestion/);
+        assert.match(html, /appointment\.soap\.o_suggestion = \[\]/);
+        assert.match(html, /renderObjectiveRedundancySuggestions\(appointment\)/);
         assert.doesNotMatch(html, /objective-redundancy-decline/);
         assert.doesNotMatch(html, /const \[diagnosticResult, medicalNecessityResult\] = await Promise\.allSettled/);
     });

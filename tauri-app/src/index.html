@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.45</title>
+    <title>SmartEMR v3.0.46</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -10089,7 +10089,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             ${renderSoapCopyButton('soapO', 'Objective')}
                         </div>
                         <textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.o || ''}</textarea>
-                        ${getObjectiveRedundancyReview(appointment) || isObjectiveOrganizeCompleted(appointment) ? '' : (soapData.o_suggestion || []).map((s, i) => renderSuggestionBox('o', s, i)).join('')}
+                        ${renderObjectiveRedundancySuggestions(appointment)}
                         ${renderObjectiveRedundancyReview(appointment)}
                     </div>
                     <div class="soap-section">
@@ -10283,6 +10283,27 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return selected;
             };
 
+            const getObjectiveRedundancyGroupedItemIndexes = (review) => {
+                const reviewItems = getObjectiveRedundancyItemsForReview(review);
+                const groupedItemIndexes = new Set();
+                (Array.isArray(review?.groups) ? review.groups : []).forEach(group => {
+                    (Array.isArray(group?.itemIndexes) ? group.itemIndexes : []).forEach(index => {
+                        if (index >= 0 && index < reviewItems.length) groupedItemIndexes.add(index);
+                    });
+                });
+                return groupedItemIndexes;
+            };
+
+            const getObjectiveRedundancyGroupedSuggestionSourceIndexes = (review) => {
+                const reviewItems = getObjectiveRedundancyItemsForReview(review);
+                const groupedItemIndexes = getObjectiveRedundancyGroupedItemIndexes(review);
+                return new Set(
+                    reviewItems
+                        .filter((item, index) => item.kind === 'suggestion' && groupedItemIndexes.has(index) && Number.isInteger(item.sourceIndex))
+                        .map(item => item.sourceIndex)
+                );
+            };
+
             const setObjectiveRedundancyItemSelected = (review, itemIndex, isSelected) => {
                 if (!review || !Number.isInteger(itemIndex)) return false;
                 const reviewItems = getObjectiveRedundancyItemsForReview(review);
@@ -10317,6 +10338,19 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 `;
             };
 
+            const renderObjectiveRedundancySuggestions = (appointment) => {
+                if (!appointment?.soap || isObjectiveOrganizeCompleted(appointment)) return '';
+                const suggestions = Array.isArray(appointment.soap.o_suggestion)
+                    ? appointment.soap.o_suggestion
+                    : [];
+                const groupedSourceIndexes = getObjectiveRedundancyGroupedSuggestionSourceIndexes(
+                    getObjectiveRedundancyReview(appointment)
+                );
+                return suggestions
+                    .map((suggestion, index) => groupedSourceIndexes.has(index) ? '' : renderSuggestionBox('o', suggestion, index))
+                    .join('');
+            };
+
             const renderObjectiveRedundancyReview = (appointment) => {
                 const review = getObjectiveRedundancyReview(appointment);
                 if (!review) return '';
@@ -10328,8 +10362,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         ? group.itemIndexes.filter(index => index >= 0 && index < reviewItems.length)
                         : []
                 })).filter(entry => entry.itemIndexes.length > 1);
+                if (groups.length === 0) return '';
                 const selectedIndexes = getSelectedObjectiveRedundancyItemIndexes(review);
-                const groupedItemIndexes = new Set(groups.flatMap(entry => entry.itemIndexes));
+                const groupedItemIndexes = getObjectiveRedundancyGroupedItemIndexes(review);
                 const groupsByAnchor = new Map();
                 groups.forEach(entry => {
                     const anchor = Math.min(...entry.itemIndexes);
@@ -10338,6 +10373,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 });
                 const sequence = [];
                 reviewItems.forEach((item, itemIndex) => {
+                    if (item.kind === 'suggestion' && !groupedItemIndexes.has(itemIndex)) return;
                     const anchoredGroups = groupsByAnchor.get(itemIndex) || [];
                     anchoredGroups.forEach(entry => {
                         const groupId = String(entry.group.id || `redundancy-${entry.groupIndex + 1}`);
@@ -11855,11 +11891,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                  if (clickedButton?.id === 'dismissObjectiveRedundancyBtn') {
                      const client = findClient(selectedClientId);
                      const appointment = findAppointment(client, selectedAppointmentId);
-                     if (!appointment?.soap || !getObjectiveRedundancyReview(appointment)) return;
-                     if (!confirm('Dismiss all Objective redundancy review options? The current Objective text will remain unchanged.')) return;
+                     const review = getObjectiveRedundancyReview(appointment);
+                     if (!appointment?.soap || !review) return;
+                     if (!confirm('Dismiss the grouped Objective redundancy options? Non-grouped suggestions will remain available.')) return;
+                     const groupedSourceIndexes = getObjectiveRedundancyGroupedSuggestionSourceIndexes(review);
+                     const currentSuggestions = Array.isArray(appointment.soap.o_suggestion)
+                         ? appointment.soap.o_suggestion
+                         : [];
+                     appointment.soap.o_suggestion = currentSuggestions.filter((_, index) => !groupedSourceIndexes.has(index));
                      delete appointment.soap.objectiveRedundancyReview;
-                     appointment.soap.o_suggestion = [];
-                     delete appointment.soap.o_suggestion_intervention_matches;
+                     refreshObjectiveSuggestionInterventionMatches(appointment, client);
                      markDirty();
                      renderSoap();
                      return;
@@ -12741,21 +12782,22 @@ Requirements:
             const getObjectiveRedundancyDecision = (review) => {
                 const reviewItems = getObjectiveRedundancyItemsForReview(review);
                 const selectedIndexes = getSelectedObjectiveRedundancyItemIndexes(review);
+                const groupedItemIndexes = getObjectiveRedundancyGroupedItemIndexes(review);
                 const objectiveItems = reviewItems
                     .filter((item, index) => item.kind === 'objective' && selectedIndexes.has(index))
                     .map(item => item.text)
                     .filter(Boolean);
                 const acceptedSuggestionItems = reviewItems
-                    .filter((item, index) => item.kind === 'suggestion' && selectedIndexes.has(index))
+                    .filter((item, index) => item.kind === 'suggestion' && groupedItemIndexes.has(index) && selectedIndexes.has(index))
                     .map(item => item.text)
                     .filter(Boolean);
                 const declinedReplacementItems = reviewItems
-                    .filter((item, index) => item.kind === 'suggestion' && !selectedIndexes.has(index) && item.originalText)
+                    .filter((item, index) => item.kind === 'suggestion' && groupedItemIndexes.has(index) && !selectedIndexes.has(index) && item.originalText)
                     .map(item => item.originalText)
                     .filter(Boolean);
                 const reviewedSuggestionSourceIndexes = new Set(
                     reviewItems
-                        .filter(item => item.kind === 'suggestion' && Number.isInteger(item.sourceIndex))
+                        .filter((item, index) => item.kind === 'suggestion' && groupedItemIndexes.has(index) && Number.isInteger(item.sourceIndex))
                         .map(item => item.sourceIndex)
                 );
                 return {
@@ -12830,14 +12872,7 @@ Requirements:
                     }
 
                     updateSoapFieldValue(appointment, 'o', organizedObjective || objectiveText);
-                    const currentSuggestions = Array.isArray(appointment.soap.o_suggestion)
-                        ? appointment.soap.o_suggestion
-                        : [];
-                    appointment.soap.o_suggestion = pendingRedundancyDecision
-                        ? currentSuggestions.filter((_, index) => (
-                            !pendingRedundancyDecision.reviewedSuggestionSourceIndexes.has(index)
-                        ))
-                        : [];
+                    appointment.soap.o_suggestion = [];
                     delete appointment.soap.objectiveRedundancyReview;
                     delete appointment.soap.o_suggestion_intervention_matches;
                     setSoapSectionOrderOverride(appointment.soap, 'o', true);

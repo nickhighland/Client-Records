@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'Based on v3.0.53. SOAP Presenting Problem now copies the Treatment Goals value, and Session Focus contains concise AI-generated current-session context. Objective review accepts a manual note; Approve applies checked options and runs Objective organization and support generation. Existing notes retain their saved content.'
+          releaseBody: 'Based on v3.0.54. Medical Necessity is a concise diagnosis-linked evidence bridge that avoids repeating interventions or inferring undocumented impact or risk. New and AI-drafted goals and objectives default to their creation date and support per-item date editing. Existing saved notes and dates are preserved.'
           releaseDraft: true
           prerelease: false
 

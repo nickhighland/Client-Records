@@ -41,7 +41,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const showPlanItemEditorModal =/);
         assert.match(html, /const showGoalEditorModal =/);
         assert.match(html, /showGoalEditorModal\('Add Goal', '', DEFAULT_GOAL_TIMELINE_MONTHS\)/);
-        assert.match(html, /showGoalEditorModal\('Edit Goal', goal\.title, goal\.timelineMonths\)/);
+        assert.match(html, /showGoalEditorModal\('Edit Goal', goal\.title, goal\.timelineMonths, currentStartDate\)/);
         assert.doesNotMatch(html, /timelineEditorModal/);
         assert.doesNotMatch(html, /class="action-btn timeline-btn"/);
 

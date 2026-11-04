@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.54</title>
+    <title>SmartEMR v3.0.55</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -3185,6 +3185,16 @@
             <h3 id="objectiveEditorModalTitle" style="margin-bottom: 16px; color: var(--text-color-primary);">Objective</h3>
             <label id="objectiveEditorTextLabel" for="objectiveEditorTextInput" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Objective</label>
             <textarea id="objectiveEditorTextInput" rows="4" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 14px;"></textarea>
+            <label for="planItemStartDateInputMonth" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Start date</label>
+            <div id="planItemStartDateControl" class="segmented-date-control" data-segmented-date-input="planItemStartDateInput" style="margin-bottom: 14px;">
+                <input id="planItemStartDateInputMonth" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="Start date month" autocomplete="off">
+                <span class="date-segment-separator" aria-hidden="true">/</span>
+                <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="Start date day" autocomplete="off">
+                <span class="date-segment-separator" aria-hidden="true">/</span>
+                <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" aria-label="Start date year" autocomplete="off">
+                <button type="button" class="date-picker-button" data-date-picker-for="planItemStartDateInput" title="Choose start date" aria-label="Choose start date">📅</button>
+                <input id="planItemStartDateInput" type="date" class="date-input-value" tabindex="-1" aria-hidden="true">
+            </div>
             <label for="objectiveEditorTimelineSelect" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Timeline</label>
             <select id="objectiveEditorTimelineSelect" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; margin-bottom: 18px;">
                 <option value="1">1 month</option>
@@ -3779,7 +3789,6 @@
                                     <button type="button" class="date-picker-button" data-date-picker-for="treatmentPlanStartDateInput" title="Choose treatment plan start date" aria-label="Choose treatment plan start date">📅</button>
                                     <input id="treatmentPlanStartDateInput" type="date" class="date-input-value" tabindex="-1" aria-hidden="true" disabled>
                                 </div>
-                                <button id="applyTreatmentPlanStartDateBtn" type="button" class="btn" style="padding: 4px 7px; font-size: 0.72rem;" title="Apply this start date to goals and objectives without a start date" disabled>Apply to undated</button>
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -4512,11 +4521,10 @@
                 </div>
 
                 <h4>A – Assessment</h4>
-                <p>This is the most important section for audits. It must demonstrate:</p>
+                <p>Interpret the session evidence and connect it to treatment when supported:</p>
                 <ul>
                     <li>Clinical interpretation</li>
                     <li>Progress toward goals</li>
-                    <li>Ongoing medical necessity</li>
                     <li>Response to treatment</li>
                     <li>Risk level</li>
                     <li>Diagnostic justification if relevant</li>
@@ -4524,13 +4532,13 @@
                 <p>Must include:</p>
                 <ul>
                     <li>Progress or lack of progress</li>
-                    <li>Why continued treatment is needed</li>
+                    <li>Functional impact or barriers when documented</li>
                     <li>Connection to diagnosis</li>
                     <li>Clinical reasoning</li>
                 </ul>
                 <div class="guide-example">
                     <strong>Strong Example</strong><br>
-                    Symptoms remain consistent with Generalized Anxiety Disorder, currently moderate to severe. Increased avoidance behaviors are interfering with occupational functioning. Client has demonstrated partial progress in cognitive restructuring skills but continues to require structured intervention to reduce functional impairment. Continued weekly therapy is medically necessary to prevent further deterioration.
+                    Symptoms remain consistent with Generalized Anxiety Disorder. Increased avoidance is affecting work participation. Ct has made partial progress using cognitive restructuring, while meeting-related avoidance remains a barrier.
                 </div>
                 <div class="guide-example">
                     <strong>Weak Example</strong><br>
@@ -4556,17 +4564,21 @@
                 </div>
 
                 <h3>Medical Necessity Requirements</h3>
-                <p>To withstand audits, notes should demonstrate:</p>
+                <p>Keep this field to a concise evidence bridge that explains continued skilled care:</p>
                 <ul>
-                    <li>Active symptoms</li>
-                    <li>Functional impairment</li>
-                    <li>Treatment addressing diagnosis</li>
-                    <li>Skilled intervention required</li>
-                    <li>Not appropriate for self-help or lower level of care</li>
+                    <li>The relevant clinician-entered diagnosis</li>
+                    <li>One current-session documented symptom or behavior</li>
+                    <li>Its documented functional effect or a relevant active treatment goal</li>
+                    <li>Why continued clinician-guided treatment is needed for that clinical need</li>
                 </ul>
+                <p>Use 1-2 sentences. Avoid repeating the intervention list or details already stated elsewhere in the SOAP. Include function, risk, progress, or response only when documented.</p>
+                <div class="guide-example">
+                    <strong>Example</strong><br>
+                    Skilled psychotherapy remains medically necessary for Generalized Anxiety Disorder because increased avoidance continues to affect work participation. Today's session addressed meeting-related avoidance; continued clinician-guided work is needed to improve participation.
+                </div>
 
                 <h4>Include Functional Impact</h4>
-                <p>Auditors often deny claims when notes lack impairment. Examples of functional impairment:</p>
+                <p>When the record documents an effect on functioning, name it briefly. Examples include:</p>
                 <ul>
                     <li>Work interference</li>
                     <li>Relationship strain</li>
@@ -5083,7 +5095,6 @@
             const goalsListInTabEl = document.getElementById('goalsListInTab');
             const addGoalBtnInTab = document.getElementById('addGoalBtnInTab');
             const treatmentPlanStartDateInput = document.getElementById('treatmentPlanStartDateInput');
-            const applyTreatmentPlanStartDateBtn = document.getElementById('applyTreatmentPlanStartDateBtn');
             const appointmentsTabBtn = document.getElementById('appointmentsTabBtn');
             const goalsTabBtn = document.getElementById('goalsTabBtn');
             const appointmentsTabContent = document.getElementById('appointmentsTabContent');
@@ -5702,6 +5713,19 @@
                 return { year, month, day };
             };
             const isValidDateInputValue = (value) => Boolean(parseLocalDateInput(value));
+            const renderSegmentedDateControlMarkup = (valueInputId, value, compact = false) => {
+                const inputValue = isValidDateInputValue(value) ? value : '';
+                const compactClass = compact ? ' compact' : '';
+                return `<div class="segmented-date-control${compactClass}" data-segmented-date-input="${valueInputId}">
+                    <input id="${valueInputId}Month" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="Start date month" autocomplete="off">
+                    <span class="date-segment-separator" aria-hidden="true">/</span>
+                    <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="Start date day" autocomplete="off">
+                    <span class="date-segment-separator" aria-hidden="true">/</span>
+                    <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" aria-label="Start date year" autocomplete="off">
+                    <button type="button" class="date-picker-button" data-date-picker-for="${valueInputId}" title="Choose start date" aria-label="Choose start date">📅</button>
+                    <input id="${valueInputId}" type="date" class="date-input-value" tabindex="-1" aria-hidden="true" value="${inputValue}">
+                </div>`;
+            };
             const getSegmentedDateControl = (valueInputId) => Array.from(document.querySelectorAll('.segmented-date-control'))
                 .find(control => control.dataset.segmentedDateInput === valueInputId) || null;
             const getSegmentedDateParts = (control) => ({
@@ -8214,6 +8238,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             const normalizeGoalDraftsFromAi = (aiPayload, diagnosis, goalCount, objectiveCount, format, modalities, objectivesPerGoal) => {
                 const staggeredTimeline = [3, 6, 9, 12];
+                const generatedStartDate = getLocalDateInputValue();
                 const aiGoals = Array.isArray(aiPayload?.goals) ? aiPayload.goals : [];
                 const normalizedGoals = [];
 
@@ -8226,6 +8251,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         approved: true,
                         title: sanitizeGoalTextByModalities(goalTitle, modalities),
                         timelineMonths: normalizeTreatmentPlanTimeline(aiGoal.timelineMonths, DEFAULT_GOAL_TIMELINE_MONTHS),
+                        startDate: generatedStartDate,
+                        startDateManuallyEdited: false,
                         objectives: []
                     });
                 }
@@ -8266,6 +8293,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                             approved: true,
                             text: sanitizeGoalTextByModalities(objectiveText, modalities),
                             timelineMonths: normalizeTreatmentPlanTimeline(aiObjective.timelineMonths, fallbackTimeline),
+                            startDate: generatedStartDate,
+                            startDateManuallyEdited: false,
                             format: aiObjective.format === 'smart' ? 'smart' : format,
                             completed: false,
                             dateCreated: new Date().toISOString()
@@ -9190,6 +9219,25 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     ?? ''
             );
 
+            const SOAP_MEDICAL_NECESSITY_GUIDANCE = 'For Medical Necessity, write 1-2 concise sentences, ideally 25-45 words and never more than 55, as an evidence bridge. Name only the clinician-entered diagnosis or diagnoses directly relevant to today\'s documented need, preserving the diagnosis label and code as entered. Connect one current-session-supported symptom or behavior to its documented functional effect; when a functional effect is not documented, connect the session-supported need to a relevant active treatment goal. State why continued skilled clinician-guided treatment remains needed to address that documented need. Keep the session reference to one brief treatment target; do not list techniques or interventions, repeat history, copy collateral events, or recap details already documented elsewhere in the SOAP. Use impairment, risk, relapse, deterioration, benefit, response, progress, or improvement only when explicitly documented. A diagnosis or active treatment plan is context, never proof of today\'s symptoms or that a goal was addressed. A clinician-entered necessity rationale is context, not proof of today\'s need, and should not be copied unless the current-session record supports it. If a link is unsupported, omit it rather than infer or pad. Use a natural form such as: "Ongoing skilled treatment remains medically necessary for [relevant diagnosis] because [session-supported symptom or behavior] continues to affect [documented function or active treatment target]. Continued clinician-guided care is needed to [supported treatment aim]."';
+
+            const getActiveTreatmentPlanNecessityContext = (client) => {
+                const activeGoals = Array.isArray(client?.goals)
+                    ? client.goals.filter(goal => goal?.status === 'active' && String(goal.title || '').trim())
+                    : [];
+                if (activeGoals.length === 0) return '- No active treatment goal documented';
+
+                return activeGoals.map(goal => {
+                    const objectives = Array.isArray(goal.objectives)
+                        ? goal.objectives.filter(objective => !objective.completed && String(objective.text || '').trim())
+                        : [];
+                    const objectiveText = objectives.length > 0
+                        ? objectives.map(objective => `  - Objective: ${objective.text}`).join('\n')
+                        : '  - No active objective documented';
+                    return `- Goal: ${goal.title}\n${objectiveText}`;
+                }).join('\n');
+            };
+
             const fetchDiagnosticSupportFromAI = async (client, appointment) => {
                 const diagnoses = getClientDiagnosisNames(client);
                 if (diagnoses.length === 0) {
@@ -9214,8 +9262,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
 
                 const diagnosisContext = diagnoses.map((diagnosis, index) => `${index + 1}. ${diagnosis}`).join('\n');
-                const systemPrompt = 'You are a behavioral-health documentation assistant writing one concise, chart-ready Medical Necessity statement. Use only facts explicitly documented in the supplied current-session record and treatment context. Use the clinician-entered diagnosis or diagnoses as treatment anchors and balance them with the current session: name or clearly reference the relevant documented diagnosis, connect it to the session-documented clinical need, and state the focused treatment need that supports continued care. Follow this style: "Ongoing skilled treatment remains medically necessary to address [session-documented clinical need] in the context of [documented diagnosis], focusing on [documented treatment targets] to mitigate [documented functional impact or risk]." Explicitly state that ongoing skilled treatment remains medically necessary. Use one sentence, ideally 25-45 words and never more than 55 words. Diagnosis alone is not evidence; do not invent a symptom-diagnosis relationship. Mention only the most relevant session content and treatment focus; omit progress, response, clinician techniques, detailed interventions, and collateral events unless one is essential to explain the current need. Do not repeat the SOAP note or explain why the diagnosis is valid. Do not evaluate diagnostic criteria, discuss whether a diagnosis is substantiated, or list missing criteria. Do not invent symptoms, severity, impairment, risk, intervention delivery, response, progress, or functional effects. If a needed element is not documented, omit it rather than guessing. Return only JSON exactly as {"medical_necessity":"..."}.';
-                const userPrompt = `Documented diagnoses (treatment anchors):\n${diagnosisContext}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nWrite exactly one concise Medical Necessity sentence in the requested style. Return only JSON in the required form.`;
+                const systemPrompt = `You are a behavioral-health documentation assistant writing one concise, chart-ready Medical Necessity statement. Use only facts explicitly documented in the supplied current-session record and treatment context. ${SOAP_MEDICAL_NECESSITY_GUIDANCE} Do not explain or assess diagnostic criteria or discuss whether a diagnosis is substantiated. Return only JSON exactly as {"medical_necessity":"..."}.`;
+                const userPrompt = `Documented diagnoses (treatment anchors):\n${diagnosisContext}\n\nActive treatment plan context (not evidence that a goal was addressed today):\n${getActiveTreatmentPlanNecessityContext(client)}\n\nComplete documented session record:\n${buildDiagnosticSupportSessionContext(client, appointment)}\n\nApply the Medical Necessity guidance and return only JSON in the required form.`;
                 const aiPayload = await requestJsonObjectFromCurrentProvider(systemPrompt, userPrompt);
                 const medicalNecessity = normalizeMedicalNecessityFromAi(aiPayload);
                 if (!medicalNecessity) {
@@ -9251,11 +9299,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     fieldInstructions.push('For Diagnostic Support, return one separate entry for every listed clinician-entered diagnosis, preserving each diagnosis label exactly as provided. Each entry must have a sentences array with 3-4 concise, complete sentences in total when supported by the record: include session-specific evidence only when explicitly documented, then describe the documented interventions, support, or treatment focus that addressed the diagnosis. If no specific evidence appeared in the session, omit that evidence sentence rather than inventing it or adding filler. Do not use generic diagnostic descriptions or pad the entry. Do not diagnose, reassess, substantiate, validate, deny, or critique the diagnosis, and do not discuss whether criteria are met. Use the locked chart terms: refer to the client as "Ct" and the clinician as "Writer"; for couple sessions use assigned member names/pronouns and the collective grammar rule. Never write "the client," "client," "the clinician," or "clinician" in Diagnostic Support.');
                 }
                 if (requested.has('medicalNecessity')) {
-                    fieldInstructions.push('For Medical Necessity, use the clinician-entered diagnosis or diagnoses as treatment anchors and balance them with the current session. Name or clearly reference the relevant diagnosis, connect it to the session-documented clinical need, and state the focused treatment need that supports continued care. Use this style: "Ongoing skilled treatment remains medically necessary to address [session-documented clinical need] in the context of [documented diagnosis], focusing on [documented treatment targets] to mitigate [documented functional impact or risk]." Keep it to one sentence, ideally 25-45 words and never more than 55 words.');
+                    fieldInstructions.push(SOAP_MEDICAL_NECESSITY_GUIDANCE);
                 }
                 const systemPrompt = `You are a behavioral-health documentation assistant writing only the requested chart-ready support fields. Use only facts explicitly documented in the supplied current-session record and treatment context. ${fieldInstructions.join(' ')} Diagnosis alone is not evidence; do not invent a symptom-diagnosis relationship. Do not list interventions, techniques, progress, response, or collateral events unless one is essential to explain the current need. Do not evaluate diagnostic criteria or explain why the diagnosis is valid. If no diagnosis is listed, return an empty diagnostic_support array and an empty medical_necessity string. Do not write or return fields that were not requested. For Diagnostic Support, use the exact JSON shape [{"diagnosis":"...","sentences":["...","..."]}] and use the locked chart terms Ct and Writer. Return only JSON with the requested keys using these names: session_focus, diagnostic_support, medical_necessity.`;
                 const userPrompt = 'Documented diagnoses (treatment anchors):\n'
                     + diagnosisContext
+                    + (requested.has('medicalNecessity')
+                        ? '\n\nActive treatment plan context (not evidence that a goal was addressed today):\n' + getActiveTreatmentPlanNecessityContext(client)
+                        : '')
                     + '\n\nComplete documented session record:\n'
                     + buildDiagnosticSupportSessionContext(client, appointment)
                     + `\n\nRequested fields: ${[...requested].join(', ')}. Write only the requested fields, keep them separate, and return only the required JSON.`;
@@ -9464,7 +9515,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 ` + generatedGoalsDraft.map((goal, goalIndex) => `
                     <div class="generator-card" data-draft-goal-index="${goalIndex}">
                         <div class="generator-title">Goal ${goalIndex + 1}</div>
-                        <div class="goal-draft-grid" style="display:grid;grid-template-columns:1fr 110px 120px;gap:8px;align-items:end;margin-bottom:8px;">
+                        <div class="goal-draft-grid" style="display:grid;grid-template-columns:minmax(0,1fr) 100px 160px 120px;gap:8px;align-items:end;margin-bottom:8px;">
                             <div>
                                 <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">Goal Text</label>
                                 <textarea class="mini-input draft-goal-text" rows="2">${escapeGoalDraftHtml(goal.title)}</textarea>
@@ -9473,12 +9524,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">Timeline (mo)</label>
                                 <select class="mini-input draft-goal-timeline">${getTreatmentPlanTimelineOptionsMarkup(goal.timelineMonths, DEFAULT_GOAL_TIMELINE_MONTHS)}</select>
                             </div>
+                            <div class="draft-goal-start-date">
+                                <label for="draftGoalStartDateInput${goalIndex}Month" style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">Start date</label>
+                                ${renderSegmentedDateControlMarkup(`draftGoalStartDateInput${goalIndex}`, goal.startDate, true)}
+                            </div>
                             <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                                 <input type="checkbox" class="draft-goal-approved" ${goal.approved ? 'checked' : ''}> Approve Goal
                             </label>
                         </div>
                         ${(goal.objectives || []).map((obj, objIndex) => `
-                            <div class="objective-draft-grid" style="display:grid;grid-template-columns:1fr 110px 140px;gap:8px;align-items:end;margin:6px 0 0 0;" data-draft-objective-index="${objIndex}">
+                            <div class="objective-draft-grid" style="display:grid;grid-template-columns:minmax(0,1fr) 100px 160px 140px;gap:8px;align-items:end;margin:6px 0 0 0;" data-draft-objective-index="${objIndex}">
                                 <div>
                                     <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:4px;">Objective ${objIndex + 1}</label>
                                     <textarea class="mini-input draft-obj-text" rows="2">${escapeGoalDraftHtml(obj.text)}</textarea>
@@ -9486,6 +9541,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 <div>
                                     <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:4px;">Timeline (mo)</label>
                                     <select class="mini-input draft-obj-timeline">${getTreatmentPlanTimelineOptionsMarkup(obj.timelineMonths, DEFAULT_OBJECTIVE_TIMELINE_MONTHS)}</select>
+                                </div>
+                                <div class="draft-obj-start-date">
+                                    <label for="draftObjectiveStartDateInput${goalIndex}_${objIndex}Month" style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:4px;">Start date</label>
+                                    ${renderSegmentedDateControlMarkup(`draftObjectiveStartDateInput${goalIndex}_${objIndex}`, obj.startDate, true)}
                                 </div>
                                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                                     <select class="mini-input draft-obj-format" style="max-width:120px;">
@@ -9501,6 +9560,28 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     </div>
                 `).join('');
 
+                initializeSegmentedDateInputs();
+                Array.from(generatedGoalsReview.querySelectorAll('[data-draft-goal-index]')).forEach(card => {
+                    const goalIndex = parseInt(card.dataset.draftGoalIndex, 10);
+                    const draftGoal = generatedGoalsDraft[goalIndex];
+                    const markGoalDateEdited = () => {
+                        if (draftGoal) draftGoal.startDateManuallyEdited = true;
+                    };
+                    const goalDateControl = card.querySelector('.draft-goal-start-date .segmented-date-control');
+                    goalDateControl?.addEventListener('input', markGoalDateEdited);
+                    goalDateControl?.addEventListener('change', markGoalDateEdited);
+
+                    Array.from(card.querySelectorAll('[data-draft-objective-index]')).forEach(row => {
+                        const objIndex = parseInt(row.dataset.draftObjectiveIndex, 10);
+                        const draftObjective = draftGoal?.objectives?.[objIndex];
+                        const markObjectiveDateEdited = () => {
+                            if (draftObjective) draftObjective.startDateManuallyEdited = true;
+                        };
+                        const objectiveDateControl = row.querySelector('.draft-obj-start-date .segmented-date-control');
+                        objectiveDateControl?.addEventListener('input', markObjectiveDateEdited);
+                        objectiveDateControl?.addEventListener('change', markObjectiveDateEdited);
+                    });
+                });
                 syncGeneratedGoalsFromReview();
             };
 
@@ -9517,6 +9598,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
                     draftGoal.title = (card.querySelector('.draft-goal-text')?.value || '').trim();
                     draftGoal.timelineMonths = normalizeTreatmentPlanTimeline(card.querySelector('.draft-goal-timeline')?.value, DEFAULT_GOAL_TIMELINE_MONTHS);
+                    draftGoal.startDate = card.querySelector('.draft-goal-start-date input[type="date"]')?.value || '';
                     draftGoal.approved = !!card.querySelector('.draft-goal-approved')?.checked;
 
                     const objectiveRows = Array.from(card.querySelectorAll('[data-draft-objective-index]'));
@@ -9526,6 +9608,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         if (!draftObj) return;
                         draftObj.text = (row.querySelector('.draft-obj-text')?.value || '').trim();
                         draftObj.timelineMonths = normalizeTreatmentPlanTimeline(row.querySelector('.draft-obj-timeline')?.value, DEFAULT_OBJECTIVE_TIMELINE_MONTHS);
+                        draftObj.startDate = row.querySelector('.draft-obj-start-date input[type="date"]')?.value || '';
                         draftObj.format = row.querySelector('.draft-obj-format')?.value === 'smart' ? 'smart' : 'action';
                         draftObj.approved = !!row.querySelector('.draft-obj-approved')?.checked;
                     });
@@ -9537,13 +9620,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             const applyGeneratedGoals = () => {
                 const client = findClient(activeGoalGeneratorClientId);
                 if (!client) return;
-                const treatmentPlanStartDate = getClientTreatmentPlanStartDate(client);
-                if (!treatmentPlanStartDate) {
-                    alert('Set a treatment plan start date before saving a new treatment plan.');
-                    goalGeneratorModal.classList.add('hidden');
-                    treatmentPlanStartDateInput?.focus();
-                    return;
-                }
                 syncGeneratedGoalsFromReview();
 
                 const approvedGoals = generatedGoalsDraft
@@ -9562,6 +9638,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     alert('Approve at least one goal and one objective, then click Save.');
                     return;
                 }
+                const addedOnDate = getLocalDateInputValue();
+                const hasInvalidDates = approvedGoals.some(goal => !isValidDateInputValue(goal.startDateManuallyEdited ? goal.startDate : addedOnDate)
+                    || (goal.objectives || []).some(objective => !isValidDateInputValue(objective.startDateManuallyEdited ? objective.startDate : addedOnDate)));
+                if (hasInvalidDates) {
+                    alert('Choose a valid start date for each approved goal and objective.');
+                    return;
+                }
 
                 client.presentingProblem = generatedPresentingProblemDraft.trim();
                 if (!Array.isArray(client.goals)) client.goals = [];
@@ -9570,13 +9653,13 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         id: crypto.randomUUID(),
                         title: draftGoal.title,
                         timelineMonths: normalizeTreatmentPlanTimeline(draftGoal.timelineMonths, DEFAULT_GOAL_TIMELINE_MONTHS),
-                        startDate: treatmentPlanStartDate,
+                        startDate: draftGoal.startDateManuallyEdited ? draftGoal.startDate : addedOnDate,
                         status: 'active',
                         objectives: (draftGoal.objectives || []).map(obj => ({
                             id: crypto.randomUUID(),
                             text: obj.text,
                             timelineMonths: normalizeTreatmentPlanTimeline(obj.timelineMonths, DEFAULT_OBJECTIVE_TIMELINE_MONTHS),
-                            startDate: treatmentPlanStartDate,
+                            startDate: obj.startDateManuallyEdited ? obj.startDate : addedOnDate,
                             format: obj.format,
                             completed: false,
                             dateCreated: new Date().toISOString()
@@ -10121,7 +10204,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const treatmentPlanStartDate = client ? getClientTreatmentPlanStartDate(client) : '';
                 treatmentPlanStartDateInput.value = treatmentPlanStartDate;
                 syncSegmentedDateInput('treatmentPlanStartDateInput', treatmentPlanStartDate);
-                applyTreatmentPlanStartDateBtn.disabled = !client || !treatmentPlanStartDate;
 
                 sessionInfoEl.disabled = !appointment && !note;
                 sessionInfoEl.value = appointment
@@ -10325,7 +10407,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 <div class="goal-header-actions">
                                     ${getPlanCopyButtonMarkup('Goal', 'goal-copy-btn', 'data-copy-type="goal"')}
                                     <div class="goal-actions">
-                                        <button class="action-btn edit-btn" title="Edit Goal and Timeline" aria-label="Edit Goal and Timeline">✏️</button>
+                                        <button class="action-btn edit-btn" title="Edit Goal, Start Date, and Timeline" aria-label="Edit Goal, Start Date, and Timeline">✏️</button>
                                         <button class="action-btn archive-btn" title="Change Status">⚡</button>
                                         <button class="action-btn delete-btn" title="Delete Goal">×</button>
                                     </div>
@@ -10351,7 +10433,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                         </div>
                                         ${getPlanCopyButtonMarkup('Objective', 'objective-copy-btn', 'data-copy-type="objective"')}
                                         <div class="objective-actions">
-                                            <button class="action-btn edit-objective-btn" title="Edit Objective and Timeline" aria-label="Edit Objective and Timeline" style="width: 16px; height: 16px; font-size: 10px; background:#3498db;">✏️</button>
+                                            <button class="action-btn edit-objective-btn" title="Edit Objective, Start Date, and Timeline" aria-label="Edit Objective, Start Date, and Timeline" style="width: 16px; height: 16px; font-size: 10px; background:#3498db;">✏️</button>
                                             <button class="action-btn delete-btn" title="Delete Objective" style="width: 16px; height: 16px; font-size: 10px;">×</button>
                                         </div>
                                     </div>
@@ -10958,12 +11040,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             const addGoal = () => {
                 const client = findClient(selectedClientId);
                 if (!client) return;
-                const treatmentPlanStartDate = getClientTreatmentPlanStartDate(client);
-                if (!treatmentPlanStartDate) {
-                    alert('Set a treatment plan start date before adding a new goal.');
-                    treatmentPlanStartDateInput?.focus();
-                    return;
-                }
                 
                 showGoalEditorModal('Add Goal', '', DEFAULT_GOAL_TIMELINE_MONTHS).then(result => {
                     if (!result) return;
@@ -10972,7 +11048,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         id: crypto.randomUUID(),
                         title: result.text,
                         timelineMonths: result.timelineMonths,
-                        startDate: treatmentPlanStartDate,
+                        startDate: result.startDate,
                         status: 'active',
                         objectives: [],
                         dateCreated: new Date().toISOString()
@@ -10992,13 +11068,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const goal = client.goals.find(g => g.id === goalId);
                 if (!goal) return;
 
-                const treatmentPlanStartDate = getGoalTreatmentPlanStartDate(client, goal);
-                if (!treatmentPlanStartDate) {
-                    alert('Set a treatment plan start date before adding a new objective.');
-                    treatmentPlanStartDateInput?.focus();
-                    return;
-                }
-
                 showObjectiveEditorModal('Add Objective', '', DEFAULT_OBJECTIVE_TIMELINE_MONTHS).then(result => {
                     if (!result) return;
                     
@@ -11006,7 +11075,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         id: crypto.randomUUID(),
                         text: result.text,
                         timelineMonths: result.timelineMonths,
-                        startDate: treatmentPlanStartDate,
+                        startDate: result.startDate,
                         format: 'action',
                         completed: false,
                         dateCreated: new Date().toISOString()
@@ -11017,30 +11086,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     markDirty();
                     renderGoals();
                 });
-            };
-
-            const applyTreatmentPlanStartDate = () => {
-                const client = findClient(selectedClientId);
-                const treatmentPlanStartDate = getClientTreatmentPlanStartDate(client);
-                if (!client || !treatmentPlanStartDate) return;
-
-                let updatedCount = 0;
-                (client.goals || []).forEach(goal => {
-                    if (!isValidDateInputValue(goal.startDate)) {
-                        goal.startDate = treatmentPlanStartDate;
-                        updatedCount += 1;
-                    }
-                    const goalStartDate = getGoalTreatmentPlanStartDate(client, goal);
-                    (goal.objectives || []).forEach(objective => {
-                        if (!isValidDateInputValue(objective.startDate) && goalStartDate) {
-                            objective.startDate = goalStartDate;
-                            updatedCount += 1;
-                        }
-                    });
-                });
-
-                if (updatedCount > 0) markDirty();
-                renderGoals();
             };
 
             const toggleObjective = (goalId, objectiveId) => {
@@ -11123,10 +11168,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const goal = client.goals.find(g => g.id === goalId);
                 if (!goal) return;
                 
-                showGoalEditorModal('Edit Goal', goal.title, goal.timelineMonths).then(result => {
+                const currentStartDate = isValidDateInputValue(goal.startDate)
+                    ? goal.startDate
+                    : (getClientTreatmentPlanStartDate(client) || getLocalDateInputValue());
+                showGoalEditorModal('Edit Goal', goal.title, goal.timelineMonths, currentStartDate).then(result => {
                     if (!result) return;
                     goal.title = result.text;
                     goal.timelineMonths = result.timelineMonths;
+                    goal.startDate = result.startDate;
                     markDirty();
                     renderGoals();
                 });
@@ -11140,10 +11189,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const objective = goal.objectives.find(o => o.id === objectiveId);
                 if (!objective) return;
 
-                showObjectiveEditorModal('Edit Objective', objective.text, objective.timelineMonths).then(result => {
+                const currentStartDate = isValidDateInputValue(objective.startDate)
+                    ? objective.startDate
+                    : (getGoalTreatmentPlanStartDate(client, goal) || getLocalDateInputValue());
+                showObjectiveEditorModal('Edit Objective', objective.text, objective.timelineMonths, currentStartDate).then(result => {
                     if (!result) return;
                     objective.text = result.text;
                     objective.timelineMonths = result.timelineMonths;
+                    objective.startDate = result.startDate;
                     markDirty();
                     renderGoals();
                 });
@@ -11409,16 +11462,18 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 title,
                 currentText = '',
                 currentTimeline = DEFAULT_OBJECTIVE_TIMELINE_MONTHS,
-                fallbackTimeline = DEFAULT_OBJECTIVE_TIMELINE_MONTHS
+                fallbackTimeline = DEFAULT_OBJECTIVE_TIMELINE_MONTHS,
+                currentStartDate = null
             ) => new Promise((resolve) => {
                 const modal = document.getElementById('objectiveEditorModal');
                 const titleEl = document.getElementById('objectiveEditorModalTitle');
                 const textLabel = document.getElementById('objectiveEditorTextLabel');
                 const textInput = document.getElementById('objectiveEditorTextInput');
+                const startDateInput = document.getElementById('planItemStartDateInput');
                 const timelineSelect = document.getElementById('objectiveEditorTimelineSelect');
                 const confirmBtn = document.getElementById('objectiveEditorModalConfirm');
                 const cancelBtn = document.getElementById('objectiveEditorModalCancel');
-                if (!modal || !titleEl || !textLabel || !textInput || !timelineSelect || !confirmBtn || !cancelBtn) {
+                if (!modal || !titleEl || !textLabel || !textInput || !startDateInput || !timelineSelect || !confirmBtn || !cancelBtn) {
                     resolve(null);
                     return;
                 }
@@ -11426,14 +11481,23 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 titleEl.textContent = title;
                 textLabel.textContent = itemLabel;
                 textInput.value = currentText || '';
+                startDateInput.value = isValidDateInputValue(currentStartDate) ? currentStartDate : getLocalDateInputValue();
+                syncSegmentedDateInput('planItemStartDateInput', startDateInput.value);
                 timelineSelect.value = String(normalizeTreatmentPlanTimeline(currentTimeline, fallbackTimeline));
                 modal.classList.remove('hidden');
+                const startDateControl = getSegmentedDateControl('planItemStartDateInput');
+                let startDateManuallyEdited = false;
+                const markStartDateManuallyEdited = () => { startDateManuallyEdited = true; };
+                startDateControl?.addEventListener('input', markStartDateManuallyEdited);
+                startDateControl?.addEventListener('change', markStartDateManuallyEdited);
 
                 const cleanup = () => {
                     modal.classList.add('hidden');
                     confirmBtn.removeEventListener('click', onConfirm);
                     cancelBtn.removeEventListener('click', onCancel);
                     modal.removeEventListener('keydown', onKeydown);
+                    startDateControl?.removeEventListener('input', markStartDateManuallyEdited);
+                    startDateControl?.removeEventListener('change', markStartDateManuallyEdited);
                 };
                 const onConfirm = () => {
                     const text = textInput.value.trim();
@@ -11441,8 +11505,17 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         textInput.focus();
                         return;
                     }
+                    const startDate = !isValidDateInputValue(currentStartDate) && !startDateManuallyEdited
+                        ? getLocalDateInputValue()
+                        : startDateInput.value;
+                    if (!isValidDateInputValue(startDate)) {
+                        alert('Enter a valid start date.');
+                        document.getElementById('planItemStartDateInputMonth')?.focus();
+                        return;
+                    }
                     const result = {
                         text,
+                        startDate,
                         timelineMonths: normalizeTreatmentPlanTimeline(timelineSelect.value, fallbackTimeline)
                     };
                     cleanup();
@@ -11471,11 +11544,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }, 50);
             });
 
-            const showObjectiveEditorModal = (title, currentText = '', currentTimeline = DEFAULT_OBJECTIVE_TIMELINE_MONTHS) =>
-                showPlanItemEditorModal('Objective', title, currentText, currentTimeline, DEFAULT_OBJECTIVE_TIMELINE_MONTHS);
+            const showObjectiveEditorModal = (title, currentText = '', currentTimeline = DEFAULT_OBJECTIVE_TIMELINE_MONTHS, currentStartDate = null) =>
+                showPlanItemEditorModal('Objective', title, currentText, currentTimeline, DEFAULT_OBJECTIVE_TIMELINE_MONTHS, currentStartDate);
 
-            const showGoalEditorModal = (title, currentText = '', currentTimeline = DEFAULT_GOAL_TIMELINE_MONTHS) =>
-                showPlanItemEditorModal('Goal', title, currentText, currentTimeline, DEFAULT_GOAL_TIMELINE_MONTHS);
+            const showGoalEditorModal = (title, currentText = '', currentTimeline = DEFAULT_GOAL_TIMELINE_MONTHS, currentStartDate = null) =>
+                showPlanItemEditorModal('Goal', title, currentText, currentTimeline, DEFAULT_GOAL_TIMELINE_MONTHS, currentStartDate);
 
             // --- Drag and Drop Client Reordering (mouse events) ---
             let dragState = null; // { clientId, sourceListType, startY, element, ghost: null, threshold: false, dropListType, targetClientId, insertAfter }
@@ -12612,7 +12685,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 { key: 'sessionFocus', label: 'Session Focus', description: 'A concise, AI-generated summary of how the presenting problem appeared in this session.' },
                 { key: 'treatmentPlan', label: 'Treatment Plan', description: 'Active treatment goals and objectives, with copy controls for the full plan or each item.' },
                 { key: 'diagnosticSupport', label: 'Diagnostic Support', description: 'Diagnosis-specific support tied to the current session record.' },
-                { key: 'medicalNecessity', label: 'Medical Necessity', description: 'A brief diagnosis- and session-based statement supporting continued skilled care.' },
+                { key: 'medicalNecessity', label: 'Medical Necessity', description: 'A concise evidence bridge linking the relevant diagnosis and documented session need to continued skilled care.' },
                 { key: 'auditCheck', label: 'Audit Check', description: 'The audit-readiness review for the completed SOAP note.' }
             ];
             const SOAP_PLATFORM_SECTION_KEY_SET = new Set(SOAP_PLATFORM_SECTION_DEFS.map(def => def.key));
@@ -15258,7 +15331,6 @@ This error cannot be fixed within this application's code; it requires a configu
                 markDirty();
                 renderDetails();
             });
-            applyTreatmentPlanStartDateBtn.addEventListener('click', applyTreatmentPlanStartDate);
             initializeSegmentedDateInputs();
 
             // Tab switching functionality
@@ -15322,11 +15394,6 @@ This error cannot be fixed within this application's code; it requires a configu
             generateGoalsBtn.addEventListener('click', () => {
                 const client = findClient(selectedClientId);
                 if (!client) return;
-                if (!getClientTreatmentPlanStartDate(client)) {
-                    alert('Set a treatment plan start date before building a new treatment plan.');
-                    treatmentPlanStartDateInput?.focus();
-                    return;
-                }
                 goalGenerationRequestId += 1;
                 activeGoalGeneratorClientId = client.id;
                 generatedGoalsDraft = [];

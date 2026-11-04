@@ -22,6 +22,8 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /key: 'diagnosisWithSubstantiation', label: 'Diagnosis with substantiation'/);
         assert.match(html, /key: 'diagnosisWithoutSubstantiation', label: 'Diagnosis without substantiation'/);
         assert.match(html, /key: 'presentingProblem', label: 'Presenting Problem'/);
+        assert.match(html, /key: 'sessionFocus', label: 'Session Focus'/);
+        assert.match(html, /seen\.has\('presentingProblem'\) && !seen\.has\('sessionFocus'\)/);
         assert.match(html, /key: 'treatmentPlan', label: 'Treatment Plan'/);
         assert.match(html, /const getDefaultSoapPlatforms =/);
         assert.match(html, /const normalizeSoapPlatforms =/);
@@ -66,7 +68,7 @@ for (const path of ['index.html', 'src/index.html']) {
     test(`${path} generates only configured post-Objective fields`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-        assert.match(html, /const requestedSupportFields = \['presentingProblem', 'diagnosticSupport', 'medicalNecessity'\]/);
+        assert.match(html, /const requestedSupportFields = \['sessionFocus', 'diagnosticSupport', 'medicalNecessity'\]/);
         assert.match(html, /fetchSupportFieldsFromAI\(client, appointment, requestedSupportFields\)/);
         assert.match(html, /const interventionsEnabled = isSoapPlatformSectionEnabled\(client, 'interventions'\)/);
         assert.match(html, /const fetchSupportFieldsFromAI = async \(client, appointment, requestedFields/);
@@ -79,6 +81,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /data-soap-section-key="diagnosisWithSubstantiation"/);
         assert.match(html, /data-soap-section-key="diagnosisWithoutSubstantiation"/);
         assert.match(html, /data-soap-section-key="presentingProblem"/);
+        assert.match(html, /data-soap-section-key="sessionFocus"/);
         assert.match(html, /data-soap-section-key="treatmentPlan"/);
         assert.match(html, /const formatDiagnosisWithSubstantiationText =/);
         assert.match(html, /const formatDiagnosisWithoutSubstantiationText =/);

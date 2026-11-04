@@ -545,7 +545,7 @@ dependencies = [
 
 [[package]]
 name = "client-records"
-version = "3.0.53"
+version = "3.0.54"
 dependencies = [
  "block2",
  "chrono",

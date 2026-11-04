@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 for (const path of ['index.html', 'src/index.html']) {
-    test(`${path} protects Organize from Vertex rate limits`, async () => {
+    test(`${path} protects Objective approval and support generation from Vertex rate limits`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
         assert.match(html, /const VERTEX_MIN_REQUEST_GAP_MS = 750/);
@@ -12,9 +12,9 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const requestVertexGenerateContent = \(options\) => enqueueVertexRequest/);
         assert.match(html, /isVertexRateLimited = true/);
         assert.match(html, /const fetchSupportFieldsFromAI =/);
-        assert.match(html, /presenting_problem/);
+        assert.match(html, /session_focus/);
         assert.match(html, /supportFields = await fetchSupportFieldsFromAI\(client, appointment\)/);
-        assert.match(html, /appointment\.soap\.presentingProblem = normalizeCoupleCollectiveReferences\(supportFields\.presentingProblem, client\)/);
+        assert.match(html, /appointment\.soap\.sessionFocus = normalizeCoupleCollectiveReferences\(supportFields\.sessionFocus, client\)/);
         assert.match(html, /const objectiveOrganizationInFlight = new Set\(\)/);
         assert.match(html, /const soapNoteGenerationInFlight = new Set\(\)/);
         assert.match(html, /getAppointmentTaskKey = \(clientId, appointmentId\)/);
@@ -38,7 +38,11 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /class="objective-redundancy-checkbox"/);
         assert.match(html, /class="objective-review-editor"/);
         assert.match(html, /id="approveObjectiveRedundancyBtn"/);
+        assert.match(html, /Additional Objective Note/);
+        assert.match(html, /review\.manualObjectiveNote/);
         assert.match(html, /id="dismissObjectiveRedundancyBtn"/);
+        assert.doesNotMatch(html, /id="organizeObjectiveBtn"/);
+        assert.match(html, /applyObjectiveRedundancyDecision\(appointment, review, client\)[\s\S]*?void organizeObjectiveContent\(\)/);
         assert.match(html, /const setObjectiveRedundancyItemSelected =/);
         assert.match(html, /const applyObjectiveRedundancyDecision =/);
         assert.match(html, /Dismiss all Objective review options/);

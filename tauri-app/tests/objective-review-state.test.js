@@ -43,15 +43,20 @@ const loadReviewRuntime = (html, appointment) => {
                 reviewId: 'review-1',
                 ...data,
                 groups: completedGroups,
+                manualObjectiveNote: '',
                 selectedItemIndexes: [...new Set(completedGroups.flatMap(group => group.selectedItemIndexes))]
             };
             fields.objectiveRedundancyReview = {
                 dataset: { reviewId: 'review-1' },
                 checkboxes: [],
                 editors: [],
+                manualNoteEditor: null,
                 querySelectorAll(selector) {
                     return selector === '.objective-redundancy-checkbox' ? this.checkboxes
                         : selector === '.objective-review-editor' ? this.editors : [];
+                },
+                querySelector(selector) {
+                    return selector === '.objective-manual-note-editor' ? this.manualNoteEditor : null;
                 }
             };
             return appointment.soap.objectiveRedundancyReview;
@@ -63,10 +68,18 @@ const loadReviewRuntime = (html, appointment) => {
             normalize: payload => normalizeObjectiveRedundancyGroupsFromAi(buildObjectiveRedundancyReviewData(appointment).items, payload),
             complete: groups => completeObjectiveTopicGroups(buildObjectiveRedundancyReviewData(appointment).items, groups),
             select(index, checked) { return setObjectiveRedundancyItemSelected(getObjectiveRedundancyReview(appointment), index, checked); },
-            showOptions(checkboxes, editors = []) {
+            showOptions(checkboxes, editors = [], manualNote = '') {
                 const container = fields.objectiveRedundancyReview;
                 container.checkboxes = checkboxes;
-                container.editors = editors;
+                container.manualNoteEditor = {
+                    dataset: { reviewId: 'review-1' },
+                    value: manualNote,
+                    matches: selector => selector === '.objective-manual-note-editor'
+                };
+                container.editors = [
+                    ...editors.map(editor => ({ ...editor, matches: editor.matches || (() => false) })),
+                    container.manualNoteEditor
+                ];
             },
             approve() { return applyObjectiveRedundancyDecision(appointment, getObjectiveRedundancyReview(appointment)); },
             organizeInput() {
@@ -110,7 +123,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.equal(groups.length, 3);
     });
 
-    test(`${path}: Approve applies checked and edited options, including multiple complementary options`, async () => {
+    test(`${path}: Approve applies checked options and an additional manual note`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
         const { appointment, runtime } = setup(html);
         runtime.makeReview([
@@ -131,14 +144,16 @@ for (const path of ['index.html', 'src/index.html']) {
                 { dataset: { itemIndex: '2' }, value: 'Writer linked values and recovery' },
                 { dataset: { itemIndex: '3' }, value: 'Writer and Ct chose a workplace coping strategy' },
                 { dataset: { itemIndex: '4' }, value: 'Writer and Ct discussed a workplace coping strategy' }
-            ]
+            ],
+            'Writer and Ct documented a separate follow-up note'
         );
 
         assert.equal(runtime.approve(), true);
         assert.deepEqual(appointment.soap.o.split('\n'), [
             '• Ct named two central values',
             '• Writer linked values and recovery',
-            '• Writer and Ct chose a workplace coping strategy'
+            '• Writer and Ct chose a workplace coping strategy',
+            '• Writer and Ct documented a separate follow-up note'
         ]);
         assert.deepEqual(appointment.soap.o_suggestion, []);
         assert.equal(appointment.soap.objectiveRedundancyReview, undefined);
@@ -152,11 +167,11 @@ for (const path of ['index.html', 'src/index.html']) {
             dataset: { itemIndex: String(index) }, checked: false
         })));
         assert.equal(runtime.approve(), false);
-        assert.equal(runtime.alerts.at(-1), 'Check at least one option before approving.');
+        assert.equal(runtime.alerts.at(-1), 'Check at least one option or add an Objective note before approving.');
         assert.equal(appointment.soap.objectiveRedundancyReview !== undefined, true);
     });
 
-    test(`${path}: Organize reads checked and edited options without requiring Approve`, async () => {
+    test(`${path}: approval selection includes multiple complementary options`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
         const { runtime } = setup(html);
         runtime.makeReview([

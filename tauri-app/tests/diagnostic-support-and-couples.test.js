@@ -6,7 +6,7 @@ for (const path of ['index.html', 'src/index.html']) {
     test(`${path} keeps diagnostic support and medical necessity chart-ready`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-        assert.match(html, /const fetchPresentingProblemFromAI =/);
+        assert.match(html, /const fetchSessionFocusFromAI =/);
         assert.match(html, /const fetchDiagnosticSupportFromAI =/);
         assert.match(html, /const fetchMedicalNecessityFromAI =/);
         assert.match(html, /const normalizeDiagnosticSupportFromAi = \(aiPayload\) => \{/);
@@ -19,27 +19,31 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /If no specific evidence appeared in the session, omit the evidence sentence/);
         assert.match(html, /separate 3-4 sentence section for each diagnosis/);
         assert.doesNotMatch(html, /no diagnosis-specific support was documented for that diagnosis/);
-        assert.match(html, /const normalizeSoapPresentingProblemFromAi =/);
+        assert.match(html, /const normalizeSoapSessionFocusFromAi =/);
         assert.match(html, /const normalizeCoupleCollectiveReferences =/);
         assert.match(html, /Couple Collective Grammar/);
         assert.match(html, /Never write "Ct\\'s" for a couple/);
         assert.match(html, /combine the documented presenting problem with the clinical problem evidenced/);
-        assert.match(html, /Do not return intervention selections, Presenting Problem, Diagnostic Support, or Medical Necessity/);
+        assert.match(html, /Do not return intervention selections, Session Focus, Diagnostic Support, or Medical Necessity/);
         assert.match(html, /Never say the record is insufficient to substantiate a diagnosis/);
         assert.match(html, /Do not evaluate whether criteria are met/);
         assert.match(html, /ongoing skilled treatment remains medically necessary/);
-        assert.match(html, /id="refreshPresentingProblemBtn"/);
+        assert.match(html, /id="refreshSessionFocusBtn"/);
         assert.match(html, /id="refreshDiagnosticSupportBtn"/);
         assert.match(html, /id="refreshMedicalNecessityBtn"/);
 
         const planIndex = html.indexOf('id="soapP"');
-        const presentingProblemIndex = html.indexOf('id="presentingProblem"');
+        const presentingProblemIndex = html.indexOf('id="soapClientPresentingProblem"');
+        const sessionFocusIndex = html.indexOf('id="sessionFocus"');
         const diagnosticSupportIndex = html.indexOf('id="diagnosticSupport"');
         const medicalNecessityIndex = html.indexOf('id="medicalNecessity"');
         assert.ok(planIndex >= 0 && planIndex < presentingProblemIndex);
-        assert.ok(presentingProblemIndex < diagnosticSupportIndex);
+        assert.ok(presentingProblemIndex < sessionFocusIndex);
+        assert.ok(sessionFocusIndex < diagnosticSupportIndex);
         assert.ok(diagnosticSupportIndex < medicalNecessityIndex);
-        assert.match(html, /supportFields\.presentingProblem/);
+        assert.match(html, /key: 'presentingProblem', label: 'Presenting Problem', description: 'The Presenting Problem copied directly from the client’s Treatment Goals record\.'/);
+        assert.match(html, /appointment\.soap\.clientPresentingProblem = String\(client\?\.presentingProblem \|\| ''\)/);
+        assert.match(html, /appointment\.soap\.sessionFocus = normalizeCoupleCollectiveReferences\(supportFields\.sessionFocus, client\)/);
         assert.match(html, /\.soap-support-block \{[\s\S]*?border: 1px solid #0f766e/);
         assert.match(html, /background: linear-gradient\(135deg, #0f766e 0%, #0d9488 100%\)/);
     });

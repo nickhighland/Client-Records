@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'Based on v3.0.51. Updates the Tauri native event-loop dependencies with the upstream macOS fix for AppKit exceptions crossing the sendEvent callback. Existing note content and database storage are preserved.'
+          releaseBody: 'Based on v3.0.52. Objective review editors now expand to show their full contents while typing and when the window is resized. Existing note content and database storage are preserved.'
           releaseDraft: true
           prerelease: false
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.52</title>
+    <title>SmartEMR v3.0.53</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2342,7 +2342,8 @@
             flex: 1 1 auto;
             min-width: 0;
             min-height: 64px;
-            resize: vertical;
+            resize: none;
+            overflow-y: hidden;
             border: 1px solid var(--input-border);
             border-radius: 5px;
             padding: 7px 8px;
@@ -10496,6 +10497,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         autoResizeTextarea(el);
                     }
                 });
+                soapContentEl.querySelectorAll('.objective-review-editor').forEach(autoResizeObjectiveReviewEditor);
 
                 const interventionsTextarea = document.getElementById('interventions');
                 if (interventionsTextarea) {
@@ -11943,6 +11945,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
             };
 
+            const autoResizeObjectiveReviewEditor = (textarea) => {
+                if (!textarea) return;
+                textarea.style.height = 'auto';
+                textarea.style.height = `${textarea.scrollHeight}px`;
+            };
+
+            window.addEventListener('resize', () => {
+                soapContentEl.querySelectorAll('.objective-review-editor').forEach(autoResizeObjectiveReviewEditor);
+            });
+
             // --- Generic Bullet Point Handlers ---
             const formatBulletPoints = (text) => {
                 if (Array.isArray(text)) {
@@ -12222,6 +12234,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
 
             soapContentEl.addEventListener('input', (e) => {
                 if (e.target.matches('.objective-review-editor')) {
+                    autoResizeObjectiveReviewEditor(e.target);
                     const client = findClient(selectedClientId);
                     const appointment = findAppointment(client, selectedAppointmentId);
                     const review = getObjectiveRedundancyReview(appointment);

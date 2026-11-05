@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'Based on v3.0.54. Medical Necessity is a concise diagnosis-linked evidence bridge that avoids repeating interventions or inferring undocumented impact or risk. New and AI-drafted goals and objectives default to their creation date and support per-item date editing. Existing saved notes and dates are preserved.'
+          releaseBody: 'Based on v3.0.55. SOAP generation converts shorthand in Session Information and audit-proofing fields into concise, complete prose in the appropriate section while preserving documented facts and chart conventions. Existing notes remain unchanged unless regenerated.'
           releaseDraft: true
           prerelease: false
 

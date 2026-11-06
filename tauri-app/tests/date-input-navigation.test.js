@@ -1,10 +1,10 @@
 import test from 'node:test';
+import { readApplicationSource } from './helpers/application-source.js';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 
-for (const path of ['index.html', 'src/index.html']) {
+for (const path of ['index.html']) {
     test(`${path} advances segmented date fields without changing stored date values`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /class="segmented-date-control" data-segmented-date-input="appointmentDateInput"/);
         assert.match(html, /class="segmented-date-control compact" data-segmented-date-input="treatmentPlanStartDateInput"/);

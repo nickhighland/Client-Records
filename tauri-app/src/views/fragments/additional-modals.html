@@ -1,0 +1,456 @@
+<div id="goalGeneratorModal" class="modal-overlay hidden">
+        <div class="modal-content goal-generator-modal">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">Build Treatment Plan</h2>
+                <button id="closeGoalGeneratorBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <div class="goal-generator-controls">
+                <div class="goal-generator-card">
+                    <div class="goal-generator-title">Clinical Focus</div>
+                    <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;" for="goalDiagnosisInput">Diagnoses and Substantiation</label>
+                    <textarea id="goalDiagnosisInput" class="setting-input" rows="7" aria-describedby="goalDiagnosisInputHelp" placeholder="Diagnosis 1&#10;Substantiation for Diagnosis 1&#10;&#10;Diagnosis 2&#10;Substantiation for Diagnosis 2"></textarea>
+                    <div id="goalDiagnosisInputHelp" style="font-size: 0.78rem; color: var(--text-color-secondary); margin-top: 4px;">Put each diagnosis on its own first line, followed by its substantiation. Leave a blank line between diagnosis entries.</div>
+                    <label style="margin: 0.75rem 0 0.25rem; font-weight: 600; display: block;" for="presentingProblemShorthandInput">Presenting Problem Shorthand</label>
+                    <textarea id="presentingProblemShorthandInput" class="setting-input" rows="4" placeholder="Enter shorthand symptoms, concerns, functional impact, and other clinician notes."></textarea>
+                </div>
+                <div class="goal-generator-card">
+                    <div class="goal-generator-title">Goal / Objective Settings</div>
+                    <div class="goal-generator-secondary">
+                    <div>
+                        <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;" for="goalCountInput"># Goals</label>
+                        <input id="goalCountInput" class="setting-input" type="number" min="1" max="20" value="1">
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 0.25rem;">
+                            <label style="font-weight: 600; display: block;" for="objectiveCountInput"># Objectives</label>
+                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.82rem; font-weight: 600; white-space: nowrap;">
+                                <input id="objectivesPerGoalInput" type="checkbox"> Per Goal
+                            </label>
+                        </div>
+                        <input id="objectiveCountInput" class="setting-input" type="number" min="1" max="20" value="4">
+                        <div id="objectiveCountHelp" style="font-size: 0.75rem; color: var(--text-color-secondary); margin-top: 4px;">Total objectives distributed across all goals.</div>
+                    </div>
+                    <div>
+                        <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;" for="objectiveStyleSelect">Objective Format</label>
+                        <select id="objectiveStyleSelect" class="setting-input">
+                            <option value="action">Action-Focused</option>
+                            <option value="smart">SMART</option>
+                        </select>
+                    </div>
+                    </div>
+                </div>
+                <div class="goal-generator-card">
+                    <div class="goal-generator-title">Modality Lens</div>
+                    <div style="font-size: 0.9rem; color: var(--text-color-secondary); font-weight: 600; margin-bottom: 6px;">Choose one or more modalities using + / −</div>
+                    <div id="guidingModalitiesList" class="modality-grid"></div>
+                    <div id="guidingModalityOtherWrap" class="hidden" style="margin-top:8px; max-width: 380px;">
+                        <label for="guidingModalityOther" style="font-size:0.9rem; font-weight:600; display:block; margin-bottom:4px;">Other (Specify)</label>
+                        <input id="guidingModalityOther" type="text" class="setting-input" placeholder="Optional custom modality..." disabled>
+                    </div>
+                </div>
+            </div>
+            <div class="goal-generator-actions">
+                <button id="runGoalGeneratorBtn" class="btn">Generate Draft</button>
+                <button id="applyGeneratedGoalsBtn" class="btn save-btn" disabled>Save</button>
+            </div>
+            <div id="generatedGoalsReview" class="intervention-list"></div>
+            <div class="goal-generator-actions goal-generator-actions-bottom">
+                <button id="applyGeneratedGoalsBottomBtn" class="btn save-btn" disabled>Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="interventionBankModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">Intervention Bank</h2>
+                <button id="closeInterventionBankBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(180px,1fr) auto;gap:8px;margin-bottom:10px;align-items:end;">
+                <input id="newInterventionInput" class="setting-input" type="text" placeholder="Add intervention...">
+                <div>
+                    <select id="newInterventionModalitySelect" class="setting-input">
+                        <option value="" selected disabled>Choose modality...</option>
+                    </select>
+                    <div id="newInterventionModalityOtherWrap" class="hidden" style="margin-top:8px;">
+                        <input id="newInterventionModalityOther" class="setting-input" type="text" placeholder="Or enter a new modality..." disabled>
+                    </div>
+                    <label class="intervention-scope-toggle" style="margin-top:8px;">
+                        <input id="newInterventionCouplesOnly" type="checkbox">
+                        Couples-only intervention
+                    </label>
+                </div>
+                <button id="addInterventionBtn" class="btn save-btn" style="width:auto;padding:0 14px;">Add</button>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text-color-secondary);margin-bottom:10px;">Leave the intervention blank to create a modality only. Mark couple-specific techniques as Couples only; they will not be offered for Individual sessions. Drag interventions into another modality to move them; the bank stays alphabetized automatically.</div>
+            <div id="interventionBankList" class="intervention-list"></div>
+        </div>
+    </div>
+
+    <div id="interventionPickerModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">Select Interventions for Note</h2>
+                <button id="closeInterventionPickerBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <div id="interventionPickerList" class="intervention-list" style="margin-bottom:10px;"></div>
+            <button id="saveInterventionSelectionBtn" class="btn">Save Selection</button>
+        </div>
+    </div>
+
+    <div id="addClientModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 420px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.25rem; font-weight: bold;">Add Client</h2>
+                <button id="closeAddClientBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <label for="addClientNameInput" style="font-weight: 600;">Client Name</label>
+                <input id="addClientNameInput" type="text" class="setting-input" placeholder="Enter client name">
+                <div style="display: flex; gap: 0.75rem; margin-top: 0.25rem;">
+                    <button id="confirmAddClientBtn" class="btn save-btn" style="flex: 1;">Add Client</button>
+                    <button id="cancelAddClientBtn" class="btn" style="flex: 1; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="exportDataModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 720px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.25rem; font-weight: bold;">Encrypted SQL Export</h2>
+                <button id="closeExportDataBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <p style="margin-bottom: 0.75rem; color: var(--text-color-secondary);">Copy or download this encrypted SQL backup payload to save client data externally.</p>
+            <textarea id="exportDataText" class="setting-input" style="width:100%; min-height: 260px; font-family: monospace;" readonly></textarea>
+            <div style="display: flex; gap: 0.75rem; margin-top: 0.9rem;">
+                <button id="copyExportDataBtn" class="btn" style="flex:1;">Copy Encrypted SQL</button>
+                <button id="downloadExportDataBtn" class="btn save-btn" style="flex:1;">Download Encrypted SQL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="informedConsentModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">Informed Consent</h2>
+                <button id="closeConsentBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <div style="max-height: 60vh; overflow-y: auto; margin-bottom: 1.5rem; line-height: 1.6;">
+                <p>What we discuss here is confidential, with legal limits. I may need to break confidentiality if there is a risk of serious harm to you or others, suspected abuse of a child, elderly, or vulnerable adult, or if records are legally required. Sessions are billed at the agreed fee, and insurance is billed when applicable. You are responsible for any copays, deductibles, or denied claims. Sessions scheduled in a one-hour appointment block include 53 minutes of direct session time; the remaining time is reserved for documentation and care coordination. Appointments cancelled with less than 24 hours' notice, or missed entirely, are charged the full session fee. I wait up to ten minutes for scheduled sessions before a session is considered missed. Email is used for scheduling and administrative communication only, not emergencies. If you are in crisis, please contact 988 or call 911. Do you have any questions before we continue?</p>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button id="copyConsentNotationBtn" class="btn">Copy Notation of Conversation</button>
+                <button id="closeConsentBtnBottom" class="btn" style="background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="soapAuditGuideModal" class="modal-overlay hidden">
+        <div class="modal-content guide-modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">Audit-Ready SOAP Documentation Guide</h2>
+                <button id="closeSoapAuditGuideBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+
+            <div class="guide-scroll">
+                <p style="margin-bottom: 0.6rem;">Comprehensive, audit-ready guidance for writing mental health SOAP notes that reduce risk of clawbacks, recoupments, and audit findings. Structured for outpatient behavioral health, with principles that apply broadly.</p>
+
+                <h3>Core Principles That Protect Against Clawbacks</h3>
+                <p>Audits typically look for:</p>
+                <ul>
+                    <li>Medical necessity</li>
+                    <li>Clear link between symptoms and treatment</li>
+                    <li>Measurable progress or clinical rationale</li>
+                    <li>Appropriate level of care</li>
+                    <li>Time documentation that matches billing</li>
+                    <li>Consistency between diagnosis, treatment plan, and note</li>
+                    <li>Compliance with payer requirements</li>
+                    <li>No cloning or copy-paste patterns</li>
+                    <li>Legible, specific documentation</li>
+                    <li>Support for continued treatment</li>
+                </ul>
+
+                <div class="guide-callout">
+                    <strong>Central question every note must answer:</strong><br>
+                    Why was this service medically necessary today?
+                </div>
+
+                <h3>Required Elements in Every SOAP Note</h3>
+
+                <h4>S – Subjective</h4>
+                <p>This section documents:</p>
+                <ul>
+                    <li>Client’s report of symptoms</li>
+                    <li>Functional impact</li>
+                    <li>Relevant changes since last session</li>
+                    <li>Medication changes</li>
+                    <li>Safety concerns</li>
+                    <li>Client’s perspective on progress</li>
+                </ul>
+                <p>Must include:</p>
+                <ul>
+                    <li>Symptom description</li>
+                    <li>Duration or frequency when relevant</li>
+                    <li>Severity when relevant</li>
+                    <li>Functional impairment</li>
+                    <li>Direct quotes when helpful</li>
+                </ul>
+                <div class="guide-example">
+                    <strong>Example (Strong)</strong><br>
+                    Client reports increased anxiety over the past week, describing daily panic symptoms lasting 20–30 minutes. Sleep has decreased to 4–5 hours per night. Client states, “I am avoiding meetings because I feel like I will lose control.” Reports decreased work performance and difficulty concentrating.
+                </div>
+                <div class="guide-example">
+                    <strong>Example (Weak)</strong><br>
+                    Client reports feeling anxious.<br>
+                    <strong>Why weak:</strong> lacks severity, duration, and functional impact.
+                </div>
+
+                <h4>O – Objective</h4>
+                <p>This section documents observable data. Includes:</p>
+                <ul>
+                    <li>Appearance</li>
+                    <li>Behavior</li>
+                    <li>Mood and affect (clinician observed)</li>
+                    <li>Orientation</li>
+                    <li>Speech</li>
+                    <li>Thought process</li>
+                    <li>Risk assessment findings</li>
+                    <li>Engagement level</li>
+                </ul>
+                <p>Must include:</p>
+                <ul>
+                    <li>Mental status indicators</li>
+                    <li>Safety assessment when clinically indicated</li>
+                    <li>Any measurable data used (scales, scores)</li>
+                </ul>
+                <div class="guide-example">
+                    <strong>Example</strong><br>
+                    Client appeared fatigued with constricted affect. Speech was coherent and goal-directed. No psychosis observed. Oriented x4. Denies suicidal ideation, plan, or intent. Engaged throughout session.
+                </div>
+                <div class="guide-example">
+                    <strong>Standardized measure example</strong><br>
+                    GAD-7 score increased from 11 to 16 since last assessment.
+                </div>
+
+                <h4>A – Assessment</h4>
+                <p>Interpret the session evidence and connect it to treatment when supported:</p>
+                <ul>
+                    <li>Clinical interpretation</li>
+                    <li>Progress toward goals</li>
+                    <li>Response to treatment</li>
+                    <li>Risk level</li>
+                    <li>Diagnostic justification if relevant</li>
+                </ul>
+                <p>Must include:</p>
+                <ul>
+                    <li>Progress or lack of progress</li>
+                    <li>Functional impact or barriers when documented</li>
+                    <li>Connection to diagnosis</li>
+                    <li>Clinical reasoning</li>
+                </ul>
+                <div class="guide-example">
+                    <strong>Strong Example</strong><br>
+                    Symptoms remain consistent with Generalized Anxiety Disorder. Increased avoidance is affecting work participation. Ct has made partial progress using cognitive restructuring, while meeting-related avoidance remains a barrier.
+                </div>
+                <div class="guide-example">
+                    <strong>Weak Example</strong><br>
+                    Client is doing okay. Continue treatment.<br>
+                    <strong>Why weak:</strong> no medical necessity, no progress detail.
+                </div>
+
+                <h4>P – Plan</h4>
+                <p>Must include:</p>
+                <ul>
+                    <li>Interventions used in session</li>
+                    <li>Response to interventions</li>
+                    <li>Homework or between-session tasks</li>
+                    <li>Next session plan</li>
+                    <li>Referrals if applicable</li>
+                    <li>Risk follow-up if needed</li>
+                    <li>Coordination of care if done</li>
+                </ul>
+                <p><strong>Must Align With Treatment Plan:</strong> Each session should clearly relate to at least one active treatment goal.</p>
+                <div class="guide-example">
+                    <strong>Strong Example</strong><br>
+                    Continued CBT targeting cognitive distortions related to workplace anxiety. Client practiced thought record exercise in session. Assigned daily tracking of avoidance behaviors. Will continue weekly sessions. Next session to focus on exposure hierarchy development.
+                </div>
+
+                <h3>Medical Necessity Requirements</h3>
+                <p>Keep this field to a concise evidence bridge that explains continued skilled care:</p>
+                <ul>
+                    <li>The relevant clinician-entered diagnosis</li>
+                    <li>One current-session documented symptom or behavior</li>
+                    <li>Its documented functional effect or a relevant active treatment goal</li>
+                    <li>Why continued clinician-guided treatment is needed for that clinical need</li>
+                </ul>
+                <p>Use 1-2 sentences. Avoid repeating the intervention list or details already stated elsewhere in the SOAP. Include function, risk, progress, or response only when documented.</p>
+                <div class="guide-example">
+                    <strong>Example</strong><br>
+                    Skilled psychotherapy remains medically necessary for Generalized Anxiety Disorder because increased avoidance continues to affect work participation. Today's session addressed meeting-related avoidance; continued clinician-guided work is needed to improve participation.
+                </div>
+
+                <h4>Include Functional Impact</h4>
+                <p>When the record documents an effect on functioning, name it briefly. Examples include:</p>
+                <ul>
+                    <li>Work interference</li>
+                    <li>Relationship strain</li>
+                    <li>Sleep disruption</li>
+                    <li>Academic difficulty</li>
+                    <li>Parenting impairment</li>
+                    <li>Avoidance behavior</li>
+                    <li>Emotional dysregulation</li>
+                    <li>Safety concerns</li>
+                </ul>
+
+                <h3>Time Documentation</h3>
+                <ul>
+                    <li>If billing time-based codes, document start and end time OR total time.</li>
+                    <li>Match documentation to billing code requirements.</li>
+                    <li>Include psychotherapy time separate from other services when applicable.</li>
+                    <li>Avoid rounding inconsistently.</li>
+                </ul>
+                <div class="guide-example">
+                    <strong>Example</strong><br>
+                    53-minute psychotherapy session conducted from 10:02 AM to 10:55 AM.
+                </div>
+
+                <h3>Risk Assessment Documentation</h3>
+                <p>Document when clinically appropriate:</p>
+                <ul>
+                    <li>Suicidal ideation</li>
+                    <li>Homicidal ideation</li>
+                    <li>Self-harm risk</li>
+                    <li>Protective factors</li>
+                    <li>Level of risk</li>
+                    <li>Safety plan if needed</li>
+                </ul>
+                <p>Even if negative, document it.</p>
+                <div class="guide-example">
+                    <strong>Example</strong><br>
+                    Client denies suicidal or homicidal ideation. No self-harm behaviors reported. Protective factors include supportive spouse and children. Risk assessed as low.
+                </div>
+
+                <h3>Link to Treatment Plan</h3>
+                <p>Every session should:</p>
+                <ul>
+                    <li>Reference at least one goal</li>
+                    <li>Show progress toward measurable objectives</li>
+                    <li>Document interventions tied to goals</li>
+                </ul>
+                <div class="guide-example">
+                    <strong>Example</strong><br>
+                    Treatment Plan Goal: Reduce panic attacks from 4 per week to 1 per week within 8 weeks.<br>
+                    SOAP Note Assessment: Client reports decrease from 4 to 2 panic episodes weekly, indicating measurable progress toward treatment goal.
+                </div>
+                <p>Auditors look for this alignment.</p>
+
+                <h3>Common Audit Red Flags</h3>
+                <p>Avoid:</p>
+                <ul>
+                    <li>Copy and paste notes</li>
+                    <li>Identical wording across sessions</li>
+                    <li>Vague descriptions</li>
+                    <li>Missing diagnosis in note</li>
+                    <li>No evidence of progress</li>
+                    <li>No functional impairment</li>
+                    <li>No intervention described</li>
+                    <li>Inconsistent time documentation</li>
+                    <li>Overly brief notes for high-level billing</li>
+                    <li>Using psychotherapy codes without documenting therapy techniques</li>
+                    <li>Billing family sessions without documenting client involvement</li>
+                </ul>
+
+                <h3>Special Considerations</h3>
+                <h4>Telehealth</h4>
+                <p>Document:</p>
+                <ul>
+                    <li>Platform used</li>
+                    <li>Client location</li>
+                    <li>Consent</li>
+                    <li>Privacy confirmation</li>
+                </ul>
+                <div class="guide-example">
+                    <strong>Example</strong><br>
+                    Session conducted via secure telehealth platform. Client confirmed private location in home.
+                </div>
+
+                <h4>Medication Coordination</h4>
+                <p>If applicable:</p>
+                <ul>
+                    <li>Document collaboration</li>
+                    <li>Note ROI if needed</li>
+                    <li>Record communication summary</li>
+                </ul>
+
+                <h4>Crisis Sessions</h4>
+                <p>Must document:</p>
+                <ul>
+                    <li>Risk assessment</li>
+                    <li>Safety planning</li>
+                    <li>Increased level of care reasoning</li>
+                    <li>Time spent</li>
+                    <li>Follow-up plan</li>
+                </ul>
+                <div class="guide-example">
+                    <strong>Example</strong><br>
+                    Include risk assessment findings, safety planning steps taken, rationale for level of care, duration of crisis work, and explicit follow-up actions.
+                </div>
+
+                <h3>Example of a Fully Auditable SOAP Note</h3>
+                <div class="guide-example">
+                    <strong>S:</strong><br>
+                    Client reports ongoing workplace anxiety with increased avoidance of meetings. States panic symptoms occur 3 times per week lasting approximately 20 minutes. Reports sleep disruption and difficulty concentrating. Describes fear of negative evaluation.
+                </div>
+                <div class="guide-example">
+                    <strong>O:</strong><br>
+                    Client appeared tense with anxious affect. Speech clear and organized. Oriented x4. No psychotic symptoms observed. Denies suicidal or homicidal ideation. Engaged throughout session.
+                </div>
+                <div class="guide-example">
+                    <strong>A:</strong><br>
+                    Symptoms consistent with Generalized Anxiety Disorder. Functional impairment present in occupational setting. Partial progress noted in cognitive restructuring skills. Continued weekly psychotherapy is medically necessary to reduce symptom severity and restore work functioning.
+                </div>
+                <div class="guide-example">
+                    <strong>P:</strong><br>
+                    Provided CBT focused on cognitive distortions. Practiced thought record in session. Assigned daily tracking of avoidance behaviors. Continue weekly sessions. Reassess symptom scale in two weeks.
+                </div>
+
+                <h3>Documentation Checklist for Every Note</h3>
+                <p>Before signing, confirm:</p>
+                <ul class="guide-checklist">
+                    <li>☐ Diagnosis supported</li>
+                    <li>☐ Symptoms described with detail</li>
+                    <li>☐ Functional impairment documented</li>
+                    <li>☐ Intervention clearly stated</li>
+                    <li>☐ Client response recorded</li>
+                    <li>☐ Medical necessity explained</li>
+                    <li>☐ Progress toward goals documented</li>
+                    <li>☐ Risk assessed when appropriate</li>
+                    <li>☐ Time documented accurately</li>
+                    <li>☐ Note is individualized</li>
+                    <li>☐ No copy-paste language</li>
+                    <li>☐ Plan aligns with treatment plan</li>
+                </ul>
+
+                <h3>Best Practices to Reduce Audit Risk</h3>
+                <ul>
+                    <li>Write notes immediately after session.</li>
+                    <li>Tie every session to a treatment goal.</li>
+                    <li>Use measurable language.</li>
+                    <li>Document change over time.</li>
+                    <li>Avoid excessive brevity.</li>
+                    <li>Avoid unnecessary narrative.</li>
+                    <li>Keep diagnosis consistent with treatment focus.</li>
+                    <li>Update treatment plan regularly.</li>
+                    <li>Use standardized measures periodically.</li>
+                    <li>Ensure billing code matches documentation depth.</li>
+                </ul>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 0.9rem;">
+                <button id="closeSoapAuditGuideBtnBottom" class="btn" style="background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);">Close</button>
+            </div>
+        </div>
+    </div>
+
+    

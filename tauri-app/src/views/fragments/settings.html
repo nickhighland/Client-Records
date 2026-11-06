@@ -1,0 +1,143 @@
+<!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">Settings</h2>
+                <button id="closeSettingsBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">Connection</h3>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <label for="apiProviderSelect" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">API Provider</label>
+                        <select id="apiProviderSelect" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                            <option value="openwebui">Open WebUI</option>
+                            <option value="ollama">Ollama (local)</option>
+                            <option value="vertex">Google Vertex AI</option>
+                            <option value="openai">OpenAI</option>
+                        </select>
+                    </div>
+
+                    <div id="openwebuiSettings">
+                        <div>
+                            <label for="serverAddressInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Open WebUI Address</label>
+                            <input type="text" id="serverAddressInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);" placeholder="e.g., http://localhost:3000">
+                        </div>
+                        <div>
+                            <label for="apiKeyInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">API Key (optional)</label>
+                            <input type="password" id="apiKeyInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                        </div>
+                    </div>
+
+                    <div id="ollamaSettings" class="hidden">
+                        <div>
+                            <label for="ollamaAddressInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Ollama Address</label>
+                            <input type="text" id="ollamaAddressInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);" placeholder="e.g., http://localhost:11434">
+                        </div>
+                    </div>
+
+                    <div id="vertexSettings" class="hidden">
+                        <div>
+                            <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Google Cloud Service Account JSON</label>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
+                                <button id="selectVertexKeyBtn" class="btn" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); padding: 6px 12px; font-size: 0.85rem;">Upload JSON Key File</button>
+                                <button id="clearVertexKeyBtn" class="btn hidden" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 6px 12px; font-size: 0.85rem;">Clear</button>
+                                <span id="vertexKeyStatus" style="font-size: 0.85rem; color: var(--text-color-secondary);">No file selected</span>
+                            </div>
+                            <input type="file" id="vertexKeyFileInput" accept=".json" style="display: none;">
+                            <textarea id="vertexServiceAccountInput" style="display: none;"></textarea>
+                            <small style="color: var(--text-color-secondary); display: block; margin-top: 0.25rem;">Create a Service Account in Google Cloud Console with the "Vertex AI User" role, download the JSON key, and upload it here.</small>
+                        </div>
+                        <div>
+                            <label for="vertexLocationInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Vertex Location</label>
+                            <input type="text" id="vertexLocationInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);" value="global" placeholder="global or e.g., us-central1">
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 0.25rem;">
+                                <label for="vertexModelInput" style="font-weight: 600; display: block;">Vertex Model</label>
+                                <button id="refreshVertexModelsBtn" type="button" class="btn" style="padding: 5px 10px; font-size: 0.78rem;" disabled>Refresh Models</button>
+                            </div>
+                            <select id="vertexModelInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);" disabled>
+                                <option>Connect first</option>
+                            </select>
+                            <small id="vertexModelStatus" style="color: var(--text-color-secondary); display: block; margin-top: 0.35rem;">Connect to load Google&apos;s current Gemini models.</small>
+                        </div>
+                    </div>
+                    
+                    <div id="openaiSettings" class="hidden">
+                        <div style="background-color: rgba(255, 165, 0, 0.1); border: 1px solid orange; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">
+                            <strong style="color: orange;">HIPAA Compliance Notice:</strong>
+                            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">To use OpenAI in a HIPAA-compliant manner, you <strong>must</strong> have a signed Business Associate Agreement (BAA) with OpenAI and ensure you are using their enterprise/API services appropriately. Do not use standard ChatGPT accounts for PHI.</p>
+                        </div>
+                        <div>
+                            <label for="openaiApiKeyInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">OpenAI API Key</label>
+                            <input type="password" id="openaiApiKeyInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                        </div>
+                        <div>
+                            <label for="openaiModelInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">OpenAI Model</label>
+                            <select id="openaiModelInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);" disabled>
+                                <option>Enter API Key first</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button id="connectApiBtn" class="btn">Connect</button>
+                        <button id="verifyApiBtn" class="btn hidden" title="Test the API connection">Verify</button>
+                        <span id="apiStatus" style="font-size: 0.875rem; font-weight: 600;"></span>
+                    </div>
+                    <div id="modelSelectWrapper">
+                         <label for="modelSelect" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">AI Model</label>
+                         <select id="modelSelect" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);" disabled>
+                            <option>Connect to server first</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">SOAP Configuration</h3>
+                <div style="color: var(--text-color-secondary); font-size: 0.9rem; line-height: 1.45; margin-bottom: 0.75rem;">
+                    Create platform-specific SOAP templates, choose which sections are included, and drag sections into the order each platform requires.
+                </div>
+                <button id="openSoapConfigurationBtn" class="btn" type="button">Open SOAP Configuration</button>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">Data Management</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                     <button id="exportBtn" class="btn">Export Data</button>
+                     <button id="importBtn" class="btn" style="background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);">Import Data</button>
+                     <button id="eraseAllBtn" class="btn save-btn">Erase All Data</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 0.5rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">Security</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <input type="password" id="currentPasswordInput" class="setting-input" placeholder="Current password">
+                    <input type="password" id="newPasswordInput" class="setting-input" placeholder="New password">
+                    <input type="password" id="confirmNewPasswordInput" class="setting-input" placeholder="Confirm new password">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button id="changePasswordBtn" class="btn">Change Password</button>
+                        <span id="changePasswordStatus" style="font-size: 0.875rem; font-weight: 600;"></span>
+                    </div>
+                    <div style="margin-top: 0.25rem; padding: 12px; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-bg);">
+                        <div style="font-size: 1rem; font-weight: 600; margin-bottom: 0.35rem;">Touch ID Launch Login</div>
+                        <div style="font-size: 0.82rem; color: var(--text-color-secondary); margin-bottom: 0.75rem;">
+                            Save this account's unlock key in your Mac keychain so you can launch the app with Touch ID instead of typing your password every time.
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;">
+                            <button id="enableBiometricLoginBtn" class="btn" style="background: linear-gradient(135deg, #1f8f59 0%, #146c43 100%);">Enable Touch ID</button>
+                            <button id="disableBiometricLoginBtn" class="btn" style="background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);">Disable Touch ID</button>
+                            <span id="biometricSettingsStatus" style="font-size: 0.875rem; color: var(--text-color-secondary); font-weight: 600;"></span>
+                        </div>
+                        <div id="biometricEnrollmentHelp" style="font-size: 0.78rem; color: var(--text-color-secondary); margin-top: 0.65rem;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    

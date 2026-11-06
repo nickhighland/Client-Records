@@ -1,10 +1,10 @@
 import test from 'node:test';
+import { readApplicationSource } from './helpers/application-source.js';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 
-for (const path of ['index.html', 'src/index.html']) {
+for (const path of ['index.html']) {
     test(`${path} includes rich-note formatting and SOAP icon controls`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /data-rich-note-command="bold"/);
         assert.match(html, /data-rich-note-command="italic"/);
@@ -26,7 +26,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path} copies only goal and objective text`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /const formatGoalCopyText = \(goal\) => String\(goal\.title \|\| ''\)\.trim\(\);/);
         assert.match(html, /const formatObjectiveCopyText = \(objective\) => String\(objective\.text \|\| ''\)\.trim\(\);/);
@@ -35,7 +35,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path} edits goal timelines with the shared plan-item editor and uses one Treatment Goals scroll`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /id="objectiveEditorTextLabel"/);
         assert.match(html, /const showPlanItemEditorModal =/);
@@ -52,7 +52,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path} explains the SOAP golden thread and evidence boundaries`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /Follow the golden thread from diagnosis and presenting problem to the active goal\/objective/);
         assert.match(html, /Never fill documentation gaps with assumptions/);
@@ -66,7 +66,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path} uses evidence-first SOAP generation without fabricated collaboration`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /const SOAP_GUIDANCE_MIGRATION_VERSION = 1/);
         assert.match(html, /migrateSoapGuidanceOnce\(data\.aiInstructions\)/);
@@ -85,7 +85,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path} supports a simple editable diagnosis list in Treatment Goals`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /id="addDiagnosisBtn"/);
         assert.match(html, /id="clientDiagnosesList"/);
@@ -101,5 +101,27 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /Add one diagnosis per row/);
         assert.doesNotMatch(html, /const generateDiagnosticSupportStatements =/);
         assert.doesNotMatch(html, /Consider every diagnosis when developing the presenting problem/);
+    });
+
+    test(`${path} pairs diagnosis substantiation in treatment-plan generation`, async () => {
+        const html = await readApplicationSource();
+
+        assert.match(html, /for="goalDiagnosisInput">Diagnoses and Substantiation/);
+        assert.match(html, /id="goalDiagnosisInputHelp"/);
+        assert.match(html, /goalDiagnosisInput\.value = formatTreatmentPlanDiagnosisEntries\(client\)/);
+        assert.match(html, /const diagnosisEntries = parseTreatmentPlanDiagnosisEntries\(diagnosis\)/);
+        assert.match(html, /Use the supplied substantiation as clinical context when writing the presenting problem, goals, and objectives/);
+        assert.match(html, /diagnosisSummary = diagnosisEntries\.map\(entry => entry\.name\)\.join\('; '\)/);
+    });
+
+    test(`${path} removes per-objective format selectors and adds a bottom Save action`, async () => {
+        const html = await readApplicationSource();
+
+        assert.match(html, /id="applyGeneratedGoalsBtn"[^>]*>Save/);
+        assert.match(html, /id="applyGeneratedGoalsBottomBtn"[^>]*>Save/);
+        assert.match(html, /applyGeneratedGoalsBottomBtn\.addEventListener\('click', applyGeneratedGoals\)/);
+        assert.match(html, /applyGeneratedGoalsBottomBtn\.disabled = generatedGoalsDraft\.length === 0/);
+        assert.doesNotMatch(html, /draft-obj-format/);
+        assert.doesNotMatch(html, /<option value="action"[^>]*>Action<\/option>[\s\S]*?<option value="smart"[^>]*>SMART<\/option>/);
     });
 }

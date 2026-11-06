@@ -1,0 +1,94 @@
+<!-- CSSRS Modal (moved to end of body for proper initialization) -->
+    <div id="cssrsModal" class="modal-overlay hidden" tabindex="-1">
+        <div class="modal-content" style="max-width:760px; width:95vw;">
+            <button id="closeCssrsBtn" style="position:absolute; top:10px; right:10px; font-size:22px; background:none; border:none; cursor:pointer;">&times;</button>
+            <div class="wrap" style="max-width:720px; margin:16px auto; padding:0 9px 20px;">
+                <div class="card" role="region" aria-label="CSSRS">
+                    <div class="titlebar">CSSRS</div>
+                    <table aria-label="CSSRS table">
+                        <colgroup>
+                            <col style="width: 80%">
+                            <col style="width: 20%">
+                        </colgroup>
+                        <tr>
+                            <td class="topbar">Always ask questions 1 and 2.</td>
+                            <td class="topbar topbar-right">Past Month</td>
+                        </tr>
+                        <tr>
+                            <td><div class="qcell"><span class="qnum">1)</span>Have you wished you were dead or wished you could go to sleep and not wake up?</div></td>
+                            <td class="risk yellow" aria-label="Past Month color block">
+                                <select id="cssrs_q1" aria-label="Question 1 answer"><option value=""></option><option value="YES">YES</option><option value="NO">NO</option></select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><div class="qcell"><span class="qnum">2)</span>Have you actually had any thoughts about killing yourself?</div></td>
+                            <td class="risk yellow" aria-label="Past Month color block">
+                                <select id="cssrs_q2" aria-label="Question 2 answer"><option value=""></option><option value="YES">YES</option><option value="NO">NO</option></select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="instr" colspan="2">If <strong>YES</strong> to 2, ask questions 3, 4, 5 and 6.<br/>If <strong>NO</strong> to 2, skip to question 6.</td>
+                        </tr>
+                        <tr>
+                            <td><div class="qcell"><span class="qnum">3)</span>Have you been thinking about how you might do this?</div></td>
+                            <td class="risk orange" aria-label="Past Month orange block">
+                                <select id="cssrs_q3" aria-label="Question 3 answer"><option value=""></option><option value="YES">YES</option><option value="NO">NO</option></select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><div class="qcell"><span class="qnum">4)</span>Have you had these thoughts and had some intention of acting on them?</div></td>
+                            <td class="risk red" aria-label="High Risk">
+                                <select id="cssrs_q4" aria-label="Question 4 answer"><option value=""></option><option value="YES">YES</option><option value="NO">NO</option></select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><div class="qcell"><span class="qnum">5)</span>Have you started to work out or worked out the details of how to kill yourself? Did you intend to carry out this plan?</div></td>
+                            <td class="risk red" aria-label="High Risk">
+                                <select id="cssrs_q5" aria-label="Question 5 answer"><option value=""></option><option value="YES">YES</option><option value="NO">NO</option></select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="subhdr">Always Ask Question 6</td>
+                            <td class="q6right" rowspan="2">
+                                <div class="q6grid" aria-label="Question 6 header and responses">
+                                    <div class="minihead">Lifetime</div>
+                                    <div class="minihead q6rightcol">Past 3 Months</div>
+                                    <div class="risk orange q6body" aria-label="Lifetime orange block">
+                                        <select id="cssrs_q6" aria-label="Question 6 answer"><option value=""></option><option value="YES">YES</option><option value="NO">NO</option></select>
+                                    </div>
+                                    <div class="risk red q6body q6rightcol" aria-label="Past 3 Months high risk">
+                                        <select id="cssrs_q6_3mo" aria-label="Question 6 within past 3 months answer"><option value=""></option><option value="YES">YES</option><option value="NO">NO</option></select>
+                                        <div id="cssrs_q6_3mo_na" class="hidden">N/A</div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="q6row">
+                            <td>
+                                <div class="q6text"><span class="qnum">6)</span>Have you done anything, started to do anything, or prepared to do anything to end your life?</div>
+                                <div class="examples">Examples: Took pills, tried to shoot yourself, cut yourself, tried to hang yourself; or collected pills, obtained a gun, gave away valuables, wrote a will or suicide note, took out pills but didn’t swallow any, held a gun but changed your mind or it was grabbed from your hand, went to the roof but didn’t jump, etc.</div>
+                                <div class="follow">If yes, was this within the past 3 months?</div>
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="risk-indicator" aria-label="Risk level indicator">
+                        <div class="label">Risk level:</div>
+                        <div id="cssrs_riskPill" class="risk-pill">Not set</div>
+                        <div id="cssrs_riskNote" class="risk-note"></div>
+                    </div>
+                </div>
+                <div class="answers" aria-label="Compiled answers">
+                    <h2>Clinical Note (copyable)</h2>
+                    <textarea id="cssrs_compiled" readonly>Complete all required fields to generate clinical note.</textarea>
+                    <div class="btnrow">
+                        <button id="cssrs_copyBtn" type="button">Copy</button>
+                        <button id="cssrs_clearBtn" type="button">Clear</button>
+                        <span class="status" id="cssrs_status" aria-live="polite"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    

@@ -1,6 +1,6 @@
 import test from 'node:test';
+import { readApplicationSource } from './helpers/application-source.js';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 
 const loadReviewRuntime = (html, appointment) => {
     const names = [
@@ -18,7 +18,11 @@ const loadReviewRuntime = (html, appointment) => {
     const declarations = names.map(name => {
         const start = html.indexOf(`const ${name} =`);
         assert.ok(start >= 0, `Missing runtime function ${name}`);
-        return html.slice(start, html.indexOf('\n            const ', start + 1));
+        const lineStart = html.lastIndexOf('\n', start) + 1;
+        const indent = html.slice(lineStart, start).match(/^\s*/)?.[0] || '';
+        const nextDeclaration = html.indexOf(`\n${indent}const `, start + 1);
+        assert.ok(nextDeclaration >= 0, `Could not find the end of runtime function ${name}`);
+        return html.slice(start, nextDeclaration);
     }).join('\n');
 
     return new Function('appointment', `
@@ -109,9 +113,9 @@ const setup = html => {
     return { appointment, runtime: loadReviewRuntime(html, appointment) };
 };
 
-for (const path of ['index.html', 'src/index.html']) {
+for (const path of ['index.html']) {
     test(`${path}: AI grouping plus local fallback categorizes every Objective option`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
         const { runtime } = setup(html);
         const payload = { objective_groups: [
             { group_id: 'values', label: 'Values Recovery Support', item_ids: ['O1', 'S1'], recommended_keep_ids: ['O1'] },
@@ -124,7 +128,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path}: Approve applies checked options and an additional manual note`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
         const { appointment, runtime } = setup(html);
         runtime.makeReview([
             { id: 'values', label: 'Values Recovery', itemIndexes: [0, 2], selectedItemIndexes: [0] },
@@ -160,7 +164,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path}: Approve rejects an empty selection and reports why`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
         const { appointment, runtime } = setup(html);
         runtime.makeReview([]);
         runtime.showOptions(appointment.soap.objectiveRedundancyReview.items.map((_, index) => ({
@@ -172,7 +176,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path}: approval selection includes multiple complementary options`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
         const { runtime } = setup(html);
         runtime.makeReview([
             { id: 'values', label: 'Values Recovery', itemIndexes: [0, 2], selectedItemIndexes: [0] },
@@ -201,7 +205,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path}: review reconciliation retains edits and checkbox choices`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
         const { appointment, runtime } = setup(html);
         const review = runtime.makeReview([
             { id: 'values', label: 'Values Recovery', itemIndexes: [0, 2], selectedItemIndexes: [0, 2] },

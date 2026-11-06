@@ -1,0 +1,56 @@
+        /* Auto-lock session selector */
+        .autolock-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255,255,255,0.9);
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .autolock-label {
+            opacity: 0.85;
+        }
+
+        .autolock-select {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 6px;
+            padding: 5px 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            transition: background 0.2s ease;
+        }
+
+        .autolock-select:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .autolock-select option {
+            background: #2c3e50;
+            color: white;
+        }
+
+        .autolock-countdown {
+            background: rgba(231, 76, 60, 0.25);
+            border: 1px solid rgba(231, 76, 60, 0.65);
+            color: #ff8a80;
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            min-width: 130px;
+            text-align: center;
+            animation: autolockPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes autolockPulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.55; }
+        }
+

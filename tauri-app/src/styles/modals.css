@@ -1,0 +1,517 @@
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--modal-bg);
+            padding: 24px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 512px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            position: relative; /* For the close button */
+            color: var(--modal-text);
+        }
+
+        .modal-content.goal-generator-modal {
+            width: min(99vw, 1940px);
+            max-width: min(99vw, 1940px);
+        }
+
+        @media (max-width: 720px) {
+            .modal-content.goal-generator-modal {
+                width: 96vw;
+                max-width: 96vw;
+                padding: 16px;
+            }
+        }
+
+        .guide-modal-content {
+            max-width: min(980px, 92vw);
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .guide-scroll {
+            overflow-y: auto;
+            line-height: 1.55;
+            padding-right: 6px;
+        }
+
+        .guide-scroll h3 {
+            margin: 1rem 0 0.5rem;
+            font-size: 1.15rem;
+        }
+
+        .instructions-modal-content {
+            max-width: min(860px, 92vw);
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .instructions-modal-scroll {
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .instructions-modal-intro {
+            margin-bottom: 0.9rem;
+            color: var(--text-color-secondary);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
+        .instructions-lock-card {
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            background: color-mix(in srgb, var(--modal-bg) 90%, var(--button-primary-bg, #3498db) 10%);
+            padding: 12px 14px;
+            margin-bottom: 1rem;
+        }
+
+        .instructions-lock-card strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .instructions-lock-card ul {
+            margin: 0;
+            padding-left: 1.1rem;
+            color: var(--text-color-secondary);
+            line-height: 1.45;
+        }
+
+        .instructions-editor {
+            display: grid;
+            gap: 12px;
+        }
+
+        .instructions-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .instructions-field label {
+            font-weight: 700;
+        }
+
+        .instructions-help {
+            color: var(--text-color-secondary);
+            font-size: 0.83rem;
+            line-height: 1.4;
+        }
+
+        .instructions-section-input {
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            padding: 12px;
+            width: 100%;
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            font-family: inherit;
+            font-size: 14px;
+            min-height: 96px;
+            resize: vertical;
+        }
+
+        .instructions-modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--modal-header-border);
+        }
+
+        .soap-configuration-modal {
+            max-width: min(900px, 94vw);
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .soap-configuration-scroll {
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .soap-config-toolbar,
+        .soap-config-name-row {
+            display: flex;
+            align-items: end;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .soap-config-toolbar > div,
+        .soap-config-name-row > div {
+            flex: 1 1 260px;
+            min-width: 220px;
+        }
+
+        .soap-config-section-card {
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            background: var(--panel-bg);
+            padding: 12px;
+        }
+
+        .soap-config-section-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .soap-config-section-row {
+            display: grid;
+            grid-template-columns: auto auto minmax(0, 1fr);
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            background: var(--input-bg);
+            cursor: grab;
+        }
+
+        .soap-config-section-row.dragging {
+            opacity: 0.45;
+        }
+
+        .soap-config-section-row.drop-target {
+            outline: 2px dashed var(--button-primary-bg, #3498db);
+            outline-offset: -2px;
+            background: color-mix(in srgb, var(--input-bg) 78%, var(--button-primary-bg, #3498db) 22%);
+        }
+
+        .soap-config-drag-handle {
+            color: var(--text-color-secondary);
+            font-size: 1.1rem;
+            letter-spacing: -2px;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            cursor: grab;
+        }
+
+        .soap-config-drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .soap-config-section-row.is-disabled {
+            opacity: 0.62;
+        }
+
+        .soap-config-section-label {
+            font-weight: 700;
+        }
+
+        .soap-config-section-description {
+            color: var(--text-color-secondary);
+            font-size: 0.8rem;
+            line-height: 1.35;
+            margin-top: 2px;
+        }
+
+        .guide-scroll h4 {
+            margin: 0.75rem 0 0.4rem;
+            font-size: 1rem;
+        }
+
+        .guide-scroll ul {
+            margin: 0.4rem 0 0.8rem 1.2rem;
+        }
+
+        .guide-scroll li {
+            margin-bottom: 0.3rem;
+        }
+
+        .guide-callout {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-left: 4px solid var(--item-border-color);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin: 0.75rem 0;
+        }
+
+        .guide-example {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 0.6rem;
+        }
+
+        .guide-checklist {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        /* CSSRS Modal Styling (scoped) */
+        #cssrsModal {
+            --cssrs-border: #111;
+            --cssrs-gray: #d9d9d9;
+            --cssrs-yellow: #fff36a;
+            --cssrs-orange: #f6b21a;
+            --cssrs-red: #e97d7a;
+            --cssrs-ink: #000;
+        }
+        #cssrsModal .modal-content {
+            background: #f5f5f5;
+            color: var(--cssrs-ink);
+            padding: 14px;
+        }
+        #cssrsModal .wrap {
+            max-width: 720px;
+            margin: 16px auto;
+            padding: 0 9px 20px;
+        }
+        #cssrsModal .card {
+            background: #fff;
+            border: 2px solid var(--cssrs-border);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+        #cssrsModal .titlebar {
+            background: var(--cssrs-gray);
+            border-bottom: 2px solid var(--cssrs-border);
+            font-weight: 900;
+            font-size: 18px;
+            letter-spacing: 0.5px;
+            padding: 8px 9px;
+            text-align: left;
+        }
+        #cssrsModal table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        #cssrsModal td,
+        #cssrsModal th {
+            border: 2px solid var(--cssrs-border);
+            vertical-align: top;
+            padding: 10px;
+            color: var(--cssrs-ink);
+        }
+        #cssrsModal .topbar {
+            background: var(--cssrs-gray);
+            font-weight: 700;
+            font-size: 14px;
+            padding: 6px;
+        }
+        #cssrsModal .topbar-right {
+            text-align: center;
+            font-weight: 700;
+            width: 20%;
+            font-size: 12px;
+        }
+        #cssrsModal .qcell {
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.12;
+        }
+        #cssrsModal .qnum {
+            font-weight: 900;
+            margin-right: 6px;
+        }
+        #cssrsModal .instr {
+            background: var(--cssrs-gray);
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+        #cssrsModal .risk {
+            text-align: center;
+            font-weight: 900;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 66px;
+        }
+        #cssrsModal .risk.yellow {
+            background: var(--cssrs-yellow);
+        }
+        #cssrsModal .risk.orange {
+            background: var(--cssrs-orange);
+        }
+        #cssrsModal .risk.red {
+            background: var(--cssrs-red);
+        }
+        #cssrsModal .subhdr {
+            background: var(--cssrs-gray);
+            font-weight: 900;
+            font-size: 15px;
+            padding: 6px;
+        }
+        #cssrsModal .minihead {
+            background: #fff;
+            font-weight: 900;
+            text-align: center;
+            font-size: 14px;
+            padding: 8px 6px;
+        }
+        #cssrsModal .q6text {
+            font-size: 20px;
+            font-weight: 900;
+            line-height: 1.12;
+        }
+        #cssrsModal .examples {
+            font-size: 14px;
+            font-style: italic;
+            margin-top: 8px;
+            line-height: 1.25;
+            font-weight: 600;
+        }
+        #cssrsModal .follow {
+            font-size: 16px;
+            font-weight: 900;
+            margin-top: 8px;
+        }
+        #cssrsModal .risk select {
+            width: 100%;
+            min-width: 0;
+            text-align: center;
+            font-weight: 900;
+        }
+        #cssrsModal .q6right {
+            padding: 0;
+            height: 100%;
+            position: relative;
+        }
+        #cssrsModal .q6row,
+        #cssrsModal .q6row > td {
+            height: 100%;
+        }
+        #cssrsModal .q6grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            position: absolute;
+            inset: 0;
+            align-items: stretch;
+        }
+        #cssrsModal .q6rightcol {
+            border-left: 2px solid var(--cssrs-border);
+        }
+        #cssrsModal .q6body {
+            border-top: 2px solid var(--cssrs-border);
+            height: 100%;
+        }
+        #cssrsModal .risk-indicator {
+            margin-top: 14px;
+            border-top: 2px solid var(--cssrs-border);
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fff;
+        }
+        #cssrsModal .risk-pill {
+            padding: 8px 12px;
+            border: 2px solid var(--cssrs-border);
+            font-weight: 900;
+            min-width: 120px;
+            text-align: center;
+        }
+        #cssrsModal .risk-pill.low {
+            background: var(--cssrs-yellow);
+        }
+        #cssrsModal .risk-pill.mod {
+            background: var(--cssrs-orange);
+        }
+        #cssrsModal .risk-pill.high {
+            background: var(--cssrs-red);
+        }
+        #cssrsModal .risk-note {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        #cssrsModal .answers {
+            margin-top: 18px;
+            background: #fff;
+            border: 2px solid var(--cssrs-border);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            padding: 14px;
+        }
+        #cssrsModal .answers h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+            color: var(--cssrs-ink);
+        }
+        #cssrsModal #cssrs_compiled {
+            width: 100%;
+            min-height: 190px;
+            border: 2px solid #222;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 14px;
+            line-height: 1.35;
+            resize: vertical;
+            box-sizing: border-box;
+            background: #fff;
+            color: #000;
+        }
+        #cssrsModal .btnrow {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        #cssrsModal .btnrow button {
+            border: 2px solid #111;
+            background: #fff;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-weight: 900;
+            cursor: pointer;
+            color: #000;
+            box-shadow: none;
+            transform: none;
+        }
+        #cssrsModal .btnrow button:active {
+            transform: translateY(1px);
+        }
+        #cssrsModal .status {
+            font-size: 13px;
+            font-weight: 800;
+            color: #000;
+        }
+        #cssrsModal select,
+        #cssrsModal input[type="text"] {
+            font-size: 14px;
+            padding: 8px 10px;
+            border: 2px solid #222;
+            border-radius: 8px;
+            background: #fff;
+            min-width: 170px;
+            color: #000;
+        }
+        #cssrsModal #closeCssrsBtn {
+            color: #111;
+            line-height: 1;
+            font-weight: 700;
+        }
+
+        @media (max-width: 900px) {
+            #cssrsModal .risk-indicator {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+

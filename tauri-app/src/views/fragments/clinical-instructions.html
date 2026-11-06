@@ -1,0 +1,154 @@
+<!-- Custom Instructions Modal -->
+    <div id="customInstructionsModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">Custom AI Instructions</h2>
+                <button id="closeCustomInstructionsBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label for="persistentInstructionsInput" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Persistent Instructions</label>
+                <textarea id="persistentInstructionsInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 12px; width: 100%; background-color: var(--input-bg); color: var(--input-text); font-family: inherit; font-size: 14px; min-height: 100px; resize: vertical;" placeholder="Applies across all sessions for this client."></textarea>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label for="sessionInstructionsInput" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Session Instructions</label>
+                <textarea id="sessionInstructionsInput" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 12px; width: 100%; background-color: var(--input-bg); color: var(--input-text); font-family: inherit; font-size: 14px; min-height: 110px; resize: vertical;" placeholder="Applies only to the selected appointment/session."></textarea>
+                <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 4px;">
+                    If Session Instructions conflict with Persistent Instructions, Session Instructions override for this note.
+                </div>
+            </div>
+
+            <div id="clientPreferredPronounsWrap" style="margin-bottom: 1rem;">
+                <label for="preferredPronounsSelect" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Client Preferred Pronouns <span style="color: #b91c1c;">*</span></label>
+                <select id="preferredPronounsSelect" required style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                    <option value="">Select pronouns (required)</option>
+                    <option value="he/him/his">he/him/his</option>
+                    <option value="she/hers">she/hers</option>
+                    <option value="they/them">they/them</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <div id="customPronounsWrap" class="hidden" style="margin-top:8px; display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px;">
+                    <div>
+                        <label for="customPronounSubjectInput" style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Subject Pronoun (e.g., he)</label>
+                        <input id="customPronounSubjectInput" type="text" class="setting-input" placeholder="he" disabled>
+                    </div>
+                    <div>
+                        <label for="customPronounObjectInput" style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Object Pronoun (e.g., him)</label>
+                        <input id="customPronounObjectInput" type="text" class="setting-input" placeholder="him" disabled>
+                    </div>
+                    <div>
+                        <label for="customPronounPossessiveInput" style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Possessive Form (e.g., his)</label>
+                        <input id="customPronounPossessiveInput" type="text" class="setting-input" placeholder="his" disabled>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label for="clientSessionTypeSelect" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Client Session Type <span style="color: #b91c1c;">*</span></label>
+                <select id="clientSessionTypeSelect" required style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                    <option value="">Select session type (required)</option>
+                    <option value="individual">Individual</option>
+                    <option value="couple">Couple</option>
+                    <option value="family">Family</option>
+                </select>
+                <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 4px;">
+                    Assign the session type before generating a SOAP note. Couple sessions include interventions marked Couples only; those interventions are hidden from Individual sessions and excluded from their AI context.
+                </div>
+            </div>
+
+            <div id="sessionMembersWrap" class="hidden" style="margin-bottom: 1rem;">
+                <label style="margin-bottom: 0.5rem; font-weight: 600; display: block;">Session Members <span style="color: #b91c1c;">*</span></label>
+                <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 4px;">
+                    Add every member of the couple, partnership, or family. Each member needs a name and pronouns; family sessions also require each member's role.
+                </div>
+                <div id="sessionMembersList" class="session-members-list"></div>
+                <button id="addSessionMemberBtn" type="button" class="btn" style="margin-top: 8px;">+ Add Member</button>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label for="clientSoapPlatformSelect" style="margin-bottom: 0.5rem; font-weight: 600; display: block;">SOAP Platform <span style="color: #b91c1c;">*</span></label>
+                <select id="clientSoapPlatformSelect" style="border: 1px solid var(--input-border); border-radius: 6px; padding: 8px; width: 100%; background-color: var(--input-bg); color: var(--input-text);">
+                    <option value="">Select a SOAP platform (required)</option>
+                </select>
+                <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 4px;">
+                    Assign the platform whose SOAP section order and enabled fields should be used for this client. A platform must be assigned before generating a SOAP note.
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Client Modality Lens (SOAP Default)</label>
+                <div style="font-size: 0.82rem; color: var(--text-color-secondary); margin-bottom: 8px;">
+                    SOAP generation uses this as the default lens for this client. If session details explicitly indicate different interventions/modalities, those interventions are preserved as written.
+                </div>
+                <div id="customInstructionsModalitiesList" class="modality-grid"></div>
+                <div id="customInstructionsModalityOtherWrap" class="hidden" style="margin-top:8px; max-width: 380px;">
+                    <label for="customInstructionsModalityOther" style="font-size:0.9rem; font-weight:600; display:block; margin-bottom:4px;">Other (Specify)</label>
+                    <input id="customInstructionsModalityOther" type="text" class="setting-input" placeholder="Optional custom modality..." disabled>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <button id="saveCustomInstructionsBtn" class="btn save-btn" style="flex-grow: 1;">Save Instructions</button>
+                <button id="clearCustomInstructionsBtn" class="btn" style="flex-grow: 1; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Clear Instructions</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SOAP Instructions Modal -->
+    <div id="soapInstructionsModal" class="modal-overlay hidden">
+        <div class="modal-content instructions-modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">SOAP Instructions</h2>
+                <button id="closeSoapInstructionsBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+                <div class="instructions-modal-scroll">
+                <div class="instructions-modal-intro">
+                    Shape the SOAP note's clinical emphasis and writing style. A strong note follows the golden thread from diagnosis and presenting problem to the active goal/objective, session evidence, intervention, client response, progress or barriers, medical necessity, and next steps. Evidence, privacy, safety, field-mapping, and output-contract rules remain locked.
+                </div>
+                <div class="instructions-lock-card">
+                    <strong>Locked Format Rules</strong>
+                    <ul>
+                        <li>The app still requires the fixed SOAP response keys: <code>s</code>, <code>o</code>, <code>a</code>, <code>p</code>, <code>i</code>, plus the suggestion arrays.</li>
+                        <li>Audit-support field mapping, intervention-bank restrictions, and the app's response shape remain enforced.</li>
+                        <li>Your edits below shape clinical priorities, section separation, treatment-plan linkage, and writing behavior.</li>
+                    </ul>
+                </div>
+                <div id="soapInstructionsSections" class="instructions-editor"></div>
+            </div>
+            <div class="instructions-modal-actions">
+                <button id="saveSoapInstructionsBtn" class="btn save-btn" style="flex-grow: 1;">Save Instructions</button>
+                <button id="resetSoapInstructionsBtn" class="btn" style="flex-grow: 1; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Reset to Default</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Treatment Goals Instructions Modal -->
+    <div id="treatmentGoalsInstructionsModal" class="modal-overlay hidden">
+        <div class="modal-content instructions-modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">Treatment Goals Instructions</h2>
+                <button id="closeTreatmentGoalsInstructionsBtn" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <div class="instructions-modal-scroll">
+                <div class="instructions-modal-intro">
+                    Adjust the clinical style and emphasis used when generating treatment goals and objectives. The JSON structure and other output-contract rules stay fixed.
+                </div>
+                <div class="instructions-lock-card">
+                    <strong>Locked Format Rules</strong>
+                    <ul>
+                        <li>The app still requires valid JSON in the fixed <code>goals</code> / <code>objectives</code> schema.</li>
+                        <li>Requested counts, supported objective formats, and “JSON only” output remain enforced.</li>
+                        <li>Your edits below shape the writing style, clinical emphasis, and modality use inside that locked structure.</li>
+                    </ul>
+                </div>
+                <div id="treatmentGoalsInstructionsSections" class="instructions-editor"></div>
+            </div>
+            <div class="instructions-modal-actions">
+                <button id="saveTreatmentGoalsInstructionsBtn" class="btn save-btn" style="flex-grow: 1;">Save Instructions</button>
+                <button id="resetTreatmentGoalsInstructionsBtn" class="btn" style="flex-grow: 1; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Reset to Default</button>
+            </div>
+        </div>
+    </div>
+
+    

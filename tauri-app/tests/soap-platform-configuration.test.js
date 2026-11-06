@@ -1,10 +1,10 @@
 import test from 'node:test';
+import { readApplicationSource } from './helpers/application-source.js';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 
-for (const path of ['index.html', 'src/index.html']) {
+for (const path of ['index.html']) {
     test(`${path} supports configurable SOAP platforms and section order`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /id="openSoapConfigurationBtn"/);
         assert.match(html, /id="soapConfigurationModal"/);
@@ -50,7 +50,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path} requires a client platform before SOAP generation`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /const generateSoapNote = async \(\) =>/);
         assert.match(html, /const client = findClient\(selectedClientId\);/);
@@ -66,7 +66,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path} generates only configured post-Objective fields`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /const requestedSupportFields = \['sessionFocus', 'diagnosticSupport', 'medicalNecessity'\]/);
         assert.match(html, /fetchSupportFieldsFromAI\(client, appointment, requestedSupportFields\)/);
@@ -76,7 +76,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path} renders the selectable diagnosis and treatment-plan output sections`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /data-soap-section-key="diagnosisWithSubstantiation"/);
         assert.match(html, /data-soap-section-key="diagnosisWithoutSubstantiation"/);

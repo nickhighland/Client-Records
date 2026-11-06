@@ -1,10 +1,10 @@
 import test from 'node:test';
+import { readApplicationSource } from './helpers/application-source.js';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 
-for (const path of ['index.html', 'src/index.html']) {
+for (const path of ['index.html']) {
     test(`${path} keeps diagnostic support and medical necessity chart-ready`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /const fetchSessionFocusFromAI =/);
         assert.match(html, /const fetchDiagnosticSupportFromAI =/);
@@ -49,7 +49,7 @@ for (const path of ['index.html', 'src/index.html']) {
     });
 
     test(`${path} scopes intervention-bank entries to the client session type`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /id="clientSessionTypeSelect"/);
         assert.match(html, /id="newInterventionCouplesOnly"/);

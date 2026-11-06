@@ -1,10 +1,10 @@
 import test from 'node:test';
+import { readApplicationSource } from './helpers/application-source.js';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 
-for (const path of ['index.html', 'src/index.html']) {
+for (const path of ['index.html']) {
     test(`${path} preserves existing contacts and protects future contact edits`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /value: String\(rawValue \?\? ''\),\s*locked: entry\.locked !== false/);
         assert.match(html, /value: String\(entry \?\? ''\),\s*locked: true/);

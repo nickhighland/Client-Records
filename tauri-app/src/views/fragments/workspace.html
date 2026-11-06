@@ -1,0 +1,371 @@
+<div class="container" id="appContainer" style="display: none;">
+        <div class="header">
+            <div class="header-title-group">
+                <div class="app-mode-toggle" aria-label="Application mode">
+                    <button id="appModeEmrBtn" class="app-mode-btn is-active" type="button" aria-pressed="true">EMR</button>
+                    <button id="appModeDsmBtn" class="app-mode-btn" type="button" aria-pressed="false">DSM-V-TR</button>
+                    <button id="appModeAssessmentsBtn" class="app-mode-btn" type="button" aria-pressed="false">Assessments</button>
+                    <button id="appModeSafetyPlanBtn" class="app-mode-btn" type="button" aria-pressed="false">Safety Plan</button>
+                </div>
+            </div>
+            <div class="header-utility-row" id="headerUtilityRow">
+                <div id="headerColumnControls" class="header-column-controls" aria-label="Column visibility controls">
+                    <button id="columnToggleClients" class="column-visibility-pill is-shown" type="button" title="Hide Clients">Clients</button>
+                    <button id="columnToggleAppointments" class="column-visibility-pill is-shown" type="button" title="Hide Appointments">Appointments</button>
+                    <button id="columnToggleNotes" class="column-visibility-pill is-shown" type="button" title="Hide Notes">Notes</button>
+                    <button id="columnToggleSoap" class="column-visibility-pill is-shown" type="button" title="Hide SOAP">SOAP</button>
+                </div>
+                <!-- Auto-lock session control stays on the same row as the column pills. -->
+                <div class="autolock-wrapper" id="autolockWrapper">
+                    <span class="autolock-label">Auto-lock Session</span>
+                    <select id="autolockSelect" class="autolock-select" title="Select auto-lock timeout">
+                        <option value="600000">10 min</option>
+                        <option value="900000">15 min</option>
+                        <option value="1800000">30 min</option>
+                        <option value="2700000">45 min</option>
+                        <option value="3600000">60 min</option>
+                        <option value="4500000">1 hr 15 min</option>
+                        <option value="5400000">1 hr 30 min</option>
+                    </select>
+                    <div id="autolockCountdown" class="autolock-countdown" style="display:none;"></div>
+                </div>
+            </div>
+            <div id="autoSaveIndicator" class="autosave-indicator" style="opacity: 0;">
+                <span id="saveStatus"></span>
+            </div>
+            <div class="header-actions" id="headerActions">
+                <div class="header-menu" id="headerMenu">
+                    <button id="headerMenuBtn" class="btn header-menu-btn" title="Open menu"><span class="menu-label-wrap">Menu<span id="menuBackupWarning" class="menu-alert-indicator hidden" aria-hidden="true">!</span><span id="menuUpdateAsterisk" class="update-asterisk hidden" aria-hidden="true">*</span></span> ▾</button>
+                    <div id="headerMenuDropdown" class="header-menu-dropdown hidden">
+                        <button id="informedConsentBtn" class="menu-item-btn">Informed Consent</button>
+                        <button id="soapAuditGuideBtn" class="menu-item-btn">SOAP Audit Guide</button>
+                        <button id="soapInstructionsBtn" class="menu-item-btn">SOAP Instructions</button>
+                        <button id="treatmentGoalsInstructionsBtn" class="menu-item-btn">Treatment Goals Instructions</button>
+                        <button id="interventionBankBtn" class="menu-item-btn">Intervention Bank</button>
+                        <button id="configureBackupBtn" class="menu-item-btn">Set Secondary Backup Location</button>
+                        <button id="clearBackupBtn" class="menu-item-btn">Clear Secondary Backup</button>
+                        <button id="manualSaveBtn" class="menu-item-btn save">Save Now</button>
+                        <button id="checkForUpdatesBtn" class="menu-item-btn"><span>Check for Updates</span><span id="checkForUpdatesAsterisk" class="update-asterisk hidden" aria-hidden="true">*</span></button>
+                        <button id="settingsBtn" class="menu-item-btn settings">Settings</button>
+                        <select id="themeToggleBtn" class="menu-item-btn theme theme-select" title="Choose appearance" aria-label="Choose appearance">
+                            <option value="light">Day mode</option>
+                            <option value="dark">Night mode</option>
+                            <option value="automatic">Follow system settings</option>
+                        </select>
+                        <button id="lockScreenBtn" class="menu-item-btn" title="Lock Screen">Lock Screen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content" id="mainGrid">
+            <!-- Clients Panel -->
+            <div class="panel clients-panel" id="panelClients">
+                <div class="panel-header">
+                    <span>Clients</span>
+                    <button id="addClientBtn" class="add-btn">+</button>
+                </div>
+                <div class="panel-content client-panel-content">
+                    <section class="today-sessions-section">
+                        <div class="client-section-header today-sessions-header">
+                            <div class="client-section-title-group">
+                                <span>Today's Sessions</span>
+                                <span id="todaySessionsCount" class="client-count-badge">0</span>
+                            </div>
+                            <button id="clearTodaySessionsBtn" class="client-section-clear-btn" type="button">Clear</button>
+                        </div>
+                        <div id="todaySessionsList" class="client-list-section" data-list-type="today">
+                            <div class="client-empty-state">Drag clients from Main Bank here to build today's queue.</div>
+                        </div>
+                        <div class="client-section-footnote">Clear returns every client to Main Bank.</div>
+                    </section>
+                    <section class="main-bank-section">
+                        <div class="client-section-header main-bank-header">
+                            <div class="client-section-title-group">
+                                <span>Main Bank</span>
+                            </div>
+                            <div class="client-section-header-actions">
+                                <span id="mainBankCount" class="client-section-count">0 clients</span>
+                                <button id="sortClientsBtn" title="Sort Main Bank A-Z" class="btn client-bank-sort-btn" type="button">A-Z</button>
+                            </div>
+                        </div>
+                        <div class="client-search-wrap">
+                            <input id="mainBankSearchInput" class="client-search-input" type="text" placeholder="Search Main Bank..." autocomplete="off">
+                            <button id="clearMainBankSearchBtn" class="client-search-clear-btn hidden" type="button" aria-label="Clear main bank search">x</button>
+                        </div>
+                        <div class="client-list-section client-bank-list" id="clientList" data-list-type="main">
+                            <div class="no-selection">Click + to add a client</div>
+                        </div>
+                    </section>
+                </div>
+                <div id="deletedClientsSection" class="panel-footer section-collapser">
+                     <button id="deletedClientsToggleBtn" class="section-collapser-btn" type="button" data-section-key="deletedClients" data-section-content="deletedClientsSectionContent" aria-expanded="true">
+                         <span>Recently Deleted</span>
+                         <span class="section-collapser-icon">▼</span>
+                     </button>
+                     <div id="deletedClientsSectionContent" class="section-collapsible-content">
+                         <div id="deletedClientsList" class="deleted-list"></div>
+                         <button id="clearDeletedClientsBtn" class="clear-deleted-btn hidden">Clear All</button>
+                     </div>
+                </div>
+                 <div id="archivedClientsSection" class="panel-footer section-collapser">
+                     <button id="archivedClientsToggleBtn" class="section-collapser-btn" type="button" data-section-key="archivedClients" data-section-content="archivedClientsSectionContent" aria-expanded="true">
+                         <span>Archived</span>
+                         <span class="section-collapser-icon">▼</span>
+                     </button>
+                     <div id="archivedClientsSectionContent" class="section-collapsible-content">
+                         <div id="archivedClientsList" class="deleted-list"></div>
+                     </div>
+                </div>
+            </div>
+
+            <div class="resizer" id="resizer1"></div>
+
+            <!-- Appointments Panel -->
+            <div class="panel appointments-panel" id="panelAppointments">
+                <div class="panel-header">
+                    <span>Appointments & Goals</span>
+                </div>
+                
+                <!-- Tab Navigation -->
+                <div style="display: flex; border-bottom: 2px solid var(--panel-border); background: var(--panel-bg); flex-shrink: 0;">
+                    <button id="appointmentsTabBtn" class="panel-tab-btn active" style="flex: 1; padding: 12px; border: none; background: none; cursor: pointer; font-weight: 600; color: var(--text-color-primary); border-bottom: 3px solid #3498db;">Appointments</button>
+                    <button id="goalsTabBtn" class="panel-tab-btn" style="flex: 1; padding: 12px; border: none; background: none; cursor: pointer; font-weight: 600; color: var(--text-color-secondary); border-bottom: 3px solid transparent;">Treatment Goals</button>
+                </div>
+                
+                <!-- Appointments Tab Content -->
+                <div id="appointmentsTabContent" class="panel-content" style="display: flex; flex-direction: column;">
+                    <div id="appointmentList" style="flex-grow: 1; overflow-y: auto;">
+                        <div class="no-selection">Select a client first</div>
+                    </div>
+                    <div class="panel-footer">
+                         <label for="appointmentDateInputMonth" style="font-weight: 600; color: var(--text-color-secondary); font-size: 0.875rem; margin-bottom: 4px; display: block;">Appointment Date</label>
+                         <div class="segmented-date-control" data-segmented-date-input="appointmentDateInput" style="width: 100%; margin-bottom: 8px;">
+                             <input id="appointmentDateInputMonth" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="Appointment month" autocomplete="off">
+                             <span class="date-segment-separator" aria-hidden="true">/</span>
+                             <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="Appointment day" autocomplete="off">
+                             <span class="date-segment-separator" aria-hidden="true">/</span>
+                             <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" aria-label="Appointment year" autocomplete="off">
+                             <button type="button" class="date-picker-button" data-date-picker-for="appointmentDateInput" title="Choose appointment date" aria-label="Choose appointment date">📅</button>
+                             <input type="date" id="appointmentDateInput" class="date-input-value" tabindex="-1" aria-hidden="true">
+                         </div>
+                         <div style="display: flex; align-items: center; gap: 8px;">
+                             <button id="addAppointmentBtn" class="btn save-btn" style="flex: 1; padding: 8px;">+ Add</button>
+                             <button id="updateAppointmentDateBtn" class="btn" style="flex: 1; padding: 8px;">Update Date</button>
+                         </div>
+                         <button id="addIntakeBtn" class="btn" style="width: 100%; margin-top: 8px; padding: 8px; background: linear-gradient(135deg, #d35400 0%, #ba4a00 100%);">+ Intake</button>
+                         <div style="margin-top: 12px; border-top: 1px solid var(--panel-border); padding-top: 10px;">
+                             <label for="noteNameInput" style="font-weight: 600; color: var(--text-color-secondary); font-size: 0.875rem; margin-bottom: 4px; display: block;">Notes</label>
+                             <input type="text" id="noteNameInput" placeholder="Enter note name" style="width: 100%; margin-bottom: 8px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text);">
+                             <div style="display: flex; align-items: center; gap: 8px;">
+                                 <button id="addNoteBtn" class="btn" style="flex: 1; padding: 8px; background: linear-gradient(135deg, #16a085 0%, #138d75 100%);">+ Add Note</button>
+                                 <button id="renameNoteBtn" class="btn" style="flex: 1; padding: 8px; background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);" disabled>Rename Selected</button>
+                             </div>
+                         </div>
+                    </div>
+                     <div id="deletedAppointmentsSection" class="panel-footer section-collapser">
+                         <button id="deletedAppointmentsToggleBtn" class="section-collapser-btn" type="button" data-section-key="deletedAppointments" data-section-content="deletedAppointmentsSectionContent" aria-expanded="true">
+                             <span>Recently Deleted</span>
+                             <span class="section-collapser-icon">▼</span>
+                         </button>
+                         <div id="deletedAppointmentsSectionContent" class="section-collapsible-content">
+                             <div id="deletedAppointmentsList" class="deleted-list"></div>
+                             <button id="clearDeletedAppointmentsBtn" class="clear-deleted-btn hidden">Clear All</button>
+                         </div>
+                    </div>
+                </div>
+                
+                <!-- Goals Tab Content -->
+                <div id="goalsTabContent" class="panel-content" style="display: none; flex-direction: column; min-height: 0;">
+                    <div style="padding: 10px; border-bottom: 1px solid var(--panel-border); flex-shrink: 0;">
+                        <div class="client-diagnoses-editor">
+                            <div class="client-diagnoses-header">
+                                <label style="font-weight: 600; color: var(--text-color-primary);">Diagnosis</label>
+                                <button id="addDiagnosisBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.8rem;" disabled>+ Add diagnosis</button>
+                            </div>
+                            <p class="client-diagnoses-help">Add one diagnosis per row. Edit or remove diagnoses as needed.</p>
+                            <div id="clientDiagnosesList" class="client-diagnoses-list" aria-live="polite">
+                                <div class="no-selection">Select a client to manage diagnoses</div>
+                            </div>
+                        </div>
+                        <label for="clientPresentingProblem" style="font-weight: 600; color: var(--text-color-primary); display: block; margin: 12px 0 8px;">Presenting Problem</label>
+                        <textarea id="clientPresentingProblem" placeholder="Enter or generate the client's presenting problem..." style="width: 100%; min-height: 100px; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--input-text); resize: vertical;" disabled></textarea>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; flex-wrap: wrap; padding: 10px; border-bottom: 1px solid var(--panel-border); flex-shrink: 0;">
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <span style="font-weight: 600; color: var(--text-color-primary);">Tx Plan</span>
+                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <label for="treatmentPlanStartDateInputMonth" style="font-size: 0.78rem; font-weight: 600; color: var(--text-color-secondary);">Start date</label>
+                                <div class="segmented-date-control compact" data-segmented-date-input="treatmentPlanStartDateInput">
+                                    <input id="treatmentPlanStartDateInputMonth" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="Treatment plan start month" autocomplete="off">
+                                    <span class="date-segment-separator" aria-hidden="true">/</span>
+                                    <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="Treatment plan start day" autocomplete="off">
+                                    <span class="date-segment-separator" aria-hidden="true">/</span>
+                                    <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" aria-label="Treatment plan start year" autocomplete="off">
+                                    <button type="button" class="date-picker-button" data-date-picker-for="treatmentPlanStartDateInput" title="Choose treatment plan start date" aria-label="Choose treatment plan start date">📅</button>
+                                    <input id="treatmentPlanStartDateInput" type="date" class="date-input-value" tabindex="-1" aria-hidden="true" disabled>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button id="generateGoalsBtn" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background: linear-gradient(135deg, #16a085 0%, #138d75 100%);" disabled>Build</button>
+                            <button id="addGoalBtnInTab" class="add-btn" disabled>+</button>
+                        </div>
+                    </div>
+                    <div id="goalsListSection" class="section-collapser" style="display: block; padding: 10px;">
+                        <button id="goalsListToggleBtn" class="section-collapser-btn" type="button" data-section-key="goalsList" data-section-content="goalsListSectionContent" aria-expanded="true">
+                            <span>Tx Plan</span>
+                            <span class="section-collapser-icon">▼</span>
+                        </button>
+                        <div id="goalsListSectionContent" class="section-collapsible-content">
+                            <div id="goalsListInTab">
+                                <div class="no-selection">Select a client to manage goals</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="resizer" id="resizer2"></div>
+
+            <!-- Session & Notes Panel -->
+            <div class="panel session-panel" id="panelSession">
+                 <div id="sessionInfoWrapper" class="session-section" style="flex-basis: 50%;">
+                     <div class="panel-header">
+                         <span>Session Information</span>
+                         <button id="customInstructionsBtn" class="btn" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 8px;" title="Add custom AI instructions for this note">⚙️ Instructions</button>
+                         <button id="generateNoteBtn" class="btn" style="padding: 4px 8px; font-size: 0.8rem;" disabled>Generate Note</button>
+                     </div>
+                     <div class="panel-content">
+                         <div id="regularSessionFields">
+                         <textarea id="sessionInfo" placeholder="Select an appointment to enter session details..." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                         <div id="auditProofingBlock" class="audit-proofing-block">
+                             <div style="font-size: 0.85rem; color: var(--text-color-secondary); font-weight: 700; margin-bottom: 6px;">Audit-Proofing</div>
+                             <div class="audit-proofing-grid">
+                                 <div class="audit-proofing-field">
+                                     <label for="auditProofSymptoms">Symptom Pattern / Severity Context</label>
+                                     <textarea id="auditProofSymptoms" placeholder="Add symptom trend, frequency, intensity, and client-reported changes." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                                 </div>
+                                 <div class="audit-proofing-field">
+                                     <label for="auditProofFunctional">Functional Impact</label>
+                                     <textarea id="auditProofFunctional" placeholder="Document work/school/relationship/sleep/parenting or daily functioning impact." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                                 </div>
+                                 <div class="audit-proofing-field">
+                                     <label for="auditProofProgress">Progress / Response to Treatment</label>
+                                     <textarea id="auditProofProgress" placeholder="Describe measurable progress, barriers, and response to interventions." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                                 </div>
+                                 <div class="audit-proofing-field">
+                                     <label for="auditProofNecessity">Medical Necessity Rationale</label>
+                                     <textarea id="auditProofNecessity" placeholder="State why continued skilled treatment is needed at this level of care." disabled autocorrect="off" autocapitalize="off" spellcheck="true"></textarea>
+                                 </div>
+                             </div>
+                         </div>
+                         </div>
+                         <div id="intakeSessionBlock" class="audit-proofing-block hidden">
+                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+                                 <div style="font-size: 0.85rem; color: var(--text-color-secondary); font-weight: 700;">Intake Session Prompts</div>
+                                 <button id="copyIntakeSessionBtn" class="btn" type="button" style="padding: 4px 8px; font-size: 0.8rem;" disabled>Copy All</button>
+                             </div>
+                             <div id="intakeFieldsContainer" class="audit-proofing-grid"></div>
+                         </div>
+                     </div>
+                 </div>
+                 <div class="resizer-y" id="resizer-session-notes"></div>
+                 <div id="notesWrapper" class="session-section persistent-notes-section" style="flex-basis: 50%;">
+                    <div class="panel-header collapsible-header" data-target="notesContent" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                            <span style="display: flex; flex-direction: column; line-height: 1.02;">
+                                <span>Client</span>
+                                <span>Details</span>
+                            </span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                       <div id="clientDetailsTabGroup" style="display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; min-width: 0; flex: 1 1 auto;">
+                           <button id="clientDetailsTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-color-primary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Details</button>
+                           <button id="contactTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Contact</button>
+                           <button id="nextSessionTabBtn" type="button" class="btn" style="padding: 4px 10px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 600; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Next Session</button>
+                       </div>
+                    </div>
+                        <div id="notesContent" class="panel-content collapsible-content" style="display: flex; flex-direction: column; min-height: 160px;">
+                        <div id="clientDetailsContent" style="flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px;">
+                            <div style="display: flex; flex-direction: column; gap: 6px; min-height: 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+                                    <label for="persistentNotes" style="font-weight: 600; color: var(--text-color-primary); display: block;">Client Details / Notes</label>
+                                    <div class="rich-note-toolbar" data-rich-note-toolbar data-editor-id="persistentNotes" role="toolbar" aria-label="Client Details text formatting">
+                                        <button type="button" class="rich-note-format-btn" data-rich-note-command="bold" title="Bold" aria-label="Bold" aria-pressed="false"><span class="rich-note-format-glyph" aria-hidden="true">B</span></button>
+                                        <button type="button" class="rich-note-format-btn" data-rich-note-command="italic" title="Italic" aria-label="Italic" aria-pressed="false"><span class="rich-note-format-glyph italic" aria-hidden="true">I</span></button>
+                                        <button type="button" class="rich-note-format-btn" data-rich-note-command="underline" title="Underline" aria-label="Underline" aria-pressed="false"><span class="rich-note-format-glyph underline" aria-hidden="true">U</span></button>
+                                        <label class="rich-note-color-btn" data-rich-note-color-control title="Text color" aria-label="Text color">
+                                            <span class="rich-note-color-icon" aria-hidden="true"><span class="rich-note-color-glyph">A</span><span class="rich-note-color-swatch" data-rich-note-color-swatch></span></span>
+                                            <input type="color" class="rich-note-color-input" data-rich-note-color data-rich-note-editor="persistentNotes" value="#e74c3c" aria-label="Text color">
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="persistentNotes" class="rich-note-editor" contenteditable="false" role="textbox" aria-label="Client Details / Notes" aria-multiline="true" aria-disabled="true" tabindex="0" data-placeholder="Select a client to enter client details..." spellcheck="true" autocorrect="off" title="Rich text editor"></div>
+                            </div>
+                        </div>
+                        <div id="contactContent" class="hidden" style="flex: 1; overflow: auto;">
+                            <div style="padding: 12px; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-bg);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                    <div>
+                                        <div style="font-size: 0.98rem; font-weight: 700;">Contact Information</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-top: 2px;">Track multiple phone numbers and email addresses. Existing entries remain as entered and are locked; use Edit to change one.</div>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+                                    <div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-color-primary);">Phone Numbers</label>
+                                            <button id="addPhoneNumberBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.78rem;">+ Phone</button>
+                                        </div>
+                                        <div id="clientPhoneList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                                    </div>
+                                    <div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-color-primary);">Email Addresses</label>
+                                            <button id="addEmailAddressBtn" type="button" class="btn" style="padding: 4px 8px; font-size: 0.78rem;">+ Email</button>
+                                        </div>
+                                        <div id="clientEmailList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="nextSessionContent" class="hidden" style="flex: 1; overflow: auto;">
+                            <div class="rich-note-toolbar" data-rich-note-toolbar data-editor-id="nextSessionNotes" role="toolbar" aria-label="Next Session Notes text formatting" style="padding-bottom: 6px;">
+                                <button type="button" class="rich-note-format-btn" data-rich-note-command="bold" title="Bold" aria-label="Bold" aria-pressed="false"><span class="rich-note-format-glyph" aria-hidden="true">B</span></button>
+                                <button type="button" class="rich-note-format-btn" data-rich-note-command="italic" title="Italic" aria-label="Italic" aria-pressed="false"><span class="rich-note-format-glyph italic" aria-hidden="true">I</span></button>
+                                <button type="button" class="rich-note-format-btn" data-rich-note-command="underline" title="Underline" aria-label="Underline" aria-pressed="false"><span class="rich-note-format-glyph underline" aria-hidden="true">U</span></button>
+                                <label class="rich-note-color-btn" data-rich-note-color-control title="Text color" aria-label="Text color">
+                                    <span class="rich-note-color-icon" aria-hidden="true"><span class="rich-note-color-glyph">A</span><span class="rich-note-color-swatch" data-rich-note-color-swatch></span></span>
+                                    <input type="color" class="rich-note-color-input" data-rich-note-color data-rich-note-editor="nextSessionNotes" value="#e74c3c" aria-label="Text color">
+                                </label>
+                            </div>
+                            <div id="nextSessionNotes" class="rich-note-editor next-session-note-editor" contenteditable="false" role="textbox" aria-label="Next Session Notes" aria-multiline="true" aria-disabled="true" tabindex="0" data-placeholder="Select a client to enter next session notes..." spellcheck="true" autocorrect="off" title="Rich text editor"></div>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+
+            <div class="resizer" id="resizer3"></div>
+
+            <!-- SOAP Notes Panel -->
+            <div class="panel soap-panel" id="panelSoap">
+                <div class="panel-header">
+                    <span>SOAP Note</span>
+                </div>
+                <div class="panel-content" id="soapContent">
+                    <div class="no-selection">Select an appointment to begin</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="workspaceView" class="hidden">
+            <div class="workspace-view-shell">
+                <iframe id="dsmIframe" class="workspace-iframe" title="DSM-V-TR Diagnostic Reference" data-src="dsmdx/index.html" loading="lazy"></iframe>
+                <iframe id="assessmentsIframe" class="workspace-iframe" title="Clinical Assessments" data-src="assessments/index.html" loading="lazy"></iframe>
+                <iframe id="safetyPlanIframe" class="workspace-iframe" title="Safety Plan" data-src="safety-plan/index.html" loading="lazy"></iframe>
+            </div>
+        </div>
+    </div>
+    
+    

@@ -1,12 +1,13 @@
 import test from 'node:test';
+import { readApplicationSource } from './helpers/application-source.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const config = JSON.parse(await readFile(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
 
-for (const path of ['index.html', 'src/index.html']) {
+for (const path of ['index.html']) {
     test(`${path} keeps Menu separate and aligns Auto-lock Session with the column pills`, async () => {
-        const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+        const html = await readApplicationSource();
 
         assert.match(html, /grid-template-areas:\s*"title actions"\s*"utility utility";/);
         assert.match(html, /\.header-actions \{[\s\S]*?flex-direction: column;[\s\S]*?align-items: flex-end;/);

@@ -1,0 +1,43 @@
+<!-- SOAP Platform Configuration Modal -->
+    <div id="soapConfigurationModal" class="modal-overlay hidden">
+        <div class="modal-content soap-configuration-modal">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
+                <h2 style="font-size: 1.5rem; font-weight: bold;">SOAP Configuration</h2>
+                <button id="closeSoapConfigurationBtn" type="button" style="font-size: 2rem; background: none; border: none; cursor: pointer; color: inherit;">&times;</button>
+            </div>
+            <div class="soap-configuration-scroll">
+                <div class="instructions-modal-intro">
+                    Create a configuration for each documentation platform. Check the sections that should appear in that platform's SOAP note, then drag rows to set their order. Changes apply to clients assigned to the selected platform.
+                </div>
+                <div class="soap-config-toolbar">
+                    <div>
+                        <label for="soapPlatformSelect" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Platform</label>
+                        <select id="soapPlatformSelect" class="setting-input"></select>
+                    </div>
+                    <button id="deleteSoapPlatformBtn" type="button" class="btn" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">Delete Platform</button>
+                </div>
+                <div class="soap-config-name-row">
+                    <div>
+                        <label for="soapPlatformNameInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Platform Name</label>
+                        <input id="soapPlatformNameInput" class="setting-input" type="text" placeholder="e.g., Headway">
+                    </div>
+                    <button id="saveSoapPlatformNameBtn" type="button" class="btn save-btn">Save Name</button>
+                    <div>
+                        <label for="newSoapPlatformNameInput" style="margin-bottom: 0.25rem; font-weight: 600; display: block;">Create Platform</label>
+                        <input id="newSoapPlatformNameInput" class="setting-input" type="text" placeholder="New platform name">
+                    </div>
+                    <button id="addSoapPlatformBtn" type="button" class="btn">Add Platform</button>
+                </div>
+                <div class="soap-config-section-card">
+                    <div style="font-size: 1rem; font-weight: 700;">SOAP Sections</div>
+                    <div style="font-size: 0.82rem; color: var(--text-color-secondary); margin-top: 4px;">Drag the handle to reorder sections. Uncheck a section to leave it out of this platform's note.</div>
+                    <div id="soapPlatformSectionsList" class="soap-config-section-list" aria-live="polite"></div>
+                </div>
+            </div>
+            <div class="instructions-modal-actions">
+                <button id="doneSoapConfigurationBtn" type="button" class="btn save-btn" style="flex-grow: 1;">Done</button>
+            </div>
+        </div>
+    </div>
+
+    

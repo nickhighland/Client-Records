@@ -1,0 +1,142 @@
+
+    <!-- Rename Modal -->
+    <div id="renameModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 id="renameModalTitle" style="margin-bottom: 16px; color: var(--text-color-primary);">Rename</h3>
+            <input type="text" id="renameModalInput" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; margin-bottom: 16px;">
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button id="renameModalCancel" class="btn" style="padding: 8px 16px; background: var(--panel-bg); color: var(--text-color-primary); border: 1px solid var(--input-border);">Cancel</button>
+                <button id="renameModalConfirm" class="btn" style="padding: 8px 16px;">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Treatment plan objective editor -->
+    <div id="objectiveEditorModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 520px;">
+            <h3 id="objectiveEditorModalTitle" style="margin-bottom: 16px; color: var(--text-color-primary);">Objective</h3>
+            <label id="objectiveEditorTextLabel" for="objectiveEditorTextInput" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Objective</label>
+            <textarea id="objectiveEditorTextInput" rows="4" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 14px;"></textarea>
+            <label for="planItemStartDateInputMonth" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Start date</label>
+            <div id="planItemStartDateControl" class="segmented-date-control" data-segmented-date-input="planItemStartDateInput" style="margin-bottom: 14px;">
+                <input id="planItemStartDateInputMonth" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="Start date month" autocomplete="off">
+                <span class="date-segment-separator" aria-hidden="true">/</span>
+                <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="Start date day" autocomplete="off">
+                <span class="date-segment-separator" aria-hidden="true">/</span>
+                <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" aria-label="Start date year" autocomplete="off">
+                <button type="button" class="date-picker-button" data-date-picker-for="planItemStartDateInput" title="Choose start date" aria-label="Choose start date">📅</button>
+                <input id="planItemStartDateInput" type="date" class="date-input-value" tabindex="-1" aria-hidden="true">
+            </div>
+            <label for="objectiveEditorTimelineSelect" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Timeline</label>
+            <select id="objectiveEditorTimelineSelect" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; margin-bottom: 18px;">
+                <option value="1">1 month</option>
+                <option value="3">3 months</option>
+                <option value="6">6 months</option>
+                <option value="9">9 months</option>
+                <option value="12">12 months</option>
+            </select>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button id="objectiveEditorModalCancel" class="btn" style="padding: 8px 16px; background: var(--panel-bg); color: var(--text-color-primary); border: 1px solid var(--input-border);">Cancel</button>
+                <button id="objectiveEditorModalConfirm" class="btn" style="padding: 8px 16px;">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Overlay -->
+    <div id="loginOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-main); z-index: 9999; overflow-y: auto; display: flex; text-align: center; justify-content: center; align-items: flex-start; padding: 20px;">
+        <div style="background: var(--panel-bg); padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; width: 400px; margin: auto;">
+            <h2 id="loginTitle" style="margin-bottom: 20px; color: var(--text-color-primary);">SmartEMR Login</h2>
+            <p id="loginSubtitle" style="margin-bottom: 20px; color: var(--text-color-secondary); font-size: 0.9rem;">Enter your username and password to unlock SmartEMR.</p>
+            <input type="text" id="loginUsernameInput" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 16px;">
+            <input type="password" id="loginPasswordInput" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 16px;">
+            <div id="biometricLoginPanel" style="display:none; margin-bottom: 16px; padding: 12px; border: 1px solid rgba(39, 174, 96, 0.28); border-radius: 10px; background: rgba(39, 174, 96, 0.08); text-align: left;">
+                <button id="biometricLoginBtn" class="btn" style="width: 100%; padding: 12px; margin-bottom: 8px; background: linear-gradient(135deg, #1f8f59 0%, #146c43 100%);">Unlock with Touch ID</button>
+                <div id="biometricLoginHint" style="font-size: 0.78rem; color: var(--text-color-secondary);"></div>
+                <div id="biometricLoginStatusMsg" style="font-size: 0.8rem; margin-top: 8px; color: var(--text-color-secondary);"></div>
+            </div>
+            <div id="biometricEnrollmentHint" style="display:none; margin-bottom: 16px; font-size: 0.78rem; color: var(--text-color-secondary);">
+                Want faster login? Unlock once with your password, then go to Settings -> Security to enable Touch ID launch login.
+            </div>
+            <div id="onboardingRecoverySection" style="display:none; text-align:left; margin-bottom:12px;">
+                <input type="email" id="onboardingEmailInput" placeholder="Recovery Email" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <div style="font-size: 0.8rem; color: var(--text-color-secondary); margin-bottom: 6px; font-weight: 600;">SMTP Settings (for in-app password recovery)</div>
+                <input type="text" id="onboardingSmtpHostInput" placeholder="SMTP Host (e.g., smtp.gmail.com)" value="smtp.gmail.com" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="number" id="onboardingSmtpPortInput" placeholder="SMTP Port (e.g., 587)" value="587" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <select id="onboardingSmtpSecurityInput" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                    <option value="starttls" selected>STARTTLS</option>
+                    <option value="tls">TLS</option>
+                    <option value="ssl">SSL</option>
+                </select>
+                <input type="text" id="onboardingSmtpUsernameInput" placeholder="SMTP Username" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="password" id="onboardingSmtpPasswordInput" placeholder="SMTP Password / App Password" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="email" id="onboardingSmtpFromInput" placeholder="From Email (optional)" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <div style="font-size: 0.75rem; color: var(--text-color-secondary);">Use an app password for Gmail/Outlook when required.</div>
+            </div>
+            <button id="loginBtn" class="btn" style="width: 100%; padding: 12px; font-size: 16px;">Unlock</button>
+            <button id="forgotPasswordBtn" class="btn" style="width: 100%; padding: 10px; margin-top: 8px; background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);">Forgot Password?</button>
+            <div id="loginToolsMenu" style="position: relative; margin-top: 8px;">
+                <button id="loginToolsBtn" class="btn" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #5d6d7e 0%, #34495e 100%);">Account Tools ▾</button>
+                <div id="loginToolsDropdown" class="hidden" style="position:absolute; right:0; top:calc(100% + 6px); width:100%; background: var(--panel-bg); border:1px solid var(--panel-border); border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,0.2); padding:8px; z-index:10001;">
+                    <button id="openSmtpPanelBtn" class="btn" style="width:100%; padding:10px; margin-bottom:8px; background: linear-gradient(135deg, #2980b9 0%, #1f5f8b 100%);">Update SMTP Settings</button>
+                    <button id="openDeleteAccountPanelBtn" class="btn" style="width:100%; padding:10px; background: linear-gradient(135deg, #c0392b 0%, #922b21 100%);">Delete Account</button>
+                </div>
+            </div>
+            <div id="resetPanel" style="display:none; text-align:left; margin-top: 12px; border: 1px solid var(--panel-border); border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; color: var(--text-color-primary);">Password Recovery</div>
+                <input type="text" id="resetUsernameInput" placeholder="Username" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <button id="sendResetCodeBtn" class="btn" style="width: 100%; padding: 10px; margin-bottom: 8px;">Send Reset Code</button>
+                <input type="text" id="resetCodeInput" placeholder="6-digit code" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="password" id="resetNewPasswordInput" placeholder="New Password" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="password" id="resetConfirmPasswordInput" placeholder="Confirm New Password" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <button id="confirmResetBtn" class="btn save-btn" style="width: 100%; padding: 10px; margin-bottom: 8px;">Reset Password</button>
+                <button id="cancelResetBtn" class="btn" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Cancel</button>
+                <div id="resetStatusMsg" style="font-size: 0.8rem; margin-top: 8px; color: var(--text-color-secondary);"></div>
+            </div>
+            <div id="verifyEmailPanel" style="display:none; text-align:left; margin-top: 12px; border: 1px solid #2980b9; border-radius: 8px; padding: 10px; background: rgba(41,128,185,0.06);">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; color: #2980b9;">Email Verification</div>
+                <div style="font-size: 0.78rem; color: var(--text-color-secondary); margin-bottom: 8px;">Enter the 6-digit verification code sent to your account email.</div>
+                <button id="sendVerifyEmailCodeBtn" class="btn" style="width: 100%; padding: 10px; margin-bottom: 8px;">Resend Verification Code</button>
+                <input type="text" id="verifyEmailCodeInput" placeholder="6-digit verification code" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <button id="confirmVerifyEmailBtn" class="btn save-btn" style="width: 100%; padding: 10px; margin-bottom: 8px;">Verify Email</button>
+                <button id="openSmtpPanelFromVerifyBtn" class="btn" style="width: 100%; padding: 10px; margin-bottom: 8px; background: linear-gradient(135deg, #2980b9 0%, #1f5f8b 100%);">Update SMTP Settings</button>
+                <button id="cancelVerifyEmailBtn" class="btn" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Cancel</button>
+                <div id="verifyEmailStatusMsg" style="font-size: 0.8rem; margin-top: 8px; color: var(--text-color-secondary);"></div>
+            </div>
+            <div id="smtpSettingsPanel" style="display:none; text-align:left; margin-top: 12px; border: 1px solid #2980b9; border-radius: 8px; padding: 10px; background: rgba(41,128,185,0.05); max-height: 400px; overflow-y: auto;">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; color: #2980b9;">Update Recovery SMTP Settings</div>
+                <div style="font-size: 0.78rem; color: var(--text-color-secondary); margin-bottom: 8px;">Use your existing username/password to update recovery email and SMTP config.</div>
+                <input type="text" id="smtpUpdateUsernameInput" placeholder="Username" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="password" id="smtpUpdatePasswordInput" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="email" id="smtpUpdateRecoveryEmailInput" placeholder="Recovery Email" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="text" id="smtpUpdateHostInput" placeholder="SMTP Host (e.g. smtp.gmail.com)" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="number" id="smtpUpdatePortInput" placeholder="SMTP Port (e.g. 587)" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <select id="smtpUpdateSecurityInput" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                    <option value="starttls" selected>STARTTLS</option>
+                    <option value="tls">TLS</option>
+                    <option value="ssl">SSL</option>
+                </select>
+                <input type="text" id="smtpUpdateUsernameSmtpInput" placeholder="SMTP Username" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="password" id="smtpUpdatePasswordSmtpInput" placeholder="SMTP Password / App Password" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="email" id="smtpUpdateFromInput" placeholder="From Email (optional)" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <button id="testSmtpSettingsBtn" class="btn" style="width:100%; padding:10px; margin-bottom:8px; background: linear-gradient(135deg, #16a085 0%, #117864 100%);">Send Test Email</button>
+                <button id="saveSmtpSettingsBtn" class="btn save-btn" style="width:100%; padding:10px; margin-bottom:8px;">Save SMTP Settings</button>
+                <button id="cancelSmtpSettingsBtn" class="btn" style="width:100%; padding:10px; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Cancel</button>
+                <div id="smtpSettingsStatusMsg" style="font-size: 0.8rem; margin-top: 8px; color: var(--text-color-secondary);"></div>
+            </div>
+            <div id="deleteAccountPanel" style="display:none; text-align:left; margin-top: 12px; border: 1px solid #c0392b; border-radius: 8px; padding: 10px; background: rgba(192,57,43,0.06);">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; color: #c0392b;">Delete Account (Permanent)</div>
+                <div style="font-size: 0.78rem; color: var(--text-color-secondary); margin-bottom: 8px;">This permanently deletes the account and encrypted state on this device.</div>
+                <input type="text" id="deleteAccountUsernameInput" placeholder="Username" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="password" id="deleteAccountPasswordInput" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="text" id="deleteAccountConfirmUsernameInput" placeholder="Type username again" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <input type="text" id="deleteAccountTypedWordInput" placeholder="Type DELETE ACCOUNT" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px;">
+                <button id="confirmDeleteAccountBtn" class="btn" style="width: 100%; padding: 10px; margin-bottom: 8px; background: linear-gradient(135deg, #c0392b 0%, #922b21 100%);">Permanently Delete</button>
+                <button id="cancelDeleteAccountBtn" class="btn" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">Cancel</button>
+                <div id="deleteAccountStatusMsg" style="font-size: 0.8rem; margin-top: 8px; color: var(--text-color-secondary);"></div>
+            </div>
+            <p id="loginErrorMsg" style="color: #e74c3c; margin-top: 15px; font-size: 0.9rem; display: none;">Incorrect username or password.</p>
+        </div>
+        </div>
+
+
+    

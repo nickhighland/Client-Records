@@ -84,6 +84,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /data-soap-section-key="sessionFocus"/);
         assert.match(html, /data-soap-section-key="treatmentPlan"/);
         assert.match(html, /const formatDiagnosisWithSubstantiationText =/);
+        assert.match(html, /return substantiation \? `\$\{name\}\\n\$\{substantiation\}` : name;/);
         assert.match(html, /const formatDiagnosisWithoutSubstantiationText =/);
         assert.match(html, /const formatTreatmentPlanCopyText =/);
         assert.match(html, /data-soap-plan-copy-type="goal"/);

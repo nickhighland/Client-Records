@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'Based on v3.0.55. SOAP generation converts shorthand in Session Information and audit-proofing fields into concise, complete prose in the appropriate section while preserving documented facts and chart conventions. Existing notes remain unchanged unless regenerated.'
+          releaseBody: 'Based on v3.0.56. Diagnosis with substantiation now keeps each diagnosis directly above its own substantiation in the copyable SOAP block, with blank lines between entries. Existing notes remain unchanged.'
           releaseDraft: true
           prerelease: false
 

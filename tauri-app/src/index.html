@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v3.0.56</title>
+    <title>SmartEMR v3.0.57</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -10289,7 +10289,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     const name = String(diagnosis?.name || '').trim();
                     const substantiation = String(diagnosis?.substantiation || '').trim();
                     if (!name) return '';
-                    return substantiation ? `${name}: ${substantiation}` : name;
+                    return substantiation ? `${name}\n${substantiation}` : name;
                 })
                 .filter(Boolean)
                 .join('\n\n');

@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'SmartEMR v4.0.0 adds a unified Client Information editor, migrates legacy names, contact details, and pronouns into the new profile fields, combines Archived and Recently Deleted client records in one window, and adds clinician details, editable informed consent, EHR configuration, encrypted database export, and manual secondary-backup refresh. SOAP appointment fields include date, client, clinician, service/CPT, modality, time, duration, location, participants, and diagnosis status. Configurable SOAP additions include AI-generated Interventions and Purpose based on Objective and treatment goals, Treatment Goal Progress for each goal and objective with manual evidence, and Copy All for the configured SOAP note. Existing encrypted database tables and stored notes are preserved; the client-profile migration is additive and versioned.'
+          releaseBody: 'SmartEMR v4.0.1 fixes a startup readiness race that could reject password or saved Touch ID login before the app finished initializing. The app now waits for its data-loading hooks and reports startup failures clearly. This patch preserves the existing v4.0.0 encrypted database and stored notes.'
           releaseDraft: true
           prerelease: false
 

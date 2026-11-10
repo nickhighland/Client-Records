@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v4.0.0</title>
+    <title>SmartEMR v4.0.1</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -4819,6 +4819,27 @@
         const BIOMETRIC_LOGIN_USERNAME_KEY = 'biometricLoginUsername';
         let biometricLaunchAttempted = false;
         let biometricLoginInProgress = false;
+        let appStartupState = 'pending';
+        let appStartupError = null;
+        window.addEventListener('error', (event) => {
+            if (appStartupState === 'initializing' && !window.__appAuthHooks && !appStartupError) {
+                appStartupError = event.error || new Error(event.message || 'Unknown startup error.');
+            }
+        }, true);
+        const waitForAppAuthHooks = async (timeoutMs = 15000) => {
+            const deadline = Date.now() + timeoutMs;
+            while (!window.__appAuthHooks) {
+                if (appStartupError) {
+                    console.error('SmartEMR failed to initialize before login completed:', appStartupError);
+                    throw new Error(`SmartEMR could not finish starting: ${appStartupError.message || 'startup error'}. Close and reopen the app.`);
+                }
+                if (Date.now() >= deadline) {
+                    throw new Error('SmartEMR is still starting. Wait a moment and try again.');
+                }
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            return window.__appAuthHooks;
+        };
         const isDesktopRuntime = () => typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
         let biometricAvailability = {
             supported: isDesktopRuntime(),
@@ -4888,6 +4909,7 @@
         }, true);
 
         document.addEventListener('DOMContentLoaded', () => {
+            appStartupState = 'initializing';
             // DOM Elements
             const clientListEl = document.getElementById('clientList');
             const todaySessionsListEl = document.getElementById('todaySessionsList');
@@ -17759,6 +17781,7 @@ This error cannot be fixed within this application's code; it requires a configu
                 normalizeClientData,
                 fullRender
             };
+            appStartupState = 'ready';
 
         });
 
@@ -17915,10 +17938,7 @@ This error cannot be fixed within this application's code; it requires a configu
         }
 
         async function finalizeSuccessfulUnlock() {
-            const hooks = window.__appAuthHooks;
-            if (!hooks) {
-                throw new Error('Application is not initialized yet.');
-            }
+            const hooks = await waitForAppAuthHooks();
 
             try {
                 await hooks.loadDataFromLocalStorage();

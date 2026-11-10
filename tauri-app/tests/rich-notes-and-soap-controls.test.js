@@ -84,7 +84,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.doesNotMatch(html, /assuming interventions when needed/);
     });
 
-    test(`${path} supports a simple editable diagnosis list in Treatment Goals`, async () => {
+    test(`${path} supports diagnosis substantiation and keeps Treatment Plan free of helper instructions`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
         assert.match(html, /id="addDiagnosisBtn"/);
@@ -98,7 +98,9 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /Substantiation/);
         assert.match(html, /substantiation/);
         assert.match(html, /\.client-diagnosis-row \{[\s\S]*?padding: 9px;[\s\S]*?border: 1px solid var\(--panel-border\)/);
-        assert.match(html, /Add one diagnosis per row/);
+        assert.match(html, /Appointments &amp; Treatment Plan/);
+        assert.match(html, /Client Modality Lens \(SOAP Default\)/);
+        assert.doesNotMatch(html, /Add one diagnosis per row/);
         assert.doesNotMatch(html, /const generateDiagnosticSupportStatements =/);
         assert.doesNotMatch(html, /Consider every diagnosis when developing the presenting problem/);
     });

@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'Based on v3.0.56. Diagnosis with substantiation now keeps each diagnosis directly above its own substantiation in the copyable SOAP block, with blank lines between entries. Existing notes remain unchanged.'
+          releaseBody: 'SmartEMR v4.0.0 adds a unified Client Information editor, migrates legacy names, contact details, and pronouns into the new profile fields, combines Archived and Recently Deleted client records in one window, and adds clinician details, editable informed consent, EHR configuration, encrypted database export, and manual secondary-backup refresh. SOAP appointment fields include date, client, clinician, service/CPT, modality, time, duration, location, participants, and diagnosis status. Configurable SOAP additions include AI-generated Interventions and Purpose based on Objective and treatment goals, Treatment Goal Progress for each goal and objective with manual evidence, and Copy All for the configured SOAP note. Existing encrypted database tables and stored notes are preserved; the client-profile migration is additive and versioned.'
           releaseDraft: true
           prerelease: false
 

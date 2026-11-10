@@ -6,11 +6,12 @@ for (const path of ['index.html', 'src/index.html']) {
     test(`${path} supports configurable SOAP platforms and section order`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-        assert.match(html, /id="openSoapConfigurationBtn"/);
+        assert.match(html, /id="ehrConfigurationBtn"/);
         assert.match(html, /id="soapConfigurationModal"/);
         assert.match(html, /id="soapPlatformSectionsList"/);
         assert.match(html, /id="clientSoapPlatformSelect"/);
-        assert.match(html, /id="preferredPronounsSelect"/);
+        assert.match(html, /id="clientInfoPronounsSelect"/);
+        assert.match(html, /id="clientInformationModal"/);
         assert.match(html, /id="clientSessionTypeSelect"/);
         assert.match(html, /option value="family">Family/);
         assert.match(html, /id="sessionMembersWrap"/);
@@ -25,6 +26,11 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /key: 'sessionFocus', label: 'Session Focus'/);
         assert.match(html, /seen\.has\('presentingProblem'\) && !seen\.has\('sessionFocus'\)/);
         assert.match(html, /key: 'treatmentPlan', label: 'Treatment Plan'/);
+        assert.match(html, /key: 'interventionsAndPurpose', label: 'Interventions and Purpose'/);
+        assert.match(html, /key: 'treatmentGoalProgress', label: 'Treatment Goal Progress'/);
+        assert.match(html, /'interventionsAndPurpose',[\s\S]*'treatmentGoalProgress'/);
+        assert.match(html, /const SOAP_PLATFORM_NEW_OPTION_KEYS = new Set/);
+        assert.doesNotMatch(html, /id="openSoapConfigurationBtn"/);
         assert.match(html, /const getDefaultSoapPlatforms =/);
         assert.match(html, /const normalizeSoapPlatforms =/);
         assert.match(html, /const getClientSoapPlatform =/);
@@ -54,7 +60,7 @@ for (const path of ['index.html', 'src/index.html']) {
 
         assert.match(html, /const generateSoapNote = async \(\) =>/);
         assert.match(html, /const client = findClient\(selectedClientId\);/);
-        assert.match(html, /const missingSoapRequirements = getMissingSoapClientRequirements\(client\);/);
+        assert.match(html, /const missingSoapRequirements = getMissingSoapClientRequirements\(client, appointment\);/);
         assert.match(html, /getSoapGenerationRequirementMessage\(missingSoapRequirements\)/);
         assert.match(html, /Before generating a SOAP note, assign this client/);
         assert.match(html, /sessionMembers: 'all session members, their roles for family sessions, and their pronouns'/);
@@ -68,11 +74,13 @@ for (const path of ['index.html', 'src/index.html']) {
     test(`${path} generates only configured post-Objective fields`, async () => {
         const html = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-        assert.match(html, /const requestedSupportFields = \['sessionFocus', 'diagnosticSupport', 'medicalNecessity'\]/);
+        assert.match(html, /const requestedSupportFields = \['sessionFocus', 'diagnosticSupport', 'medicalNecessity', 'interventionsAndPurpose'\]/);
         assert.match(html, /fetchSupportFieldsFromAI\(client, appointment, requestedSupportFields\)/);
         assert.match(html, /const interventionsEnabled = isSoapPlatformSectionEnabled\(client, 'interventions'\)/);
         assert.match(html, /const fetchSupportFieldsFromAI = async \(client, appointment, requestedFields/);
         assert.match(html, /Do not write or return fields that were not requested/);
+        assert.match(html, /Interventions and Purpose, use the completed Objective section and the exact interventions identified from it/);
+        assert.match(html, /Interventions identified from the organized Objective section \(use these names only\)/);
     });
 
     test(`${path} renders the selectable diagnosis and treatment-plan output sections`, async () => {

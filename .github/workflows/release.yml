@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'SmartEMR v4.0.1 fixes a startup readiness race that could reject password or saved Touch ID login before the app finished initializing. The app now waits for its data-loading hooks and reports startup failures clearly. This patch preserves the existing v4.0.0 encrypted database and stored notes.'
+          releaseBody: 'SmartEMR v4.0.2 fixes startup initialization when restoring collapsible-section state referenced UI controls removed from the client column. Password and saved Touch ID login wait for initialization before loading data. Existing encrypted database contents and stored notes are preserved.'
           releaseDraft: true
           prerelease: false
 

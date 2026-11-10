@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v4.0.1</title>
+    <title>SmartEMR v4.0.2</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -17500,12 +17500,7 @@ This error cannot be fixed within this application's code; it requires a configu
                     }
                 }
 
-                [
-                    deletedClientsToggleBtn,
-                    archivedClientsToggleBtn,
-                    deletedAppointmentsToggleBtn,
-                    goalsListToggleBtn
-                ].forEach(button => {
+                document.querySelectorAll('.section-collapser-btn').forEach(button => {
                     if (!button) return;
                     const sectionKey = button.dataset.sectionKey;
                     if (!sectionKey) return;

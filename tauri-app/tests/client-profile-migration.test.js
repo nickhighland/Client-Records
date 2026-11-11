@@ -56,6 +56,35 @@ test('copies legacy DOB, address, and therapy locations without deleting their s
     assert.equal(client.otherLocations, legacyLocations);
 });
 
+test('moves a previously saved Instructions location into Client Information without deleting the source', () => {
+    const client = {
+        clientInformationVersion: 1,
+        name: 'Jane Doe',
+        physicalLocation: '12 Main Street, Albany, NY',
+        otherTherapyLocations: []
+    };
+    assert.equal(migrateClientProfileFields(client), true);
+    assert.deepEqual(client.otherTherapyLocations, [{
+        id: 'legacy-physical-location',
+        label: 'Previously Saved Location',
+        address: '12 Main Street, Albany, NY'
+    }]);
+    assert.equal(client.physicalLocation, '12 Main Street, Albany, NY');
+    assert.equal(migrateClientProfileFields(client), false);
+});
+
+test('does not duplicate a previously saved location already in Client Information', () => {
+    const client = {
+        clientInformationVersion: 1,
+        name: 'Jane Doe',
+        physicalLocation: '12 Main Street, Albany, NY',
+        otherTherapyLocations: [{ id: 'work', label: 'Work', address: '12 Main Street, Albany, NY' }]
+    };
+    migrateClientProfileFields(client);
+    assert.equal(client.otherTherapyLocations.length, 1);
+    assert.equal(client.physicalLocation, '12 Main Street, Albany, NY');
+});
+
 test('migration is idempotent and handles a mononym', () => {
     const mononym = { name: 'Cher' };
     assert.equal(migrateClientProfileFields(mononym), true);

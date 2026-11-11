@@ -36,13 +36,34 @@ test('psychotherapy time group respects configured fields and omits empty values
     assert.deepEqual(blocks, ['Psychotherapy Time\nStart Time: 9:30 AM']);
 });
 
+test('Copy All places selected session fields into one Session Information block', () => {
+    const blocks = buildSoapCopySectionBlocks(
+        ['s', 'sessionInformation', 'auditCheck', 'p'],
+        {
+            s: 'Ct reported feeling stable.',
+            sessionInformation: 'Session Information:\nClient: Jane Doe\nStart Time: 10:00 AM\nEnd Time: 10:53 AM\nActual Time of Psychotherapy: 53 minutes',
+            auditCheck: 'Audit passed.',
+            p: 'Continue treatment.'
+        },
+        key => ({ s: 'Subjective', p: 'Plan' })[key] || key
+    );
+
+    assert.deepEqual(blocks, [
+        'Subjective\nCt reported feeling stable.',
+        'Session Information:\nClient: Jane Doe\nStart Time: 10:00 AM\nEnd Time: 10:53 AM\nActual Time of Psychotherapy: 53 minutes',
+        'Plan\nContinue treatment.'
+    ]);
+});
+
 for (const path of ['../index.html', '../src/index.html']) {
-    test(`${path} routes Copy All through Audit Check exclusion and psychotherapy time grouping`, async () => {
+    test(`${path} routes Copy All through Audit Check exclusion and Session Information grouping`, async () => {
         const html = await readFile(new URL(path, import.meta.url), 'utf8');
 
         assert.match(html, /import \{ buildSoapCopySectionBlocks \} from '\.\/src\/soap-copy-format\.js'/);
         assert.match(html, /buildSoapCopySectionBlocks\([\s\S]*?getSoapPlatformSectionKeysForAppointment\(client, appointment\)/);
+        assert.match(html, /sessionInformation: formatSoapSessionInformation\(/);
         assert.doesNotMatch(html, /auditCheck:\s*auditText/);
         assert.match(html, /data-soap-section-key="auditCheck"/);
+        assert.match(html, /data-soap-section-key="sessionInformation"/);
     });
 }

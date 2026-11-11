@@ -15,6 +15,12 @@ export function buildSoapCopySectionBlocks(sectionKeys, values, getSectionLabel 
     for (const key of orderedKeys) {
         if (key === 'auditCheck') continue;
 
+        if (key === 'sessionInformation') {
+            const sessionInformation = String(values?.sessionInformation ?? '').trim();
+            if (sessionInformation) blocks.push(sessionInformation);
+            continue;
+        }
+
         if (SOAP_COPY_TIME_FIELD_KEYS.has(key)) {
             if (timeBlockAdded) continue;
             timeBlockAdded = true;

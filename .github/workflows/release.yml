@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'SmartEMR v4.0.3 updates SOAP Copy All to exclude Audit Check and groups Start Time, End Time, and Actual Time of Psychotherapy together in that order. Existing SOAP Audit Check remains available in the app.'
+          releaseBody: 'SmartEMR v4.0.4 adds a grouped Session Information section with per-note inclusion checkboxes and client location selection from saved locations, plus a travel override. New appointments default to CPT 90837; saved values are preserved. SOAP Copy All excludes Audit Check.'
           releaseDraft: true
           prerelease: false
 

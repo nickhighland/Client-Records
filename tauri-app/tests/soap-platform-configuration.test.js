@@ -20,6 +20,9 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const getSessionMembersContext =/);
         assert.match(html, /session-member-role/);
         assert.match(html, /const SOAP_PLATFORM_SECTION_DEFS =/);
+        assert.match(html, /key: 'sessionInformation', label: 'Session Information'/);
+        assert.match(html, /normalizeSoapPlatformSessionInformationDefaults/);
+        assert.match(html, /SOAP_SESSION_INFORMATION_LEGACY_SECTION_TO_FIELD/);
         assert.match(html, /key: 'diagnosisWithSubstantiation', label: 'Diagnosis with substantiation'/);
         assert.match(html, /key: 'diagnosisWithoutSubstantiation', label: 'Diagnosis without substantiation'/);
         assert.match(html, /key: 'presentingProblem', label: 'Presenting Problem'/);
@@ -62,7 +65,8 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const client = findClient\(selectedClientId\);/);
         assert.match(html, /const missingSoapRequirements = getMissingSoapClientRequirements\(client, appointment\);/);
         assert.match(html, /getSoapGenerationRequirementMessage\(missingSoapRequirements\)/);
-        assert.match(html, /Before generating a SOAP note, assign this client/);
+        assert.match(html, /Before generating a SOAP note, \$\{requirements \|\| 'complete the required client information'\}/);
+        assert.match(html, /select the client's physical location in Session Information/);
         assert.match(html, /sessionMembers: 'all session members, their roles for family sessions, and their pronouns'/);
         assert.match(html, /client\.sessionTypeAssigned = clientSessionTypeSelect\.value === 'individual'[\s\S]*clientSessionTypeSelect\.value === 'family'/);
         assert.match(html, /client\.sessionMembers = normalizeSessionMembers\(sessionMembersDraft\)/);
@@ -99,5 +103,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /data-soap-plan-copy-type="objective"/);
         assert.match(html, /soap-treatment-plan-copy-btn/);
         assert.match(html, /renderedSoapSections\.forEach\(sectionElement =>/);
+        assert.match(html, /data-soap-section-key="sessionInformation"/);
+        assert.match(html, /soap-session-info-checkbox/);
     });
 }

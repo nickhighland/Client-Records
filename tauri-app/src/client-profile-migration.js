@@ -92,6 +92,27 @@ export function migrateClientProfileFields(client) {
         changed = true;
     }
 
+    if (!(Number(client.sessionLocationMigrationVersion) >= 1)) {
+        const previousTelehealthLocation = typeof client.physicalLocation === 'string'
+            ? client.physicalLocation.trim()
+            : '';
+        if (previousTelehealthLocation) {
+            if (!Array.isArray(client.otherTherapyLocations)) client.otherTherapyLocations = [];
+            const alreadyAvailable = client.otherTherapyLocations.some(location =>
+                String(location?.address || '').trim().toLowerCase() === previousTelehealthLocation.toLowerCase()
+            ) || String(client.homeAddress || '').trim().toLowerCase() === previousTelehealthLocation.toLowerCase();
+            if (!alreadyAvailable) {
+                client.otherTherapyLocations.push({
+                    id: 'legacy-physical-location',
+                    label: 'Previously Saved Location',
+                    address: previousTelehealthLocation
+                });
+            }
+        }
+        client.sessionLocationMigrationVersion = 1;
+        changed = true;
+    }
+
     if (legacyImportNeeded) {
         client.clientInformationVersion = 1;
         changed = true;

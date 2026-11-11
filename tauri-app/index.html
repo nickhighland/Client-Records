@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v4.0.6</title>
+    <title>SmartEMR v4.0.7</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2081,7 +2081,11 @@
             gap: 12px;
         }
         #soapContent > .soap-section,
-        #soapContent > .soap-support-block { margin: 0; }
+        #soapContent > .soap-support-block {
+            margin: 0;
+            /* Keep each card at its content height; #soapContent's parent scrolls. */
+            flex: 0 0 auto;
+        }
         .soap-section { margin-bottom: 15px; }
         .soap-header,
         .soap-support-header {

@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'SmartEMR v4.0.7 fixes SOAP cards shrinking below their content in narrow and tall notes, so section bodies and textareas remain visible while the SOAP column scrolls. Interventions and Purpose remains manually editable and saved. All v4.0.6 features and existing note data are preserved.'
+          releaseBody: 'SmartEMR v4.0.8 preserves each existing SOAP note’s section layout when generating or regenerating content. New notes inherit the client’s assigned EHR layout. SOAP card bodies remain visible in narrow columns, and Interventions and Purpose is manually editable and saved. Existing note data is preserved.'
           releaseDraft: true
           prerelease: false
 
@@ -138,4 +138,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
-        run: gh release edit "$RELEASE_TAG" --repo "${{ github.repository }}" --draft=false --latest=false
+        run: gh release edit "$RELEASE_TAG" --repo "${{ github.repository }}" --draft=false --latest

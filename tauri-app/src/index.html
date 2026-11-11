@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v4.0.7</title>
+    <title>SmartEMR v4.0.8</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -14212,25 +14212,31 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 return enabledKeys;
             };
 
+            const hasStoredSoapContent = (appointment) => {
+                const soap = appointment?.soap;
+                if (!soap || typeof soap !== 'object') return false;
+                const storedContentKeys = [
+                    's', 'o', 'a', 'p', 'interventions', 'interventionsAndPurpose',
+                    'treatmentGoalProgress', 'presentingProblem', 'sessionFocus',
+                    'clientPresentingProblem', 'diagnosticSupport', 'medicalNecessity',
+                    'diagnosisWithSubstantiation', 'diagnosisWithoutSubstantiation', 'diagnosisStatus',
+                    's_suggestion', 'o_suggestion', 'a_suggestion', 'p_suggestion'
+                ];
+                const hasText = storedContentKeys.some(key => {
+                    const value = soap[key];
+                    return Array.isArray(value)
+                        ? value.some(item => String(item || '').trim())
+                        : String(value || '').trim().length > 0;
+                });
+                return hasText
+                    || Boolean(formatMentalStatusExam(soap.mentalStatusExam).trim())
+                    || Boolean(appointment.auditCheck);
+            };
+
             const getSoapPlatformSectionKeysForAppointment = (client, appointment) => {
                 const snapshotKeys = getSoapPlatformSnapshotSectionKeys(appointment?.soapPlatformSnapshot);
                 if (snapshotKeys) return snapshotKeys;
-                const hasStoredSoapContent = appointment?.soap && [
-                    appointment.soap.s,
-                    appointment.soap.o,
-                    appointment.soap.a,
-                    appointment.soap.p,
-                    appointment.soap.interventions,
-                    appointment.soap.interventionsAndPurpose,
-                    appointment.soap.treatmentGoalProgress,
-                    appointment.soap.presentingProblem,
-                    appointment.soap.sessionFocus,
-                    appointment.soap.clientPresentingProblem,
-                    appointment.soap.diagnosticSupport,
-                    appointment.soap.medicalNecessity,
-                    formatMentalStatusExam(appointment.soap.mentalStatusExam)
-                ].some(value => String(value || '').trim());
-                if (!hasStoredSoapContent && getClientSoapPlatform(client)) {
+                if (!hasStoredSoapContent(appointment) && getClientSoapPlatform(client)) {
                     return getSoapPlatformSectionKeys(client, false);
                 }
                 // Existing appointments predate platform assignment. Keep their legacy layout intact;
@@ -14241,8 +14247,14 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             };
 
             const captureSoapPlatformSnapshot = (appointment, client) => {
+                // A note's layout belongs to the note. Keep an existing snapshot, and
+                // don't assign today's client platform to a pre-platform/legacy note.
+                // Only a new, still-empty SOAP note inherits the currently assigned platform.
+                if (!appointment || appointment.soapPlatformSnapshot || hasStoredSoapContent(appointment)) return false;
                 const platform = getClientSoapPlatform(client);
-                if (appointment && platform) appointment.soapPlatformSnapshot = createSoapPlatformSnapshot(platform);
+                if (!platform) return false;
+                appointment.soapPlatformSnapshot = createSoapPlatformSnapshot(platform);
+                return true;
             };
 
             const getActiveSoapPlatform = () => getSoapPlatformById(activeSoapPlatformId);

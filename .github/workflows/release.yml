@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'SmartEMR v4.0.4 adds a grouped Session Information section with per-note inclusion checkboxes and client location selection from saved locations, plus a travel override. New appointments default to CPT 90837; saved values are preserved. SOAP Copy All excludes Audit Check.'
+          releaseBody: 'SmartEMR v4.0.5 refines the SOAP workflow with a compact, configurable Session Information card, narrow-column field alignment, consistent spacing and heading typography, and full labels in copied text. Location selection uses saved client locations with a travel override. Existing notes and saved CPT values are preserved.'
           releaseDraft: true
           prerelease: false
 

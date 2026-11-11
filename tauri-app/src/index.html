@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v4.0.4</title>
+    <title>SmartEMR v4.0.5</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2075,11 +2075,25 @@
             }
         }
 
+        #soapContent {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #soapContent > .soap-section,
+        #soapContent > .soap-support-block { margin: 0; }
         .soap-section { margin-bottom: 15px; }
+        .soap-header,
+        .soap-support-header {
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1.25;
+        }
         .soap-header {
             background: linear-gradient(135deg, #5D6D7E 0%, #34495E 100%);
             color: var(--text-color-inverted); padding: 8px 12px;
-            border-radius: 6px 6px 0 0; font-weight: 600;
+            border-radius: 6px 6px 0 0;
             display: flex; justify-content: space-between; align-items: center;
         }
         .copy-btn {
@@ -2106,6 +2120,12 @@
             stroke-linecap: round;
             stroke-linejoin: round;
         }
+        .soap-session-collapse-btn svg {
+            transform: rotate(180deg);
+            transition: transform 0.15s ease;
+        }
+        .soap-session-collapse-btn.is-collapsed svg { transform: rotate(0deg); }
+        .soap-session-collapse-btn:disabled { opacity: 0.45; cursor: not-allowed; }
         .soap-action-group {
             display: inline-flex;
             align-items: center;
@@ -2160,8 +2180,6 @@
             background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
             color: #ffffff;
             padding: 6px 10px;
-            font-size: 0.85rem;
-            font-weight: 700;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -2180,59 +2198,115 @@
         .soap-session-time-fields {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 10px;
-            background: var(--panel-bg);
+            gap: 5px;
+            min-width: 0;
         }
         .soap-session-time-part {
-            width: 58px;
+            width: 54px;
             text-align: center;
         }
         .soap-session-period {
-            width: 76px;
+            width: 68px;
         }
         .soap-session-none-toggle {
             display: inline-flex;
             align-items: center;
-            gap: 7px;
-            padding: 8px 10px;
+            gap: 5px;
+            padding: 0;
             color: var(--text-color-primary);
-            font-size: 0.9rem;
+            font-size: 0.82rem;
+            white-space: nowrap;
         }
         .soap-session-information-items {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 8px;
-            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            padding: 4px 12px 8px;
             background: var(--panel-bg);
         }
         .soap-session-info-item {
             min-width: 0;
-            border: 1px solid var(--panel-border);
-            border-radius: 6px;
-            padding: 8px;
-            background: var(--input-bg);
+            display: grid;
+            grid-template-columns: minmax(170px, 28%) minmax(0, 1fr);
+            align-items: center;
+            gap: 12px;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--panel-border);
         }
-        .soap-session-info-item-heading {
+        .soap-session-info-item--inline {
+            grid-template-columns: minmax(140px, 28%) minmax(0, 1fr);
+            gap: 8px;
+        }
+        .soap-session-info-item--inline > .setting-input,
+        .soap-session-info-item--inline > select.setting-input {
+            width: 100%;
+            justify-self: end;
+        }
+        .soap-session-info-item:last-child {
+            border-bottom: none;
+        }
+        .soap-session-info-label {
+            color: var(--text-color-primary);
+            font-size: 0.92rem;
+            font-weight: 650;
+        }
+        .soap-session-participants-controls {
             display: flex;
             align-items: center;
-            justify-content: space-between;
             gap: 8px;
-            min-height: 28px;
-            margin-bottom: 6px;
+            min-width: 0;
         }
-        .soap-session-info-include {
-            display: inline-flex;
+        .soap-session-participants-controls .setting-input { flex: 1 1 auto; }
+        .soap-session-time-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            min-width: 0;
+        }
+        .soap-session-time-control {
+            display: grid;
+            gap: 4px;
+            min-width: 0;
+        }
+        .soap-session-time-control > span {
+            color: var(--text-color-secondary);
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        .soap-session-time-control:last-child {
+            grid-column: 1 / -1;
+            grid-template-columns: minmax(0, 1fr) minmax(100px, 190px);
             align-items: center;
-            gap: 7px;
-            color: var(--text-color-primary);
-            font-size: 0.88rem;
-            font-weight: 650;
         }
         .soap-session-physical-location-custom {
             display: grid;
             gap: 6px;
             margin-top: 6px;
+            grid-column: 2;
+        }
+        #soapServiceTypeCptCustom { grid-column: 2; }
+        @media (max-width: 760px) {
+            .soap-session-info-item { grid-template-columns: 1fr; gap: 5px; }
+            .soap-session-info-item--inline {
+                grid-template-columns: minmax(104px, 32%) minmax(0, 1fr);
+                gap: 8px;
+            }
+            .soap-session-information-items { padding-inline: 8px; }
+            .soap-session-time-grid { gap: 5px; }
+            .soap-session-time-part { width: 34px; flex: 1 1 0; min-width: 0; }
+            .soap-session-period { width: 50px; flex: 0 0 50px; }
+            .soap-session-time-control:last-child { grid-template-columns: minmax(0, 1fr) minmax(90px, 150px); }
+            .soap-session-physical-location-custom,
+            #soapServiceTypeCptCustom { grid-column: 2; }
+        }
+        @media (max-width: 420px) {
+            .soap-session-information-items { padding-inline: 7px; }
+            .soap-session-info-label { font-size: 0.86rem; }
+            .soap-session-time-grid { gap: 4px; }
+            .soap-session-time-fields { gap: 2px; }
+            .soap-session-time-part { width: 28px; font-size: 0.82rem; padding-inline: 2px; }
+            .soap-session-period { width: 46px; flex-basis: 46px; font-size: 0.8rem; padding-inline: 2px; }
+            .soap-session-time-control:last-child { grid-template-columns: minmax(0, 1fr) minmax(80px, 125px); }
         }
         .soap-session-copy-value {
             display: none;
@@ -2878,6 +2952,28 @@
             line-height: 1.35;
             margin-top: 2px;
         }
+
+        .soap-config-session-info-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .soap-config-session-info-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 42px;
+            padding: 8px 10px;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            background: var(--input-bg);
+            color: var(--text-color-primary);
+            cursor: pointer;
+        }
+
+        .soap-config-session-info-row.is-disabled { opacity: 0.62; }
 
         .guide-scroll h4 {
             margin: 0.75rem 0 0.4rem;
@@ -4266,6 +4362,11 @@
                     <div style="font-size: 0.82rem; color: var(--text-color-secondary); margin-top: 4px;">Drag the handle to reorder sections. Uncheck a section to leave it out of this platform's note.</div>
                     <div id="soapPlatformSectionsList" class="soap-config-section-list" aria-live="polite"></div>
                 </div>
+                <div class="soap-config-section-card">
+                    <div style="font-size: 1rem; font-weight: 700;">Session Information</div>
+                    <div style="font-size: 0.82rem; color: var(--text-color-secondary); margin-top: 4px;">Choose which appointment details appear together in the SOAP note's Session Information section.</div>
+                    <div id="soapPlatformSessionInformationList" class="soap-config-session-info-list" aria-live="polite"></div>
+                </div>
             </div>
             <div class="instructions-modal-actions">
                 <button id="doneSoapConfigurationBtn" type="button" class="btn save-btn" style="flex-grow: 1;">Done</button>
@@ -4824,6 +4925,7 @@
             resolveServiceTypeCptSelection
         } from './src/service-type-cpt.js';
         import {
+            areSoapSessionInformationValuesComplete,
             DEFAULT_SOAP_SESSION_INFORMATION_INCLUSION,
             SOAP_SESSION_INFORMATION_FIELDS,
             SOAP_SESSION_INFORMATION_LEGACY_SECTION_TO_FIELD,
@@ -5039,6 +5141,7 @@
             const addSoapPlatformBtn = document.getElementById('addSoapPlatformBtn');
             const deleteSoapPlatformBtn = document.getElementById('deleteSoapPlatformBtn');
             const soapPlatformSectionsList = document.getElementById('soapPlatformSectionsList');
+            const soapPlatformSessionInformationList = document.getElementById('soapPlatformSessionInformationList');
             const informedConsentBtn = document.getElementById('informedConsentBtn');
             const soapAuditGuideBtn = document.getElementById('soapAuditGuideBtn');
             const soapInstructionsBtn = document.getElementById('soapInstructionsBtn');
@@ -7656,6 +7759,7 @@
                 copy: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
                 bank: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h2M10 6h10M4 12h2M10 12h10M4 18h2M10 18h10"></path></svg>',
                 refresh: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 11a8.1 8.1 0 0 0-14.7-4.8L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8.1 8.1 0 0 0 14.7 4.8L21 15"></path><path d="M21 20v-5h-5"></path></svg>',
+            chevron: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"></path></svg>',
                 check: '<span class="soap-action-complete" aria-hidden="true">✓</span>'
             };
             const CONTACT_ICON_SVGS = {
@@ -7667,12 +7771,6 @@
             const renderSoapCopyButton = (targetId, label) => {
                 return `<button type="button" class="copy-btn soap-icon-btn" data-target="${targetId}" title="Copy ${label}" aria-label="Copy ${label}">${SOAP_ICON_SVGS.copy}</button>`;
             };
-            const renderSessionInformationIncludeCheckbox = (fieldKey, included) => {
-                const field = SOAP_SESSION_INFORMATION_FIELDS.find(entry => entry.key === fieldKey);
-                if (!field) return '';
-                return `<label class="soap-session-info-include"><input type="checkbox" class="soap-session-info-checkbox" data-session-info-field="${field.key}" ${included[field.key] ? 'checked' : ''}>${field.label}</label>`;
-            };
-
             const setSoapActionButtonContent = (button, label, isComplete, isLoading = false) => {
                 if (!button) return;
                 const isRefreshButton = label === 'Refresh';
@@ -10936,6 +11034,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const psychotherapyMinutes = getPsychotherapyMinutes(soapSessionFields);
                 const sessionInformationValues = getSoapSessionInformationValues(client, appointment);
                 const sessionInformationText = formatSoapSessionInformation(sessionInformationValues, sessionInformationIncluded);
+                const sessionInformationComplete = areSoapSessionInformationValuesComplete(
+                    sessionInformationValues,
+                    sessionInformationIncluded
+                );
+                if (!sessionInformationComplete && soapSessionFields.sessionInformationCollapsed) {
+                    soapSessionFields.sessionInformationCollapsed = false;
+                    markDirty();
+                }
+                const sessionInformationCollapsed = sessionInformationComplete
+                    && soapSessionFields.sessionInformationCollapsed === true;
                 soapContentEl.innerHTML = `
                     <div class="soap-section" data-soap-section-key="s">
                         <div class="soap-header"><span>Subjective</span>${renderSoapCopyButton('soapS', 'Subjective')}</div>
@@ -11074,61 +11182,74 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <input id="soapClinicianCredentials" class="setting-input" type="text" readonly value="${escapeGoalDraftHtml(clinicianCredentialsText)}">
                     </div>
                     <div class="soap-support-block" data-soap-section-key="sessionInformation">
-                        <div class="soap-support-header"><span>Session Information:</span>${renderSoapCopyButton('soapSessionInformationCopy', 'Session Information')}</div>
-                        <div class="soap-session-information-items">
-                            <div class="soap-session-info-item">
-                                <div class="soap-session-info-item-heading">${renderSessionInformationIncludeCheckbox('client', sessionInformationIncluded)}${renderSoapCopyButton('soapSessionClient', 'Client')}</div>
+                        <div class="soap-support-header">
+                            <span>Session Information:</span>
+                            <div class="soap-action-group">
+                                ${renderSoapCopyButton('soapSessionInformationCopy', 'Session Information')}
+                                <button id="toggleSoapSessionInformationBtn" type="button" class="copy-btn soap-icon-btn soap-session-collapse-btn${sessionInformationCollapsed ? ' is-collapsed' : ''}" title="${sessionInformationComplete ? (sessionInformationCollapsed ? 'Expand Session Information' : 'Collapse Session Information') : 'Complete the included fields before collapsing'}" aria-label="${sessionInformationComplete ? (sessionInformationCollapsed ? 'Expand Session Information' : 'Collapse Session Information') : 'Complete the included fields before collapsing'}" aria-expanded="${!sessionInformationCollapsed}"${sessionInformationComplete ? '' : ' disabled'}>${SOAP_ICON_SVGS.chevron}</button>
+                            </div>
+                        </div>
+                        <div id="soapSessionInformationFields" class="soap-session-information-items"${sessionInformationCollapsed ? ' hidden' : ''}>
+                            <div class="soap-session-info-item soap-session-info-item--inline">
+                                <label class="soap-session-info-label" for="soapSessionClient">Client</label>
                                 <input id="soapSessionClient" class="setting-input" type="text" readonly value="${escapeGoalDraftHtml(client.name || '')}">
                             </div>
-                            <div class="soap-session-info-item">
-                                <div class="soap-session-info-item-heading">${renderSessionInformationIncludeCheckbox('additionalParticipants', sessionInformationIncluded)}${renderSoapCopyButton('soapAdditionalParticipantsCopy', 'Additional Participants / Interruptions')}</div>
-                                <label class="soap-session-none-toggle"><input class="soap-session-field" data-session-field="participantsNone" type="checkbox" ${soapSessionFields.participantsNone ? 'checked' : ''}> None</label>
-                                <input class="setting-input soap-session-field soap-participants-input${soapSessionFields.participantsNone ? ' hidden' : ''}" data-session-field="participants" type="text" value="${escapeGoalDraftHtml(soapSessionFields.participants || '')}" placeholder="Names, roles, or interruptions" aria-label="Additional participants or interruptions" ${soapSessionFields.participantsNone ? 'disabled' : ''}>
+                            <div class="soap-session-info-item soap-session-info-item--inline">
+                                <span class="soap-session-info-label">Add'l Ptcpt</span>
+                                <div class="soap-session-participants-controls">
+                                    <label class="soap-session-none-toggle"><input class="soap-session-field" data-session-field="participantsNone" type="checkbox" ${soapSessionFields.participantsNone ? 'checked' : ''}> None</label>
+                                    <input class="setting-input soap-session-field soap-participants-input${soapSessionFields.participantsNone ? ' hidden' : ''}" data-session-field="participants" type="text" value="${escapeGoalDraftHtml(soapSessionFields.participants || '')}" placeholder="Names, roles, or interruptions" aria-label="Additional participants or interruptions" ${soapSessionFields.participantsNone ? 'disabled' : ''}>
+                                </div>
                                 <input id="soapAdditionalParticipantsCopy" class="soap-session-copy-value" type="hidden" value="${escapeGoalDraftHtml(additionalParticipantsText)}">
                             </div>
-                            <div class="soap-session-info-item">
-                                <div class="soap-session-info-item-heading">${renderSessionInformationIncludeCheckbox('dateOfService', sessionInformationIncluded)}${renderSoapCopyButton('soapDateOfService', 'Date of Service')}</div>
+                            <div class="soap-session-info-item soap-session-info-item--inline">
+                                <label class="soap-session-info-label" for="soapDateOfService">Date of Service</label>
                                 <input id="soapDateOfService" class="setting-input" type="text" readonly value="${escapeGoalDraftHtml(serviceDateText)}">
                             </div>
-                            <div class="soap-session-info-item">
-                                <div class="soap-session-info-item-heading">${renderSessionInformationIncludeCheckbox('psychotherapyStartTime', sessionInformationIncluded)}${renderSoapCopyButton('soapPsychotherapyStartTime', 'Start Time')}</div>
-                                <div class="soap-session-time-fields">
-                                    <input class="setting-input soap-session-field soap-session-time-part" data-session-field="startHour" type="text" inputmode="numeric" maxlength="2" placeholder="HH" value="${escapeGoalDraftHtml(soapSessionFields.startHour || '')}" aria-label="Psychotherapy start hour">
-                                    <span>:</span>
-                                    <input class="setting-input soap-session-field soap-session-time-part" data-session-field="startMinute" type="text" inputmode="numeric" maxlength="2" placeholder="MM" value="${escapeGoalDraftHtml(soapSessionFields.startMinute || '')}" aria-label="Psychotherapy start minute">
-                                    <select class="setting-input soap-session-field soap-session-period" data-session-field="startPeriod" aria-label="Psychotherapy start AM or PM">
-                                        <option value="AM" ${soapSessionFields.startPeriod === 'AM' ? 'selected' : ''}>AM</option>
-                                        <option value="PM" ${soapSessionFields.startPeriod === 'PM' ? 'selected' : ''}>PM</option>
-                                    </select>
+                            <div class="soap-session-info-item soap-session-time-summary">
+                                <span class="soap-session-info-label">Psychotherapy Times</span>
+                                <div class="soap-session-time-grid">
+                                    <label class="soap-session-time-control">
+                                        <span>Start Time</span>
+                                        <div class="soap-session-time-fields">
+                                            <input class="setting-input soap-session-field soap-session-time-part" data-session-field="startHour" type="text" inputmode="numeric" maxlength="2" placeholder="HH" value="${escapeGoalDraftHtml(soapSessionFields.startHour || '')}" aria-label="Psychotherapy start hour">
+                                            <span>:</span>
+                                            <input class="setting-input soap-session-field soap-session-time-part" data-session-field="startMinute" type="text" inputmode="numeric" maxlength="2" placeholder="MM" value="${escapeGoalDraftHtml(soapSessionFields.startMinute || '')}" aria-label="Psychotherapy start minute">
+                                            <select class="setting-input soap-session-field soap-session-period" data-session-field="startPeriod" aria-label="Psychotherapy start AM or PM">
+                                                <option value="AM" ${soapSessionFields.startPeriod === 'AM' ? 'selected' : ''}>AM</option>
+                                                <option value="PM" ${soapSessionFields.startPeriod === 'PM' ? 'selected' : ''}>PM</option>
+                                            </select>
+                                        </div>
+                                    </label>
+                                    <label class="soap-session-time-control">
+                                        <span>End Time</span>
+                                        <div class="soap-session-time-fields">
+                                            <input class="setting-input soap-session-field soap-session-time-part" data-session-field="endHour" type="text" inputmode="numeric" maxlength="2" placeholder="HH" value="${escapeGoalDraftHtml(soapSessionFields.endHour || '')}" aria-label="Psychotherapy end hour">
+                                            <span>:</span>
+                                            <input class="setting-input soap-session-field soap-session-time-part" data-session-field="endMinute" type="text" inputmode="numeric" maxlength="2" placeholder="MM" value="${escapeGoalDraftHtml(soapSessionFields.endMinute || '')}" aria-label="Psychotherapy end minute">
+                                            <select class="setting-input soap-session-field soap-session-period" data-session-field="endPeriod" aria-label="Psychotherapy end AM or PM">
+                                                <option value="AM" ${soapSessionFields.endPeriod === 'AM' ? 'selected' : ''}>AM</option>
+                                                <option value="PM" ${soapSessionFields.endPeriod === 'PM' ? 'selected' : ''}>PM</option>
+                                            </select>
+                                        </div>
+                                    </label>
+                                    <label class="soap-session-time-control">
+                                        <span>Actual Time of Psychotherapy</span>
+                                        <input id="soapActualPsychotherapyMinutes" class="setting-input" type="text" readonly value="${psychotherapyMinutes === null ? '' : `${psychotherapyMinutes} minutes`}">
+                                    </label>
                                 </div>
                                 <input id="soapPsychotherapyStartTime" class="soap-session-copy-value" type="hidden" value="${escapeGoalDraftHtml(startTimeText)}">
-                            </div>
-                            <div class="soap-session-info-item">
-                                <div class="soap-session-info-item-heading">${renderSessionInformationIncludeCheckbox('psychotherapyEndTime', sessionInformationIncluded)}${renderSoapCopyButton('soapPsychotherapyEndTime', 'End Time')}</div>
-                                <div class="soap-session-time-fields">
-                                    <input class="setting-input soap-session-field soap-session-time-part" data-session-field="endHour" type="text" inputmode="numeric" maxlength="2" placeholder="HH" value="${escapeGoalDraftHtml(soapSessionFields.endHour || '')}" aria-label="Psychotherapy end hour">
-                                    <span>:</span>
-                                    <input class="setting-input soap-session-field soap-session-time-part" data-session-field="endMinute" type="text" inputmode="numeric" maxlength="2" placeholder="MM" value="${escapeGoalDraftHtml(soapSessionFields.endMinute || '')}" aria-label="Psychotherapy end minute">
-                                    <select class="setting-input soap-session-field soap-session-period" data-session-field="endPeriod" aria-label="Psychotherapy end AM or PM">
-                                        <option value="AM" ${soapSessionFields.endPeriod === 'AM' ? 'selected' : ''}>AM</option>
-                                        <option value="PM" ${soapSessionFields.endPeriod === 'PM' ? 'selected' : ''}>PM</option>
-                                    </select>
-                                </div>
                                 <input id="soapPsychotherapyEndTime" class="soap-session-copy-value" type="hidden" value="${escapeGoalDraftHtml(endTimeText)}">
                             </div>
-                            <div class="soap-session-info-item">
-                                <div class="soap-session-info-item-heading">${renderSessionInformationIncludeCheckbox('actualPsychotherapyMinutes', sessionInformationIncluded)}${renderSoapCopyButton('soapActualPsychotherapyMinutes', 'Actual Time of Psychotherapy')}</div>
-                                <input id="soapActualPsychotherapyMinutes" class="setting-input" type="text" readonly value="${psychotherapyMinutes === null ? '' : `${psychotherapyMinutes} minutes`}">
-                            </div>
-                            <div class="soap-session-info-item">
-                                <div class="soap-session-info-item-heading">${renderSessionInformationIncludeCheckbox('modality', sessionInformationIncluded)}${renderSoapCopyButton('soapSessionModality', 'Modality')}</div>
+                            <div class="soap-session-info-item soap-session-info-item--inline">
+                                <label class="soap-session-info-label" for="soapSessionModality">Modality</label>
                                 <select id="soapSessionModality" class="setting-input soap-session-field" data-session-field="modality" aria-label="Modality">
                                     <option value="telehealth" ${soapSessionFields.modality === 'telehealth' ? 'selected' : ''}>Telehealth</option>
                                     <option value="in-person" ${soapSessionFields.modality === 'in-person' ? 'selected' : ''}>In-person</option>
                                 </select>
                             </div>
-                            <div class="soap-session-info-item">
-                                <div class="soap-session-info-item-heading">${renderSessionInformationIncludeCheckbox('clientPhysicalLocation', sessionInformationIncluded)}${renderSoapCopyButton('soapClientPhysicalLocation', "Client's Physical Location")}</div>
+                            <div class="soap-session-info-item soap-session-info-item--inline">
+                                <label class="soap-session-info-label" for="soapPhysicalLocationId">Ct's Location:</label>
                                 <select id="soapPhysicalLocationId" class="setting-input soap-session-field" data-session-field="clientPhysicalLocationId" aria-label="Client physical location">
                                     <option value="" ${clientPhysicalLocation.id ? '' : 'selected'}>Select a saved location</option>
                                     ${clientPhysicalLocations.map(location => `<option value="${escapeGoalDraftHtml(location.id)}" ${clientPhysicalLocation.id === location.id ? 'selected' : ''}>${escapeGoalDraftHtml(`${location.label}: ${location.address}`)}</option>`).join('')}
@@ -11140,8 +11261,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 </div>
                                 <input id="soapClientPhysicalLocation" class="soap-session-copy-value" type="hidden" value="${escapeGoalDraftHtml(clientPhysicalLocation.text)}">
                             </div>
-                            <div class="soap-session-info-item">
-                                <div class="soap-session-info-item-heading">${renderSessionInformationIncludeCheckbox('serviceTypeCpt', sessionInformationIncluded)}${renderSoapCopyButton('soapServiceTypeCpt', 'Service Type / CPT Code')}</div>
+                            <div class="soap-session-info-item soap-session-info-item--inline">
+                                <label class="soap-session-info-label" for="soapServiceTypeCptCode">CPT</label>
                                 <select id="soapServiceTypeCptCode" class="setting-input soap-session-field" data-session-field="serviceTypeCptCode" aria-label="Service Type / CPT Code">
                                     <option value="" ${serviceTypeCptSelection.selection ? '' : 'selected'}>Select a service / CPT code</option>
                                     ${SERVICE_TYPE_CPT_OPTIONS.map(option => `<option value="${escapeGoalDraftHtml(option.value)}" ${serviceTypeCptSelection.selection === option.value ? 'selected' : ''}>${escapeGoalDraftHtml(option.label)}</option>`).join('')}
@@ -12941,6 +13062,30 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (endPeriodSelect) endPeriodSelect.value = fields.endPeriod;
             };
 
+            const updateSoapSessionInformationCollapseUi = (client, appointment) => {
+                if (!client || !appointment) return false;
+                const fields = getSoapSessionFields(appointment);
+                const included = getSoapSessionInformationInclusion(appointment, client);
+                const values = getSoapSessionInformationValues(client, appointment);
+                const complete = areSoapSessionInformationValuesComplete(values, included);
+                if (!complete && fields.sessionInformationCollapsed) fields.sessionInformationCollapsed = false;
+                const collapsed = complete && fields.sessionInformationCollapsed === true;
+                const button = document.getElementById('toggleSoapSessionInformationBtn');
+                const content = document.getElementById('soapSessionInformationFields');
+                const label = complete
+                    ? (collapsed ? 'Expand Session Information' : 'Collapse Session Information')
+                    : 'Complete the included fields before collapsing';
+                if (button) {
+                    button.disabled = !complete;
+                    button.title = label;
+                    button.setAttribute('aria-label', label);
+                    button.setAttribute('aria-expanded', String(!collapsed));
+                    button.classList.toggle('is-collapsed', collapsed);
+                }
+                if (content) content.hidden = collapsed;
+                return complete;
+            };
+
             const saveSoapSessionField = (input, eventType = 'input') => {
                 const client = findClient(selectedClientId);
                 const appointment = findAppointment(client, selectedAppointmentId);
@@ -13016,6 +13161,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     if (participantsCopy) participantsCopy.value = fields.participantsNone ? 'None' : String(fields.participants || '').trim();
                 }
                 syncSoapSessionCopyValues(fields, client, appointment);
+                updateSoapSessionInformationCollapseUi(client, appointment);
                 markDirty();
 
                 if (fieldKey.startsWith('clientPhysicalLocation')) updateGenerateNoteButtonState();
@@ -13222,19 +13368,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
             });
             soapContentEl.addEventListener('change', (e) => {
-                if (e.target.matches('.soap-session-info-checkbox')) {
-                    const client = findClient(selectedClientId);
-                    const appointment = findAppointment(client, selectedAppointmentId);
-                    const fieldKey = e.target.dataset.sessionInfoField;
-                    const field = SOAP_SESSION_INFORMATION_FIELDS.find(entry => entry.key === fieldKey);
-                    if (!client || !appointment || !field) return;
-                    const inclusion = getSoapSessionInformationInclusion(appointment, client);
-                    inclusion[fieldKey] = e.target.checked;
-                    getSoapSessionFields(appointment).sessionInformationIncluded = inclusion;
-                    syncSoapSessionCopyValues(getSoapSessionFields(appointment), client, appointment);
-                    markDirty();
-                    return;
-                }
                 if (e.target.matches('.soap-session-field')) {
                     saveSoapSessionField(e.target, 'change');
                     return;
@@ -13258,6 +13391,22 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             });
             soapContentEl.addEventListener('click', (e) => {
                  const clickedButton = e.target.closest?.('button');
+                 if (clickedButton?.id === 'toggleSoapSessionInformationBtn') {
+                     const client = findClient(selectedClientId);
+                     const appointment = findAppointment(client, selectedAppointmentId);
+                     if (!client || !appointment) return;
+                     const fields = getSoapSessionFields(appointment);
+                     if (!updateSoapSessionInformationCollapseUi(client, appointment)) {
+                         fields.sessionInformationCollapsed = false;
+                         markDirty();
+                         renderSoap();
+                         return;
+                     }
+                     fields.sessionInformationCollapsed = !fields.sessionInformationCollapsed;
+                     markDirty();
+                     renderSoap();
+                     return;
+                 }
                  if (clickedButton?.id === 'approveObjectiveRedundancyBtn') {
                      const client = findClient(selectedClientId);
                      const appointment = findAppointment(client, selectedAppointmentId);
@@ -13527,7 +13676,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 { key: 'diagnosticSupport', label: 'Diagnostic Support', description: 'Diagnosis-specific support tied to the current session record.' },
                 { key: 'medicalNecessity', label: 'Medical Necessity', description: 'A concise evidence bridge linking the relevant diagnosis and documented session need to continued skilled care.' },
                 { key: 'auditCheck', label: 'Audit Check', description: 'The audit-readiness review for the completed SOAP note.' },
-                { key: 'sessionInformation', label: 'Session Information', description: 'Appointment details grouped in one section; choose which details to include on each note.' },
+                { key: 'sessionInformation', label: 'Session Information', description: 'Appointment details in one compact block; choose included fields in EHR Configuration.' },
                 { key: 'clinicianCredentials', label: 'Clinician / Credentials', description: 'Clinician name and credentials from Settings.' },
                 { key: 'diagnosisStatus', label: 'Diagnosis / Diagnostic Status', description: 'Client diagnoses with appointment-specific status or clarification.' }
             ];
@@ -13961,6 +14110,33 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     row.addEventListener('pointerup', finishPointerDrag);
                     row.addEventListener('pointercancel', finishPointerDrag);
                     soapPlatformSectionsList.appendChild(row);
+                });
+
+                activePlatform.sessionInformationDefaults = normalizeSoapSessionInformationInclusion(
+                    activePlatform.sessionInformationDefaults
+                );
+                soapPlatformSessionInformationList.replaceChildren();
+                SOAP_SESSION_INFORMATION_FIELDS.forEach(field => {
+                    const row = document.createElement('label');
+                    const enabled = activePlatform.sessionInformationDefaults[field.key];
+                    row.className = `soap-config-session-info-row${enabled ? '' : ' is-disabled'}`;
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = enabled;
+                    checkbox.dataset.sessionInfoConfigField = field.key;
+                    checkbox.setAttribute('aria-label', `Include ${field.label} in Session Information`);
+                    checkbox.addEventListener('change', () => {
+                        activePlatform.sessionInformationDefaults[field.key] = checkbox.checked;
+                        row.classList.toggle('is-disabled', !checkbox.checked);
+                        markDirty();
+                        renderSoap();
+                    });
+
+                    const label = document.createElement('span');
+                    label.textContent = field.label;
+                    row.append(checkbox, label);
+                    soapPlatformSessionInformationList.appendChild(row);
                 });
             };
 

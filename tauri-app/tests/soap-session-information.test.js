@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
     SOAP_SESSION_INFORMATION_FIELDS,
+    areSoapSessionInformationValuesComplete,
     formatSoapSessionInformation,
     getClientPhysicalLocations,
     normalizeSoapSessionInformationInclusion,
@@ -25,7 +26,7 @@ test('Session Information emits checked items in the requested order under one h
     assert.equal(text, [
         'Session Information:',
         'Client: Jane Doe',
-        'Additional Participants / Interruptions: None',
+        'Additional Participants: None',
         'Date of Service: November 10, 2026',
         'Start Time: 10:00 AM',
         'End Time: 10:53 AM',
@@ -56,6 +57,25 @@ test('unchecked fields are omitted while checked fields with no value remain omi
 test('empty selections produce no Session Information block', () => {
     const inclusion = Object.fromEntries(SOAP_SESSION_INFORMATION_FIELDS.map(field => [field.key, false]));
     assert.equal(formatSoapSessionInformation({ client: 'Jane Doe' }, inclusion), '');
+});
+
+test('collapse readiness requires every included field and ignores unchecked fields', () => {
+    const noFieldsIncluded = Object.fromEntries(SOAP_SESSION_INFORMATION_FIELDS.map(field => [field.key, false]));
+    assert.equal(areSoapSessionInformationValuesComplete({ client: 'Jane Doe', dateOfService: '11/10/2026' }, {
+        ...noFieldsIncluded,
+        client: true,
+        dateOfService: true,
+        actualPsychotherapyMinutes: false
+    }), true);
+    assert.equal(areSoapSessionInformationValuesComplete({ client: 'Jane Doe' }, {
+        ...noFieldsIncluded,
+        client: true,
+        dateOfService: true
+    }), false);
+    assert.equal(areSoapSessionInformationValuesComplete({ client: 'Jane Doe' }, {
+        ...noFieldsIncluded,
+        client: false
+    }), false);
 });
 
 test('physical location options come from Home and other saved Client Information locations', () => {
@@ -93,14 +113,35 @@ test('legacy Instructions location is not consulted unless already snapshotted o
 });
 
 for (const path of ['../index.html', '../src/index.html']) {
-    test(`${path} groups selectable fields in Session Information and removes the Instructions location field`, async () => {
+    test(`${path} configures Session Information fields in EHR Configuration and keeps the SOAP section compact`, async () => {
         const html = await readFile(new URL(path, import.meta.url), 'utf8');
 
         assert.match(html, /data-soap-section-key="sessionInformation"/);
         assert.match(html, /Session Information:/);
-        for (const field of SOAP_SESSION_INFORMATION_FIELDS) {
-            assert.match(html, new RegExp(`renderSessionInformationIncludeCheckbox\\('${field.key}'`));
-        }
+        assert.match(html, /id="soapPlatformSessionInformationList"/);
+        assert.match(html, /SOAP_SESSION_INFORMATION_FIELDS\.forEach\(field =>/);
+        assert.match(html, /sessionInfoConfigField/);
+        assert.doesNotMatch(html, /renderSessionInformationIncludeCheckbox/);
+        assert.doesNotMatch(html, /soap-session-info-checkbox/);
+
+        const sectionStart = html.indexOf('<div class="soap-support-block" data-soap-section-key="sessionInformation">');
+        const sectionEnd = html.indexOf('<div class="soap-support-block" data-soap-section-key="diagnosisStatus">', sectionStart);
+        const sessionSection = html.slice(sectionStart, sectionEnd);
+        assert.equal((sessionSection.match(/renderSoapCopyButton\(/g) || []).length, 1);
+        assert.doesNotMatch(sessionSection, /renderSessionInformationIncludeCheckbox|soap-session-info-checkbox/);
+        assert.match(sessionSection, /Add'l Ptcpt/);
+        assert.match(sessionSection, /Ct's Location:/);
+        assert.match(sessionSection, />CPT</);
+        assert.equal((sessionSection.match(/soap-session-info-item--inline/g) || []).length, 6);
+        assert.doesNotMatch(sessionSection, /Additional Participants \/ Interruptions/);
+        assert.match(sessionSection, /soap-session-time-summary/);
+        assert.match(html, /\.soap-session-time-grid\s*\{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+        assert.match(html, /#soapContent\s*\{[^}]*gap:\s*12px/);
+        assert.match(html, /#soapContent\s*> \.soap-section,[\s\S]*?#soapContent\s*> \.soap-support-block\s*\{\s*margin:\s*0/);
+        assert.match(html, /\.soap-header,\s*\.soap-support-header\s*\{[^}]*font-size:\s*0\.95rem[^}]*font-weight:\s*700/);
+        assert.match(html, /grid-template-columns: minmax\(104px, 32%\) minmax\(0, 1fr\)/);
+        assert.match(sessionSection, /id="toggleSoapSessionInformationBtn"/);
+        assert.match(sessionSection, /sessionInformationCollapsed/);
         assert.match(html, /data-session-field="clientPhysicalLocationId"/);
         assert.match(html, /Travel \/ Other \(manual override\)/);
         assert.doesNotMatch(html, /id="clientPhysicalLocationInput"/);

@@ -104,6 +104,9 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /soap-treatment-plan-copy-btn/);
         assert.match(html, /renderedSoapSections\.forEach\(sectionElement =>/);
         assert.match(html, /data-soap-section-key="sessionInformation"/);
-        assert.match(html, /soap-session-info-checkbox/);
+        assert.match(html, /id="soapPlatformSessionInformationList"/);
+        assert.match(html, /soap-config-session-info-row/);
+        assert.match(html, /activePlatform\.sessionInformationDefaults\[field\.key\] = checkbox\.checked/);
+        assert.doesNotMatch(html, /soap-session-info-checkbox/);
     });
 }

@@ -1,6 +1,6 @@
 export const SOAP_SESSION_INFORMATION_FIELDS = [
     { key: 'client', label: 'Client' },
-    { key: 'additionalParticipants', label: 'Additional Participants / Interruptions' },
+    { key: 'additionalParticipants', label: 'Additional Participants' },
     { key: 'dateOfService', label: 'Date of Service' },
     { key: 'psychotherapyStartTime', label: 'Start Time' },
     { key: 'psychotherapyEndTime', label: 'End Time' },
@@ -41,6 +41,12 @@ export const normalizeSoapSessionInformationInclusion = (saved, defaults = DEFAU
             : fallback;
         return result;
     }, {});
+};
+
+export const areSoapSessionInformationValuesComplete = (values = {}, included = DEFAULT_SOAP_SESSION_INFORMATION_INCLUSION) => {
+    const selection = normalizeSoapSessionInformationInclusion(included);
+    const requiredFields = SOAP_SESSION_INFORMATION_FIELDS.filter(field => selection[field.key]);
+    return requiredFields.length > 0 && requiredFields.every(field => String(values[field.key] ?? '').trim().length > 0);
 };
 
 export const formatSoapSessionInformation = (values = {}, included = DEFAULT_SOAP_SESSION_INFORMATION_INCLUSION) => {

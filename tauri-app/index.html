@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v4.0.2</title>
+    <title>SmartEMR v4.0.3</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -4787,6 +4787,7 @@
             saveEncryptedState
         } from '/src/state-persistence.js';
         import { migrateClientProfileFields } from '/src/client-profile-migration.js';
+        import { buildSoapCopySectionBlocks } from './src/soap-copy-format.js';
         import {
             checkFirstLogin,
             createUser,
@@ -10585,13 +10586,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         ? soap.clientPresentingProblem
                         : client?.presentingProblem || '').trim();
                 const resolvedInterventions = getObjectiveDerivedInterventions(appointment, client);
-                const auditElement = Array.from(soapContentEl.children).find(element => element.dataset.soapSectionKey === 'auditCheck');
-                let auditText = '';
-                if (auditElement) {
-                    const auditClone = auditElement.cloneNode(true);
-                    auditClone.querySelectorAll('button').forEach(button => button.remove());
-                    auditText = String(auditClone.innerText || auditClone.textContent || '').replace(/^\s*Audit Check\s*/, '').trim();
-                }
                 const values = {
                     s: soap.s,
                     o: soap.o,
@@ -10607,7 +10601,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     treatmentGoalProgress: formatTreatmentGoalProgressCopyText(client, appointment),
                     diagnosticSupport: soap.diagnosticSupport,
                     medicalNecessity: soap.medicalNecessity || getAuditProofingData(appointment).medicalNecessity,
-                    auditCheck: auditText,
                     dateOfService: formatPlanDate(getAppointmentDateInputValue(appointment?.date)),
                     client: client?.name,
                     clinicianCredentials: appointment?.soapSessionFields?.clinicianCredentialsSnapshot || getClinicianInformationText() || data.clinicianCredentials,
@@ -10627,14 +10620,11 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         ? sessionFields.diagnosisStatus
                         : getClientDiagnoses(client).map(diagnosis => String(diagnosis.name || '').trim()).filter(Boolean).join('\n')
                 };
-                return getSoapPlatformSectionKeysForAppointment(client, appointment)
-                    .map(key => {
-                        const text = String(values[key] ?? '').trim();
-                        const label = getSoapPlatformSectionDefinition(key)?.label || key;
-                        return text ? `${label}\n${text}` : '';
-                    })
-                    .filter(Boolean)
-                    .join('\n\n');
+                return buildSoapCopySectionBlocks(
+                    getSoapPlatformSectionKeysForAppointment(client, appointment),
+                    values,
+                    key => getSoapPlatformSectionDefinition(key)?.label || key
+                ).join('\n\n');
             };
             const copyCompleteSoapNote = async () => {
                 const client = findClient(selectedClientId);

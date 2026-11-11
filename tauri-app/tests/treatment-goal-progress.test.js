@@ -25,7 +25,7 @@ for (const path of ['index.html', 'src/index.html']) {
 
         assert.match(html, /id="copyAllSoapBtn"/);
         assert.match(html, /const buildCompleteSoapNoteCopyText =/);
-        assert.match(html, /getSoapPlatformSectionKeysForAppointment\(client, appointment\)/);
+        assert.match(html, /buildSoapCopySectionBlocks\([\s\S]*?getSoapPlatformSectionKeysForAppointment\(client, appointment\)/);
         assert.match(html, /copyAllSoapBtn\?\.addEventListener\('click', \(\) => void copyCompleteSoapNote\(\)\)/);
     });
 }

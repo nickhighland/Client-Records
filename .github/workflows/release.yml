@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'SmartEMR v4.0.2 fixes startup initialization when restoring collapsible-section state referenced UI controls removed from the client column. Password and saved Touch ID login wait for initialization before loading data. Existing encrypted database contents and stored notes are preserved.'
+          releaseBody: 'SmartEMR v4.0.3 updates SOAP Copy All to exclude Audit Check and groups Start Time, End Time, and Actual Time of Psychotherapy together in that order. Existing SOAP Audit Check remains available in the app.'
           releaseDraft: true
           prerelease: false
 

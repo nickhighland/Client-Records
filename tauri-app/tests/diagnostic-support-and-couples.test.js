@@ -44,7 +44,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /key: 'presentingProblem', label: 'Presenting Problem', description: 'The Presenting Problem copied directly from the client’s Treatment Goals record\.'/);
         assert.match(html, /appointment\.soap\.clientPresentingProblem = String\(client\?\.presentingProblem \|\| ''\)/);
         assert.match(html, /appointment\.soap\.sessionFocus = normalizeCoupleCollectiveReferences\(supportFields\.sessionFocus, client\)/);
-        assert.match(html, /\.soap-support-block \{[\s\S]*?border: 1px solid #0f766e/);
+        assert.doesNotMatch(html, /\.soap-support-block \{[^}]*border: 1px solid #0f766e/);
         assert.match(html, /background: linear-gradient\(135deg, #0f766e 0%, #0d9488 100%\)/);
     });
 

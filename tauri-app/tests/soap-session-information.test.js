@@ -130,7 +130,8 @@ for (const path of ['../index.html', '../src/index.html']) {
         assert.equal((sessionSection.match(/renderSoapCopyButton\(/g) || []).length, 1);
         assert.doesNotMatch(sessionSection, /renderSessionInformationIncludeCheckbox|soap-session-info-checkbox/);
         assert.match(sessionSection, /Add'l Ptcpt/);
-        assert.match(sessionSection, /Ct's Location:/);
+        assert.match(sessionSection, />Ct's Location</);
+        assert.doesNotMatch(sessionSection, /Ct's Location:/);
         assert.match(sessionSection, />CPT</);
         assert.equal((sessionSection.match(/soap-session-info-item--inline/g) || []).length, 6);
         assert.doesNotMatch(sessionSection, /Additional Participants \/ Interruptions/);
@@ -138,6 +139,7 @@ for (const path of ['../index.html', '../src/index.html']) {
         assert.match(html, /\.soap-session-time-grid\s*\{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
         assert.match(html, /#soapContent\s*\{[^}]*gap:\s*12px/);
         assert.match(html, /#soapContent\s*> \.soap-section,[\s\S]*?#soapContent\s*> \.soap-support-block\s*\{\s*margin:\s*0/);
+        assert.doesNotMatch(html, /\.soap-support-block\s*\{[^}]*border:\s*1px solid #0f766e/);
         assert.match(html, /\.soap-header,\s*\.soap-support-header\s*\{[^}]*font-size:\s*0\.95rem[^}]*font-weight:\s*700/);
         assert.match(html, /grid-template-columns: minmax\(104px, 32%\) minmax\(0, 1fr\)/);
         assert.match(sessionSection, /id="toggleSoapSessionInformationBtn"/);

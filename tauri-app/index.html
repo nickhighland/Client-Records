@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v4.0.5</title>
+    <title>SmartEMR v4.0.6</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -2134,6 +2134,113 @@
         .soap-icon-btn.is-loading svg {
             animation: soap-icon-spin 0.8s linear infinite;
         }
+        .soap-completion-indicator {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            width: 23px;
+            height: 23px;
+            border-radius: 50%;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .soap-completion-indicator.is-incomplete { background: #c62828; }
+        .soap-completion-indicator.is-complete { background: #2e7d32; }
+        .soap-completion-indicator span { transform: translateY(-1px); }
+        .soap-mse-status {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 7px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .soap-mse-status.is-complete {
+            color: #166534;
+            background: #dcfce7;
+        }
+        .soap-mse-status.is-incomplete {
+            color: #991b1b;
+            background: #fee2e2;
+        }
+        .soap-mse-card-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 9px 10px;
+            background: var(--panel-bg);
+        }
+        .soap-mse-summary {
+            min-width: 0;
+            color: var(--text-color-secondary);
+            font-size: 0.78rem;
+        }
+        .mental-status-exam-modal {
+            display: flex;
+            flex-direction: column;
+            width: min(800px, 94vw);
+            max-width: min(800px, 94vw);
+            max-height: 90vh;
+            padding: 20px;
+        }
+        .mental-status-exam-modal-body {
+            min-height: 0;
+            overflow-y: auto;
+            padding: 2px 3px 8px 0;
+        }
+        .mental-status-exam-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px 14px;
+        }
+        .mental-status-exam-field {
+            min-width: 0;
+        }
+        .mental-status-exam-field label,
+        .mental-status-exam-notes-label {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-color-primary);
+            font-size: 0.83rem;
+            font-weight: 700;
+        }
+        .mental-status-exam-field select { width: 100%; }
+        .mental-status-exam-all-normal {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin: 0 0 14px;
+            padding: 10px 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            background: var(--panel-bg);
+            color: var(--text-color-primary);
+            font-weight: 700;
+        }
+        .mental-status-exam-all-normal small {
+            display: block;
+            margin-top: 2px;
+            color: var(--text-color-secondary);
+            font-size: 0.76rem;
+            font-weight: 400;
+        }
+        .mental-status-exam-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--modal-header-border);
+        }
+        @media (max-width: 560px) {
+            .mental-status-exam-grid { grid-template-columns: minmax(0, 1fr); }
+            .mental-status-exam-modal { padding: 15px; }
+        }
         .soap-action-spinner {
             display: inline-block;
             width: 11px;
@@ -2172,7 +2279,6 @@
         }
         .soap-support-block {
             margin-top: 10px;
-            border: 1px solid #0f766e;
             border-radius: 6px;
             overflow: hidden;
         }
@@ -3343,11 +3449,11 @@
             <textarea id="objectiveEditorTextInput" rows="4" style="width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--input-text); font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 14px;"></textarea>
             <label for="planItemStartDateInputMonth" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-color-primary);">Start date</label>
             <div id="planItemStartDateControl" class="segmented-date-control" data-segmented-date-input="planItemStartDateInput" style="margin-bottom: 14px;">
-                <input id="planItemStartDateInputMonth" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="Start date month" autocomplete="off">
+                <input id="planItemStartDateInputMonth" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="8" placeholder="MM" aria-label="Start date month" autocomplete="off">
                 <span class="date-segment-separator" aria-hidden="true">/</span>
-                <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="Start date day" autocomplete="off">
+                <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="8" placeholder="DD" aria-label="Start date day" autocomplete="off">
                 <span class="date-segment-separator" aria-hidden="true">/</span>
-                <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" aria-label="Start date year" autocomplete="off">
+                <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="8" placeholder="YYYY" aria-label="Start date year" autocomplete="off">
                 <button type="button" class="date-picker-button" data-date-picker-for="planItemStartDateInput" title="Choose start date" aria-label="Choose start date">📅</button>
                 <input id="planItemStartDateInput" type="date" class="date-input-value" tabindex="-1" aria-hidden="true">
             </div>
@@ -3864,11 +3970,11 @@
                     <div class="panel-footer">
                          <label for="appointmentDateInputMonth" style="font-weight: 600; color: var(--text-color-secondary); font-size: 0.875rem; margin-bottom: 4px; display: block;">Appointment Date</label>
                          <div class="segmented-date-control" data-segmented-date-input="appointmentDateInput" style="width: 100%; margin-bottom: 8px;">
-                             <input id="appointmentDateInputMonth" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="Appointment month" autocomplete="off">
+                             <input id="appointmentDateInputMonth" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="8" placeholder="MM" aria-label="Appointment month" autocomplete="off">
                              <span class="date-segment-separator" aria-hidden="true">/</span>
-                             <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="Appointment day" autocomplete="off">
+                             <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="8" placeholder="DD" aria-label="Appointment day" autocomplete="off">
                              <span class="date-segment-separator" aria-hidden="true">/</span>
-                             <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" aria-label="Appointment year" autocomplete="off">
+                             <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="8" placeholder="YYYY" aria-label="Appointment year" autocomplete="off">
                              <button type="button" class="date-picker-button" data-date-picker-for="appointmentDateInput" title="Choose appointment date" aria-label="Choose appointment date">📅</button>
                              <input type="date" id="appointmentDateInput" class="date-input-value" tabindex="-1" aria-hidden="true">
                          </div>
@@ -4044,7 +4150,10 @@
             <div class="panel soap-panel" id="panelSoap">
                 <div class="panel-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
                     <span>SOAP Note</span>
-                    <button id="copyAllSoapBtn" class="btn" type="button" title="Copy the complete configured SOAP note">Copy All</button>
+                    <div style="display:flex; align-items:center; gap:7px;">
+                        <span id="soapCompletionIndicator" class="soap-completion-indicator is-incomplete" role="img" aria-label="SOAP note incomplete" title="Some included SOAP fields are incomplete"><span aria-hidden="true">×</span></span>
+                        <button id="copyAllSoapBtn" class="btn" type="button" title="Copy the complete configured SOAP note">Copy All</button>
+                    </div>
                 </div>
                 <div class="panel-content" id="soapContent">
                     <div class="no-selection">Select an appointment to begin</div>
@@ -4062,6 +4171,28 @@
     </div>
     
     <!-- Custom Instructions Modal -->
+    <div id="mentalStatusExamModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mentalStatusExamModalTitle">
+        <div class="modal-content mental-status-exam-modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--modal-header-border);">
+                <h2 id="mentalStatusExamModalTitle" style="margin:0; font-size:1.2rem; color:var(--text-color-primary);">Mental Status Exam</h2>
+                <button id="closeMentalStatusExamBtn" type="button" class="btn" aria-label="Close Mental Status Exam" title="Close">×</button>
+            </div>
+            <div class="mental-status-exam-modal-body">
+                <label class="mental-status-exam-all-normal" for="mentalStatusExamAllNormal">
+                    <input id="mentalStatusExamAllNormal" type="checkbox">
+                    <span>All normal<small>Fill each domain with its normal finding. Review the selections before saving.</small></span>
+                </label>
+                <div id="mentalStatusExamFields" class="mental-status-exam-grid"></div>
+                <label class="mental-status-exam-notes-label" for="mentalStatusExamAdditionalNotes" style="margin-top:12px;">Additional observations</label>
+                <textarea id="mentalStatusExamAdditionalNotes" class="setting-input" rows="3" placeholder="Optional details documented during the session"></textarea>
+            </div>
+            <div class="mental-status-exam-actions">
+                <button id="cancelMentalStatusExamBtn" type="button" class="btn" style="background:var(--panel-bg); color:var(--text-color-primary); border:1px solid var(--input-border);">Cancel</button>
+                <button id="saveMentalStatusExamBtn" type="button" class="btn">Save Exam</button>
+            </div>
+        </div>
+    </div>
+
     <div id="customInstructionsModal" class="modal-overlay hidden">
         <div class="modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--modal-header-border);">
@@ -4918,6 +5049,13 @@
         } from '/src/state-persistence.js';
         import { migrateClientProfileFields } from '/src/client-profile-migration.js';
         import { buildSoapCopySectionBlocks } from './src/soap-copy-format.js';
+        import { parseCompactDateDigits } from './src/segmented-date-input.js';
+        import {
+            createNormalMentalStatusExam,
+            formatMentalStatusExam,
+            isMentalStatusExamComplete,
+            MENTAL_STATUS_EXAM_FIELDS
+        } from './src/mental-status-exam.js';
         import {
             CUSTOM_SERVICE_TYPE_CPT_VALUE,
             DEFAULT_SERVICE_TYPE_CPT,
@@ -5938,11 +6076,11 @@
                 const inputValue = isValidDateInputValue(value) ? value : '';
                 const compactClass = compact ? ' compact' : '';
                 return `<div class="segmented-date-control${compactClass}" data-segmented-date-input="${valueInputId}">
-                    <input id="${valueInputId}Month" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="Start date month" autocomplete="off">
+                    <input id="${valueInputId}Month" class="date-segment date-segment-month" data-date-segment="month" type="text" inputmode="numeric" maxlength="8" placeholder="MM" aria-label="Start date month" autocomplete="off">
                     <span class="date-segment-separator" aria-hidden="true">/</span>
-                    <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="Start date day" autocomplete="off">
+                    <input class="date-segment date-segment-day" data-date-segment="day" type="text" inputmode="numeric" maxlength="8" placeholder="DD" aria-label="Start date day" autocomplete="off">
                     <span class="date-segment-separator" aria-hidden="true">/</span>
-                    <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" aria-label="Start date year" autocomplete="off">
+                    <input class="date-segment date-segment-year" data-date-segment="year" type="text" inputmode="numeric" maxlength="8" placeholder="YYYY" aria-label="Start date year" autocomplete="off">
                     <button type="button" class="date-picker-button" data-date-picker-for="${valueInputId}" title="Choose start date" aria-label="Choose start date">📅</button>
                     <input id="${valueInputId}" type="date" class="date-input-value" tabindex="-1" aria-hidden="true" value="${inputValue}">
                 </div>`;
@@ -6010,13 +6148,30 @@
                     valueInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             };
+            const applySegmentedDateDigitString = (control, rawDigits) => {
+                const digits = String(rawDigits || '').replace(/\D/g, '');
+                if (digits.length !== 8) return false;
+
+                const segments = getSegmentedDateParts(control);
+                const parsed = parseCompactDateDigits(digits);
+                segments.month.value = parsed?.month || digits.slice(0, 2);
+                segments.day.value = parsed?.day || digits.slice(2, 4);
+                segments.year.value = parsed?.year || digits.slice(4, 8);
+                updateSegmentedDateInputValue(control, Boolean(parsed));
+                focusSegmentedDatePart(control, 'year');
+                const yearInput = segments.year;
+                if (yearInput) yearInput.setSelectionRange(yearInput.value.length, yearInput.value.length);
+                return true;
+            };
             const handleSegmentedDateInput = (event) => {
                 const segment = event.target;
                 const control = segment.closest('.segmented-date-control');
                 if (!control) return;
 
+                const rawDigits = String(segment.value || '').replace(/\D/g, '');
+                if (applySegmentedDateDigitString(control, rawDigits)) return;
                 const maxLength = segment.dataset.dateSegment === 'year' ? 4 : 2;
-                const digits = String(segment.value || '').replace(/\D/g, '').slice(0, maxLength);
+                const digits = rawDigits.slice(0, maxLength);
                 if (segment.value !== digits) segment.value = digits;
                 updateSegmentedDateInputValue(control, segment.dataset.dateSegment !== 'month');
 
@@ -6024,6 +6179,14 @@
                     const nextPart = segment.dataset.dateSegment === 'month' ? 'day' : 'year';
                     focusSegmentedDatePart(control, nextPart);
                 }
+            };
+            const handleSegmentedDatePaste = (event) => {
+                const segment = event.target;
+                const control = segment.closest('.segmented-date-control');
+                const pastedDigits = String(event.clipboardData?.getData('text') || '').replace(/\D/g, '');
+                if (!control || pastedDigits.length !== 8) return;
+                event.preventDefault();
+                applySegmentedDateDigitString(control, pastedDigits);
             };
             const handleSegmentedDateKeydown = (event) => {
                 const segment = event.target;
@@ -6061,6 +6224,7 @@
                         segment.addEventListener('focus', () => segment.select());
                         segment.addEventListener('keydown', handleSegmentedDateKeydown);
                         segment.addEventListener('input', handleSegmentedDateInput);
+                        segment.addEventListener('paste', handleSegmentedDatePaste);
                         segment.addEventListener('blur', event => {
                             if (event.relatedTarget && control.contains(event.relatedTarget)) return;
                             updateSegmentedDateInputValue(control, true);
@@ -10748,7 +10912,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     serviceTypeCpt: sessionFields.serviceTypeCpt
                 };
             };
-            const buildCompleteSoapNoteCopyText = (client, appointment) => {
+            const getCompleteSoapNoteCopyValues = (client, appointment) => {
                 const soap = appointment?.soap || {};
                 const sessionFields = getSoapSessionFields(appointment);
                 const presentingProblem = isLegacySoapPresentingProblem(appointment)
@@ -10772,6 +10936,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     treatmentGoalProgress: formatTreatmentGoalProgressCopyText(client, appointment),
                     diagnosticSupport: soap.diagnosticSupport,
                     medicalNecessity: soap.medicalNecessity || getAuditProofingData(appointment).medicalNecessity,
+                    mentalStatusExam: formatMentalStatusExam(soap.mentalStatusExam),
                     clinicianCredentials: appointment?.soapSessionFields?.clinicianCredentialsSnapshot || getClinicianInformationText() || data.clinicianCredentials,
                     sessionInformation: formatSoapSessionInformation(
                         getSoapSessionInformationValues(client, appointment),
@@ -10781,11 +10946,108 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         ? sessionFields.diagnosisStatus
                         : getClientDiagnoses(client).map(diagnosis => String(diagnosis.name || '').trim()).filter(Boolean).join('\n')
                 };
+                return values;
+            };
+            const buildCompleteSoapNoteCopyText = (client, appointment) => {
+                const values = getCompleteSoapNoteCopyValues(client, appointment);
                 return buildSoapCopySectionBlocks(
                     getSoapPlatformSectionKeysForAppointment(client, appointment),
                     values,
                     key => getSoapPlatformSectionDefinition(key)?.label || key
                 ).join('\n\n');
+            };
+            const isSoapSectionCompleteForCopy = (sectionKey, client, appointment, values) => {
+                if (sectionKey === 'auditCheck') return true;
+                if (sectionKey === 'sessionInformation') {
+                    const included = getSoapSessionInformationInclusion(appointment, client);
+                    if (!SOAP_SESSION_INFORMATION_FIELDS.some(field => included[field.key])) return true;
+                    return areSoapSessionInformationValuesComplete(
+                        getSoapSessionInformationValues(client, appointment),
+                        included
+                    );
+                }
+                if (sectionKey === 'mentalStatusExam') {
+                    return isMentalStatusExamComplete(appointment?.soap?.mentalStatusExam);
+                }
+                if (sectionKey === 'diagnosisWithSubstantiation') {
+                    const diagnoses = getClientDiagnoses(client).filter(diagnosis => String(diagnosis?.name || '').trim());
+                    return diagnoses.length > 0 && diagnoses.every(diagnosis => String(diagnosis?.substantiation || '').trim());
+                }
+                if (sectionKey === 'treatmentGoalProgress') {
+                    return getTreatmentGoalProgressItems(client).every(item => {
+                        const entry = getTreatmentGoalProgressEntry(appointment, item.id);
+                        return TREATMENT_GOAL_PROGRESS_OPTIONS.some(([key]) => key === entry.progress)
+                            && String(entry.supportingEvidence || '').trim().length > 0;
+                    });
+                }
+                if (sectionKey === 'treatmentPlan' && getActiveTreatmentPlanGoals(client).length === 0) return true;
+                return String(values[sectionKey] || '').trim().length > 0;
+            };
+            const updateSoapCompletionIndicator = () => {
+                const indicator = document.getElementById('soapCompletionIndicator');
+                if (!indicator) return;
+                const client = findClient(selectedClientId);
+                const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
+                const includedSections = appointment
+                    ? getSoapPlatformSectionKeysForAppointment(client, appointment).filter(key => key !== 'auditCheck')
+                    : [];
+                const values = appointment ? getCompleteSoapNoteCopyValues(client, appointment) : {};
+                const complete = includedSections.length > 0
+                    && includedSections.every(key => isSoapSectionCompleteForCopy(key, client, appointment, values));
+                indicator.classList.toggle('is-complete', complete);
+                indicator.classList.toggle('is-incomplete', !complete);
+                indicator.innerHTML = `<span aria-hidden="true">${complete ? '✓' : '×'}</span>`;
+                indicator.setAttribute('aria-label', complete ? 'All included SOAP fields are complete' : 'Some included SOAP fields are incomplete');
+                indicator.title = complete
+                    ? 'All included SOAP fields are complete; Audit Check is excluded'
+                    : 'Some included SOAP fields are incomplete; Audit Check is excluded';
+            };
+            let mentalStatusExamTarget = null;
+            const renderMentalStatusExamFields = (exam = {}) => MENTAL_STATUS_EXAM_FIELDS.map(field => {
+                const selectedValue = String(exam?.[field.key] || '');
+                return `<div class="mental-status-exam-field">
+                    <label for="mentalStatusExamField-${field.key}">${escapeGoalDraftHtml(field.label)}</label>
+                    <select id="mentalStatusExamField-${field.key}" class="setting-input" data-mse-field="${field.key}">
+                        <option value="" ${selectedValue ? '' : 'selected'}>Choose a finding</option>
+                        ${field.options.map(option => `<option value="${escapeGoalDraftHtml(option)}" ${selectedValue === option ? 'selected' : ''}>${escapeGoalDraftHtml(option)}</option>`).join('')}
+                    </select>
+                </div>`;
+            }).join('');
+            const openMentalStatusExamModal = () => {
+                const client = findClient(selectedClientId);
+                const appointment = client ? findAppointment(client, selectedAppointmentId) : null;
+                if (!appointment) return;
+                mentalStatusExamTarget = { clientId: client.id, appointmentId: appointment.id };
+                const exam = appointment.soap?.mentalStatusExam || {};
+                const fieldsContainer = document.getElementById('mentalStatusExamFields');
+                const notesInput = document.getElementById('mentalStatusExamAdditionalNotes');
+                const allNormalCheckbox = document.getElementById('mentalStatusExamAllNormal');
+                if (!fieldsContainer || !notesInput || !allNormalCheckbox) return;
+                fieldsContainer.innerHTML = renderMentalStatusExamFields(exam);
+                notesInput.value = String(exam.additionalNotes || '');
+                allNormalCheckbox.checked = MENTAL_STATUS_EXAM_FIELDS.every(field => exam[field.key] === field.normal);
+                document.getElementById('mentalStatusExamModal')?.classList.remove('hidden');
+            };
+            const closeMentalStatusExamModal = () => {
+                document.getElementById('mentalStatusExamModal')?.classList.add('hidden');
+                mentalStatusExamTarget = null;
+            };
+            const saveMentalStatusExam = () => {
+                const target = mentalStatusExamTarget;
+                const client = target ? findClient(target.clientId) : null;
+                const appointment = client && target ? findAppointment(client, target.appointmentId) : null;
+                if (!appointment) return;
+                const exam = Object.fromEntries(MENTAL_STATUS_EXAM_FIELDS.map(field => [
+                    field.key,
+                    String(document.querySelector(`[data-mse-field="${field.key}"]`)?.value || '')
+                ]));
+                exam.additionalNotes = String(document.getElementById('mentalStatusExamAdditionalNotes')?.value || '').trim();
+                if (!appointment.soap || typeof appointment.soap !== 'object') appointment.soap = { s: '', o: '', a: '', p: '' };
+                appointment.soap.mentalStatusExam = exam;
+                delete appointment.auditCheck;
+                markDirty();
+                closeMentalStatusExamModal();
+                if (client.id === selectedClientId && appointment.id === selectedAppointmentId) renderSoap();
             };
             const copyCompleteSoapNote = async () => {
                 const client = findClient(selectedClientId);
@@ -10972,6 +11234,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             const renderSoap = () => {
                 if (recordViewClearedForSelectedClient) {
                     soapContentEl.innerHTML = '';
+                    updateSoapCompletionIndicator();
                     return;
                 }
 
@@ -10983,13 +11246,16 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 if (!appointment) {
                     if (intakeSession) {
                         soapContentEl.innerHTML = '<div class="no-selection">Selected item is an Intake Session. Intake sessions do not qualify for generated SOAP notes.</div>';
+                        updateSoapCompletionIndicator();
                         return;
                     }
                     if (note) {
                         soapContentEl.innerHTML = '<div class="no-selection">Selected item is a Note. SOAP note generation and SOAP editing are disabled for Notes.</div>';
+                        updateSoapCompletionIndicator();
                         return;
                     }
                     soapContentEl.innerHTML = '<div class="no-selection">Select an appointment to begin</div>';
+                    updateSoapCompletionIndicator();
                     return;
                 }
 
@@ -11044,6 +11310,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 }
                 const sessionInformationCollapsed = sessionInformationComplete
                     && soapSessionFields.sessionInformationCollapsed === true;
+                const mentalStatusExam = soapData.mentalStatusExam || {};
+                const mentalStatusExamComplete = isMentalStatusExamComplete(mentalStatusExam);
                 soapContentEl.innerHTML = `
                     <div class="soap-section" data-soap-section-key="s">
                         <div class="soap-header"><span>Subjective</span>${renderSoapCopyButton('soapS', 'Subjective')}</div>
@@ -11061,6 +11329,22 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         ${objectiveReviewPending ? '' : `<textarea id="soapO" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true"${objectiveBusy ? ' disabled' : ''}>${escapeGoalDraftHtml(soapData.o || '')}</textarea>`}
                         ${renderObjectiveRedundancySuggestions(appointment)}
                         ${renderObjectiveRedundancyReview(appointment, objectiveOrganizing)}
+                    </div>
+                    <div class="soap-support-block" data-soap-section-key="mentalStatusExam">
+                        <div class="soap-support-header">
+                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <span>Mental Status Exam</span>
+                                <span id="soapMentalStatusExamStatus" class="soap-mse-status ${mentalStatusExamComplete ? 'is-complete' : 'is-incomplete'}">${mentalStatusExamComplete ? 'Complete' : 'Incomplete'}</span>
+                            </div>
+                            <div class="soap-action-group">
+                                <button id="openMentalStatusExamBtn" type="button" class="btn" style="padding:4px 9px; font-size:0.78rem;">${mentalStatusExamComplete ? 'Edit Exam' : 'Complete Exam'}</button>
+                                ${renderSoapCopyButton('soapMentalStatusExam', 'Mental Status Exam')}
+                            </div>
+                        </div>
+                        <div class="soap-mse-card-content">
+                            <span class="soap-mse-summary">${mentalStatusExamComplete ? 'Findings are saved and ready to copy.' : 'Record findings in the compact exam window.'}</span>
+                            <textarea id="soapMentalStatusExam" class="hidden" readonly aria-hidden="true">${escapeGoalDraftHtml(formatMentalStatusExam(mentalStatusExam))}</textarea>
+                        </div>
                     </div>
                     <div class="soap-section" data-soap-section-key="interventions">
                         <div class="soap-header">
@@ -11249,7 +11533,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                                 </select>
                             </div>
                             <div class="soap-session-info-item soap-session-info-item--inline">
-                                <label class="soap-session-info-label" for="soapPhysicalLocationId">Ct's Location:</label>
+                                <label class="soap-session-info-label" for="soapPhysicalLocationId">Ct's Location</label>
                                 <select id="soapPhysicalLocationId" class="setting-input soap-session-field" data-session-field="clientPhysicalLocationId" aria-label="Client physical location">
                                     <option value="" ${clientPhysicalLocation.id ? '' : 'selected'}>Select a saved location</option>
                                     ${clientPhysicalLocations.map(location => `<option value="${escapeGoalDraftHtml(location.id)}" ${clientPhysicalLocation.id === location.id ? 'selected' : ''}>${escapeGoalDraftHtml(`${location.label}: ${location.address}`)}</option>`).join('')}
@@ -11296,6 +11580,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     platformWarning.textContent = getSoapGenerationRequirementMessage(missingSoapRequirements);
                     soapContentEl.prepend(platformWarning);
                 }
+                updateSoapCompletionIndicator();
                 
                 // After rendering, resize all textareas
                 soapContentEl.querySelectorAll('.soap-textarea').forEach(el => {
@@ -13391,6 +13676,10 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             });
             soapContentEl.addEventListener('click', (e) => {
                  const clickedButton = e.target.closest?.('button');
+                 if (clickedButton?.id === 'openMentalStatusExamBtn') {
+                     openMentalStatusExamModal();
+                     return;
+                 }
                  if (clickedButton?.id === 'toggleSoapSessionInformationBtn') {
                      const client = findClient(selectedClientId);
                      const appointment = findAppointment(client, selectedAppointmentId);
@@ -13663,6 +13952,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
             const SOAP_PLATFORM_SECTION_DEFS = [
                 { key: 's', label: 'Subjective', description: 'Client-reported concerns, symptoms, goals, and relevant self-report.' },
                 { key: 'o', label: 'Objective', description: 'Observable status, mental-status findings, and documented Writer actions.' },
+                { key: 'mentalStatusExam', label: 'Mental Status Exam', description: 'Structured mental-status findings entered and reviewed by the clinician.' },
                 { key: 'interventions', label: 'Interventions', description: 'Interventions identified from the organized Objective content.' },
                 { key: 'interventionsAndPurpose', label: 'Interventions and Purpose', description: 'AI-generated explanation of the Objective-supported interventions and their connection to session content and active treatment goals.' },
                 { key: 'a', label: 'Assessment', description: 'Clinical interpretation, diagnosis and goal linkage, progress, barriers, and risk when supported.' },
@@ -13698,7 +13988,8 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 'treatmentGoalProgress',
                 'sessionInformation',
                 'clinicianCredentials',
-                'diagnosisStatus'
+                'diagnosisStatus',
+                'mentalStatusExam'
             ]);
             const SOAP_PLATFORM_DEFAULT_ID = 'standard';
 
@@ -13787,7 +14078,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         // Do not add newly introduced output sections to an existing
                         // platform automatically. This keeps existing platform layouts
                         // and notes stable until the clinician enables the new option.
-                        enabled: !hasPersistedSectionOrder || !SOAP_PLATFORM_NEW_OPTION_KEYS.has(key)
+                        enabled: key === 'mentalStatusExam'
+                            ? false
+                            : (!hasPersistedSectionOrder || !SOAP_PLATFORM_NEW_OPTION_KEYS.has(key))
                     });
                 });
                 return normalized;
@@ -13930,13 +14223,17 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     appointment.soap.sessionFocus,
                     appointment.soap.clientPresentingProblem,
                     appointment.soap.diagnosticSupport,
-                    appointment.soap.medicalNecessity
+                    appointment.soap.medicalNecessity,
+                    formatMentalStatusExam(appointment.soap.mentalStatusExam)
                 ].some(value => String(value || '').trim());
                 if (!hasStoredSoapContent && getClientSoapPlatform(client)) {
                     return getSoapPlatformSectionKeys(client, false);
                 }
-                // Existing appointments predate platform assignment. Keep their legacy layout intact.
-                return [...SOAP_PLATFORM_LEGACY_DEFAULT_ORDER];
+                // Existing appointments predate platform assignment. Keep their legacy layout intact;
+                // show the MSE only if one was explicitly saved to that appointment.
+                const legacyKeys = [...SOAP_PLATFORM_LEGACY_DEFAULT_ORDER];
+                if (appointment?.soap?.mentalStatusExam) legacyKeys.push('mentalStatusExam');
+                return legacyKeys;
             };
 
             const captureSoapPlatformSnapshot = (appointment, client) => {
@@ -16461,6 +16758,27 @@ This error cannot be fixed within this application's code; it requires a configu
 
             // --- Event Listeners ---
             copyAllSoapBtn?.addEventListener('click', () => void copyCompleteSoapNote());
+            document.getElementById('closeMentalStatusExamBtn')?.addEventListener('click', closeMentalStatusExamModal);
+            document.getElementById('cancelMentalStatusExamBtn')?.addEventListener('click', closeMentalStatusExamModal);
+            document.getElementById('saveMentalStatusExamBtn')?.addEventListener('click', saveMentalStatusExam);
+            document.getElementById('mentalStatusExamAllNormal')?.addEventListener('change', event => {
+                if (!event.currentTarget.checked) return;
+                const normalValues = createNormalMentalStatusExam();
+                MENTAL_STATUS_EXAM_FIELDS.forEach(field => {
+                    const select = document.querySelector(`[data-mse-field="${field.key}"]`);
+                    if (select) select.value = normalValues[field.key];
+                });
+            });
+            document.getElementById('mentalStatusExamFields')?.addEventListener('change', event => {
+                if (!event.target.matches('[data-mse-field]')) return;
+                const allNormal = MENTAL_STATUS_EXAM_FIELDS.every(field =>
+                    document.querySelector(`[data-mse-field="${field.key}"]`)?.value === field.normal
+                );
+                const checkbox = document.getElementById('mentalStatusExamAllNormal');
+                if (checkbox) checkbox.checked = allNormal;
+            });
+            soapContentEl.addEventListener('input', () => queueMicrotask(updateSoapCompletionIndicator));
+            soapContentEl.addEventListener('change', () => queueMicrotask(updateSoapCompletionIndicator));
             addClientBtn.addEventListener('click', openAddClientModal);
             archivedClientsBtn.addEventListener('click', () => {
                 fullRender();

@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'SmartEMR v4.0.5 refines the SOAP workflow with a compact, configurable Session Information card, narrow-column field alignment, consistent spacing and heading typography, and full labels in copied text. Location selection uses saved client locations with a travel override. Existing notes and saved CPT values are preserved.'
+          releaseBody: 'SmartEMR v4.0.6 adds continuous MMDDYYYY date entry, a configurable Mental Status Exam popup with All normal defaults, and a completion indicator for included SOAP sections that ignores Audit Check. It also removes the unintended teal separator lines and uses the updated Ct location label. Existing note snapshots and client data are preserved.'
           releaseDraft: true
           prerelease: false
 

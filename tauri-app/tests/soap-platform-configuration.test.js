@@ -20,6 +20,7 @@ for (const path of ['index.html', 'src/index.html']) {
         assert.match(html, /const getSessionMembersContext =/);
         assert.match(html, /session-member-role/);
         assert.match(html, /const SOAP_PLATFORM_SECTION_DEFS =/);
+        assert.match(html, /key: 'mentalStatusExam', label: 'Mental Status Exam'/);
         assert.match(html, /key: 'sessionInformation', label: 'Session Information'/);
         assert.match(html, /normalizeSoapPlatformSessionInformationDefaults/);
         assert.match(html, /SOAP_SESSION_INFORMATION_LEGACY_SECTION_TO_FIELD/);

@@ -7,7 +7,7 @@ test('the app remains SmartEMR and checks the renamed public release repository'
     const publishScript = await readFile(new URL('../../publish.sh', import.meta.url), 'utf8');
 
     assert.equal(config.productName, 'SmartEMR');
-    assert.equal(config.version, '4.0.9');
+    assert.equal(config.version, '4.0.10');
     assert.deepEqual(config.plugins.updater.endpoints, [
         'https://github.com/ProbablyModded/Concept-EMR/releases/latest/download/latest.json'
     ]);

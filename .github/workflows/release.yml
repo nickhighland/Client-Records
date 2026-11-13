@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'SmartEMR v4.0.9 points the in-app updater to the renamed Concept-EMR repository. The installed app remains SmartEMR. Existing SOAP layouts and client data are preserved.'
+          releaseBody: 'SmartEMR v4.0.10 removes Subjective suggestions and restores manual regeneration of interventions, Diagnostic Support, and Medical Necessity from reviewed Objective content. The app remains SmartEMR and existing client data is preserved.'
           releaseDraft: true
           prerelease: false
 

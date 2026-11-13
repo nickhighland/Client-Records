@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>SmartEMR v4.0.9</title>
+    <title>SmartEMR v4.0.10</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -7994,17 +7994,19 @@
 
             const refreshObjectiveActionButtons = (appointment) => {
                 const objectiveText = (appointment?.soap?.o || '').trim();
-                const objectiveOrganized = isObjectiveOrganizeCompleted(appointment);
                 const selectedAppointmentContext = getSelectedAppointmentContext();
                 const selectedAppointment = getAppointmentFromContext(selectedAppointmentContext);
                 const isDisplayedAppointment = Boolean(appointment && selectedAppointment === appointment);
                 const isOrganizing = isDisplayedAppointment && isObjectiveOrganizationInFlight(selectedAppointmentContext);
                 const isReviewPreparing = isDisplayedAppointment && isObjectiveReviewPreparationInFlight(selectedAppointmentContext);
+                const hasPendingReview = Boolean(getObjectiveRedundancyReview(appointment));
+                const canGenerateFromObjective = Boolean(objectiveText) && !hasPendingReview && !isOrganizing && !isReviewPreparing;
                 const generateInterventionsBtn = isDisplayedAppointment
                     ? document.getElementById('generateInterventionsBtn')
                     : null;
                 if (generateInterventionsBtn) {
-                    generateInterventionsBtn.disabled = !objectiveText || !objectiveOrganized;
+                    generateInterventionsBtn.disabled = !canGenerateFromObjective;
+                    generateInterventionsBtn.title = canGenerateFromObjective ? 'Refresh interventions from Objective' : (hasPendingReview ? 'Approve the Objective review first' : 'Enter Objective content first');
                     setSoapActionButtonContent(generateInterventionsBtn, 'Refresh', isObjectiveReadCompleted(appointment));
                 }
 
@@ -8016,7 +8018,7 @@
                     document.getElementById('refreshInterventionsAndPurposeBtn')
                 ].filter(Boolean);
                 supportButtons.forEach(button => {
-                    button.disabled = !objectiveOrganized;
+                    button.disabled = !canGenerateFromObjective;
                     const label = button.id === 'refreshPresentingProblemBtn'
                         ? 'Refresh Presenting Problem'
                         : button.id === 'refreshSessionFocusBtn'
@@ -8026,7 +8028,7 @@
                         : button.id === 'refreshInterventionsAndPurposeBtn'
                         ? 'Refresh Interventions and Purpose'
                         : 'Refresh Medical Necessity';
-                    button.title = objectiveOrganized ? label : 'Press Approve in Objective first';
+                    button.title = canGenerateFromObjective ? label : (hasPendingReview ? 'Approve the Objective review first' : 'Enter Objective content first');
                     button.setAttribute('aria-label', button.title);
                 });
             };
@@ -9854,13 +9856,20 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 button.setAttribute('aria-busy', String(isLoading));
             };
 
+            const getObjectiveSupportRefreshBlockMessage = (appointment) => {
+                if (!String(appointment?.soap?.o || '').trim()) return 'Enter Objective content before generating this section.';
+                if (getObjectiveRedundancyReview(appointment)) return 'Approve the Objective review before generating this section.';
+                return '';
+            };
+
             const refreshDiagnosticSupport = async () => {
                 const appointmentContext = getSelectedAppointmentContext();
                 const appointment = getAppointmentFromContext(appointmentContext);
                 const client = appointmentContext ? findClient(appointmentContext.clientId) : null;
                 if (!client || !appointment) return;
-                if (!isObjectiveOrganizeCompleted(appointment)) {
-                    alert('Review Objective and press Approve before generating Diagnostic Support.');
+                const blockMessage = getObjectiveSupportRefreshBlockMessage(appointment);
+                if (blockMessage) {
+                    alert(blockMessage);
                     return;
                 }
 
@@ -9886,8 +9895,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const appointment = getAppointmentFromContext(appointmentContext);
                 const client = appointmentContext ? findClient(appointmentContext.clientId) : null;
                 if (!client || !appointment) return;
-                if (!isObjectiveOrganizeCompleted(appointment)) {
-                    alert('Review Objective and press Approve before generating Session Focus.');
+                const blockMessage = getObjectiveSupportRefreshBlockMessage(appointment);
+                if (blockMessage) {
+                    alert(blockMessage);
                     return;
                 }
 
@@ -9915,8 +9925,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const appointment = getAppointmentFromContext(appointmentContext);
                 const client = appointmentContext ? findClient(appointmentContext.clientId) : null;
                 if (!client || !appointment) return;
-                if (!isObjectiveOrganizeCompleted(appointment)) {
-                    alert('Review Objective and press Approve before generating Medical Necessity.');
+                const blockMessage = getObjectiveSupportRefreshBlockMessage(appointment);
+                if (blockMessage) {
+                    alert(blockMessage);
                     return;
                 }
 
@@ -9942,8 +9953,9 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const appointment = getAppointmentFromContext(appointmentContext);
                 const client = appointmentContext ? findClient(appointmentContext.clientId) : null;
                 if (!client || !appointment) return;
-                if (!isObjectiveOrganizeCompleted(appointment)) {
-                    alert('Review Objective and press Approve before generating Interventions and Purpose.');
+                const blockMessage = getObjectiveSupportRefreshBlockMessage(appointment);
+                if (blockMessage) {
+                    alert(blockMessage);
                     return;
                 }
 
@@ -11276,15 +11288,19 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                 const appointmentContext = { clientId: client.id, appointmentId: appointment.id, appointment };
                 const objectiveOrganizing = isObjectiveOrganizationInFlight(appointmentContext);
                 const objectiveReviewPreparing = isObjectiveReviewPreparationInFlight(appointmentContext);
-                const objectiveDerivedInterventions = objectiveOrganized
-                    ? getObjectiveDerivedInterventions(appointment, client)
-                    : [];
-                const interventions = objectiveOrganized
+                const objectiveDerivedInterventions = getObjectiveDerivedInterventions(appointment, client);
+                const interventions = objectiveOrganized || objectiveDerivedInterventions.length > 0
                     ? formatInterventionsByModality(objectiveDerivedInterventions)
-                    : '';
+                    : String(soapData.interventions || '');
                 const auditResult = appointment.auditCheck || null;
                 const objectiveReviewPending = Boolean(getObjectiveRedundancyReview(appointment));
                 const objectiveBusy = objectiveOrganizing || objectiveReviewPreparing;
+                const canGenerateFromObjective = Boolean(String(soapData.o || '').trim())
+                    && !objectiveReviewPending
+                    && !objectiveBusy;
+                const objectiveRefreshDisabledTitle = objectiveReviewPending || objectiveBusy
+                    ? 'Approve the Objective review first'
+                    : 'Enter Objective content first';
                 const soapSessionFields = getSoapSessionFields(appointment);
                 const serviceTypeCptValue = String(soapSessionFields.serviceTypeCpt || '');
                 const serviceTypeCptSelection = resolveServiceTypeCptSelection(serviceTypeCptValue);
@@ -11320,7 +11336,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     <div class="soap-section" data-soap-section-key="s">
                         <div class="soap-header"><span>Subjective</span>${renderSoapCopyButton('soapS', 'Subjective')}</div>
                         <textarea id="soapS" class="soap-textarea" placeholder="• " autocorrect="off" autocapitalize="off" spellcheck="true">${soapData.s || ''}</textarea>
-                        ${(soapData.s_suggestion || []).map((s, i) => renderSuggestionBox('s', s, i)).join('')}
                     </div>
                     <div class="soap-section" data-soap-section-key="o">
                         <div class="soap-header">
@@ -11354,7 +11369,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-header">
                             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <span>Interventions</span>
-                                <button id="generateInterventionsBtn" type="button" class="copy-btn soap-icon-btn" title="Press Approve in Objective first" aria-label="Press Approve in Objective first"${objectiveOrganized ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
+                                <button id="generateInterventionsBtn" type="button" class="copy-btn soap-icon-btn" title="${canGenerateFromObjective ? 'Refresh interventions from Objective' : objectiveRefreshDisabledTitle}" aria-label="${canGenerateFromObjective ? 'Refresh interventions from Objective' : objectiveRefreshDisabledTitle}"${canGenerateFromObjective ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
                             </div>
                             <div class="soap-action-group">
                                 <button id="selectInterventionsBtn" type="button" class="copy-btn soap-icon-btn" title="Open Intervention Bank" aria-label="Open Intervention Bank">${SOAP_ICON_SVGS.bank}</button>
@@ -11367,7 +11382,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-support-header">
                             <span>Interventions and Purpose</span>
                             <div class="soap-action-group">
-                                <button id="refreshInterventionsAndPurposeBtn" type="button" class="copy-btn soap-icon-btn" title="${objectiveOrganized ? 'Refresh Interventions and Purpose' : 'Press Approve in Objective first'}" aria-label="${objectiveOrganized ? 'Refresh Interventions and Purpose' : 'Press Approve in Objective first'}"${objectiveOrganized ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
+                                <button id="refreshInterventionsAndPurposeBtn" type="button" class="copy-btn soap-icon-btn" title="${canGenerateFromObjective ? 'Refresh Interventions and Purpose' : objectiveRefreshDisabledTitle}" aria-label="${canGenerateFromObjective ? 'Refresh Interventions and Purpose' : objectiveRefreshDisabledTitle}"${canGenerateFromObjective ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
                                 ${renderSoapCopyButton('interventionsAndPurpose', 'Interventions and Purpose')}
                             </div>
                         </div>
@@ -11402,7 +11417,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-support-header">
                             <span>Presenting Problem</span>
                             <div class="soap-action-group">
-                                <button id="refreshPresentingProblemBtn" type="button" class="copy-btn soap-icon-btn" title="${objectiveOrganized ? 'Refresh Presenting Problem' : 'Press Approve in Objective first'}" aria-label="${objectiveOrganized ? 'Refresh Presenting Problem' : 'Press Approve in Objective first'}"${objectiveOrganized ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
+                                <button id="refreshPresentingProblemBtn" type="button" class="copy-btn soap-icon-btn" title="${canGenerateFromObjective ? 'Refresh Presenting Problem' : objectiveRefreshDisabledTitle}" aria-label="${canGenerateFromObjective ? 'Refresh Presenting Problem' : objectiveRefreshDisabledTitle}"${canGenerateFromObjective ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
                                 ${renderSoapCopyButton('presentingProblem', 'Presenting Problem')}
                             </div>
                         </div>
@@ -11419,7 +11434,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-support-header">
                             <span>Session Focus</span>
                             <div class="soap-action-group">
-                                <button id="refreshSessionFocusBtn" type="button" class="copy-btn soap-icon-btn" title="${objectiveOrganized ? 'Refresh Session Focus' : 'Press Approve in Objective first'}" aria-label="${objectiveOrganized ? 'Refresh Session Focus' : 'Press Approve in Objective first'}"${objectiveOrganized ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
+                                <button id="refreshSessionFocusBtn" type="button" class="copy-btn soap-icon-btn" title="${canGenerateFromObjective ? 'Refresh Session Focus' : objectiveRefreshDisabledTitle}" aria-label="${canGenerateFromObjective ? 'Refresh Session Focus' : objectiveRefreshDisabledTitle}"${canGenerateFromObjective ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
                                 ${renderSoapCopyButton('sessionFocus', 'Session Focus')}
                             </div>
                         </div>
@@ -11446,7 +11461,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-support-header">
                             <span>Diagnostic Support</span>
                             <div class="soap-action-group">
-                                <button id="refreshDiagnosticSupportBtn" type="button" class="copy-btn soap-icon-btn" title="${objectiveOrganized ? 'Refresh Diagnostic Support' : 'Press Approve in Objective first'}" aria-label="${objectiveOrganized ? 'Refresh Diagnostic Support' : 'Press Approve in Objective first'}"${objectiveOrganized ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
+                                <button id="refreshDiagnosticSupportBtn" type="button" class="copy-btn soap-icon-btn" title="${canGenerateFromObjective ? 'Refresh Diagnostic Support' : objectiveRefreshDisabledTitle}" aria-label="${canGenerateFromObjective ? 'Refresh Diagnostic Support' : objectiveRefreshDisabledTitle}"${canGenerateFromObjective ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
                                 ${renderSoapCopyButton('diagnosticSupport', 'Diagnostic Support')}
                             </div>
                         </div>
@@ -11456,7 +11471,7 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                         <div class="soap-support-header">
                             <span>Medical Necessity</span>
                             <div class="soap-action-group">
-                                <button id="refreshMedicalNecessityBtn" type="button" class="copy-btn soap-icon-btn" title="${objectiveOrganized ? 'Refresh Medical Necessity' : 'Press Approve in Objective first'}" aria-label="${objectiveOrganized ? 'Refresh Medical Necessity' : 'Press Approve in Objective first'}"${objectiveOrganized ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
+                                <button id="refreshMedicalNecessityBtn" type="button" class="copy-btn soap-icon-btn" title="${canGenerateFromObjective ? 'Refresh Medical Necessity' : objectiveRefreshDisabledTitle}" aria-label="${canGenerateFromObjective ? 'Refresh Medical Necessity' : objectiveRefreshDisabledTitle}"${canGenerateFromObjective ? '' : ' disabled'}>${SOAP_ICON_SVGS.refresh}</button>
                                 ${renderSoapCopyButton('medicalNecessity', 'Medical Necessity')}</div>
                         </div>
                         <textarea id="medicalNecessity" class="soap-textarea soap-support-textarea" placeholder="Press Approve in Objective to generate a medical necessity statement." autocorrect="off" autocapitalize="off" spellcheck="true">${escapeGoalDraftHtml(soapData.medicalNecessity || getAuditProofingData(appointment).medicalNecessity || '')}</textarea>
@@ -11600,12 +11615,21 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                     autoResizeTextarea(interventionsTextarea);
                 }
 
-                const generateInterventionsBtn = document.getElementById('generateInterventionsBtn');
-                if (generateInterventionsBtn) {
-                    generateInterventionsBtn.addEventListener('click', () => {
-                        void generateObjectiveInterventions();
+                const bindSoapRefreshAction = (buttonId, action) => {
+                    const button = document.getElementById(buttonId);
+                    if (!button) return;
+                    button.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void action();
                     });
-                }
+                };
+                bindSoapRefreshAction('generateInterventionsBtn', () => generateObjectiveInterventions());
+                bindSoapRefreshAction('refreshDiagnosticSupportBtn', () => refreshDiagnosticSupport());
+                bindSoapRefreshAction('refreshMedicalNecessityBtn', () => refreshMedicalNecessity());
+                bindSoapRefreshAction('refreshInterventionsAndPurposeBtn', () => refreshInterventionsAndPurpose());
+                bindSoapRefreshAction('refreshPresentingProblemBtn', () => refreshSessionFocus());
+                bindSoapRefreshAction('refreshSessionFocusBtn', () => refreshSessionFocus());
 
                 refreshObjectiveActionButtons(appointment);
                 setSoapPostObjectiveProcessingState(objectiveOrganizing);
@@ -13751,22 +13775,6 @@ ${explicitInterventionSignals.length > 0 ? `- **Explicit Intervention Signals fr
                      renderSoap();
                      return;
                  }
-                 if (clickedButton?.id === 'refreshDiagnosticSupportBtn') {
-                     void refreshDiagnosticSupport();
-                     return;
-                 }
-                 if (clickedButton?.id === 'refreshPresentingProblemBtn' || clickedButton?.id === 'refreshSessionFocusBtn') {
-                     void refreshSessionFocus();
-                     return;
-                 }
-                 if (clickedButton?.id === 'refreshMedicalNecessityBtn') {
-                     void refreshMedicalNecessity();
-                     return;
-                 }
-                 if (clickedButton?.id === 'refreshInterventionsAndPurposeBtn') {
-                     void refreshInterventionsAndPurpose();
-                     return;
-                 }
                  if (clickedButton?.id === 'selectInterventionsBtn') {
                      const client = findClient(selectedClientId);
                      const appointment = findAppointment(client, selectedAppointmentId);
@@ -14631,7 +14639,7 @@ Analyze the labeled clinical record in User Input and return only the required J
 **Golden Thread:** When supported by the record, connect ${SOAP_GOLDEN_THREAD_CHAIN}. Make every goal or objective linkage portable to an external EMR: never output internal app identifiers or implementation labels such as "G1", "G2-O3", goal numbers, objective numbers, or bracketed reference codes in any SOAP section or suggestion. Instead, use plain language such as "the treatment goal of [brief restatement of the goal]", "the objective of [brief restatement of the objective]", or "treatment goals" when referring to more than one. Preserve the meaning of the actual goal or objective, keep the restatement concise, and do not claim that it was addressed or progressed unless current-session evidence supports that claim. Do not force a linkage; omit the unsupported claim and identify the documentation gap in an appropriate suggestion.
 
 **SOAP Rules:**
-- **Subjective (S):** Document Ct's reported symptoms, concerns, goals, and relevant self-report. Include pattern, frequency, duration, intensity, and change only when documented. Do not convert diagnosis or clinician interpretation into Ct report.
+- **Subjective (S):** Document Ct's reported symptoms, concerns, goals, and relevant self-report. Include pattern, frequency, duration, intensity, and change only when documented. Do not convert diagnosis or clinician interpretation into Ct report. Never create or return suggestions for Subjective.
 - **Objective (O):** Document observable status, mental-status findings, and actual Writer actions or interventions. Include Ct participation or response only when documented. Do not add an intervention, observation, or response merely to satisfy a format.
                 - **Assessment (A):** Provide restrained clinical interpretation of the documented record. When supported, state the relationship to diagnosis, functional impact, response, progress toward the linked objective, barriers, and risk status. Distinguish improved, worsened, unchanged, and not documented; never infer progress from the existence of a goal.
 - **Plan (P):** State concrete next steps, follow-up, homework, reassessment, coordination, or safety planning only when supported or clearly planned. Tie the plan to the active goal/objective and unresolved clinical need when documented.
@@ -14640,7 +14648,7 @@ Analyze the labeled clinical record in User Input and return only the required J
 
 ${SOAP_SESSION_NOTE_PROSE_GUIDANCE}
 
-**Suggestions:** Return concise suggestions only when useful. A suggestion may revise an exact generated bullet without changing its facts, or identify a specific missing documentation element. Suggestions must not add symptoms, severity, impairment, risk, interventions, client participation, response, progress, modality, or medical necessity. Do not assume interventions.
+**Suggestions:** Return concise suggestions for Objective, Assessment, or Plan only when useful. Subjective never has suggestions. A suggestion may revise an exact generated bullet without changing its facts, or identify a specific missing documentation element. Suggestions must not add symptoms, severity, impairment, risk, interventions, client participation, response, progress, modality, or medical necessity. Do not assume interventions.
 
 **Objective Suggestion Contract:** For "o_suggestion", return ${SOAP_OBJECTIVE_SUGGESTION_MIN_COUNT}-${SOAP_OBJECTIVE_SUGGESTION_MAX_COUNT} distinct, chart-ready candidate boxes when the current session contains that many directly supported objective details. Prefer one candidate per distinct observable finding, Writer action or intervention, Ct participation or response, or other documented objective detail. Do not duplicate a fact with minor wording changes, introduce hypothetical content, or turn an unsupported treatment possibility into a suggestion. If fewer than ${SOAP_OBJECTIVE_SUGGESTION_MIN_COUNT} distinct supported details are present, return one candidate for each supported detail rather than padding the list. Keep other section suggestions limited to evidence-supported revisions or additions.
 
@@ -14650,7 +14658,6 @@ ${SOAP_SESSION_NOTE_PROSE_GUIDANCE}
   "o": "• ...",
   "a": "• ...",
   "p": "• ...",
-  "s_suggestion": [],
   "o_suggestion": [],
   "a_suggestion": [],
   "p_suggestion": []
@@ -14804,7 +14811,7 @@ Requirements:
 
                  ['s', 'o', 'a', 'p'].forEach(key => {
                      const suggestionKey = `${key}_suggestion`;
-                     let suggestions = soapData[suggestionKey] || [];
+                     let suggestions = key === 's' ? [] : (soapData[suggestionKey] || []);
                      let fullText = soapData[key] ? formatBulletPoints(soapData[key]) : '';
 
                      if (key === 'o') {
@@ -14849,7 +14856,8 @@ Requirements:
                     }
                      
                      // Always store the full list of suggestions for user approval
-                     appointment.soap[suggestionKey] = suggestions;
+                     if (key === 's') delete appointment.soap[suggestionKey];
+                     else appointment.soap[suggestionKey] = suggestions;
                  });
 
                  alignSoapSectionsByObjectiveOrder(appointment.soap);
@@ -15094,10 +15102,9 @@ Requirements:
                     }
                     return false;
                 }
-                if (!isObjectiveOrganizeCompleted(appointment)) {
-                    if (!suppressEmptyAlert) {
-                        alert('Review Objective and press Approve before generating interventions.');
-                    }
+                const blockMessage = getObjectiveSupportRefreshBlockMessage(appointment);
+                if (blockMessage) {
+                    if (!suppressEmptyAlert) alert(blockMessage);
                     return false;
                 }
 

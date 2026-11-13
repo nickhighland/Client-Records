@@ -71,7 +71,7 @@ jobs:
           args: '--target aarch64-apple-darwin'
           tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: 'SmartEMR ${{ inputs.release_tag || github.ref_name }}'
-          releaseBody: 'SmartEMR v4.0.8 preserves each existing SOAP note’s section layout when generating or regenerating content. New notes inherit the client’s assigned EHR layout. SOAP card bodies remain visible in narrow columns, and Interventions and Purpose is manually editable and saved. Existing note data is preserved.'
+          releaseBody: 'SmartEMR v4.0.9 points the in-app updater to the renamed Concept-EMR repository. The installed app remains SmartEMR. Existing SOAP layouts and client data are preserved.'
           releaseDraft: true
           prerelease: false
 

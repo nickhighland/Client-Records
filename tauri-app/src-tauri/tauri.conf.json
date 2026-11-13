@@ -1,6 +1,6 @@
 {
   "productName": "SmartEMR",
-  "version": "4.0.8",
+  "version": "4.0.9",
   "identifier": "com.clientrecords.tauriapp",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,7 +12,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "SmartEMR v4.0.8",
+        "title": "SmartEMR v4.0.9",
         "width": 1200,
         "height": 800
       }
@@ -24,7 +24,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/nickhighland/Client-Records/releases/latest/download/latest.json"
+        "https://github.com/ProbablyModded/Concept-EMR/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQxNkVFMDk4QjUyRjE1MTAKUldRUUZTKzFtT0J1MGJ0NGJYbHRCc1lzamZBc3JCejNSKzVvZjRmaXNoeUVyNXY3bEFhUGF0ZkMK"
     }

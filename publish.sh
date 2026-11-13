@@ -5,7 +5,7 @@ set -euo pipefail
 # Usage: ./publish.sh <version>
 # Example: ./publish.sh 1.0.8
 
-REPO="nickhighland/Client-Records"
+REPO="ProbablyModded/Concept-EMR"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TAURI_DIR="$SCRIPT_DIR/tauri-app"
 KEY_PATH="$HOME/.tauri/client-records.key"
